@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="paper">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -10,36 +10,41 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
         /* ============================================================
-           DESIGN TOKENS
+           DESIGN TOKENS — three themes
+           Each theme redefines the semantic tokens below.
+           Override is done via [data-theme="X"] on <html>.
            ============================================================ */
-        :root {
-            --ink: #0F0F0F;
-            --ink-2: #1A1A1A;
-            --ink-3: #2A2A2A;
-            --acid: #C8FF00;
-            --acid-deep: #9FCC00;
-            --acid-shadow: rgba(200, 255, 0, 0.25);
-            --paper: #F5F2EA;
-            --paper-2: #ECEAE0;
-            --card: #FFFFFF;
-            --line: #E5E2D8;
-            --line-soft: #EFEEE6;
-            --muted: #8B8B82;
-            --muted-2: #B8B6AB;
-            --danger: #E5484D;
+        :root,
+        [data-theme="paper"] {
+            /* --- paper (default: warm editorial) --- */
+            --ink:          #0F0F0F;
+            --ink-2:        #1A1A1A;
+            --ink-3:        #2A2A2A;
+            --accent:       #C8FF00;
+            --accent-deep:  #9FCC00;
+            --accent-shadow:rgba(200, 255, 0, 0.25);
+            --paper:        #F5F2EA;
+            --paper-2:      #ECEAE0;
+            --card:         #FFFFFF;
+            --line:         #E5E2D8;
+            --line-soft:    #EFEEE6;
+            --muted:        #8B8B82;
+            --muted-2:      #B8B6AB;
+            --danger:       #E5484D;
+            --accent-name:  '柠檬黄';
 
             --r-sm: 10px;
             --r-md: 16px;
             --r-lg: 22px;
             --r-xl: 28px;
 
-            --font-display: 'Instrument Serif', 'Songti SC', 'STSong', Georgia, serif;
-            --font-body: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+            --font-display: 'Cormorant Garamond', 'Songti SC', Georgia, serif;
+            --font-body:    'Figtree', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --font-mono:    'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
 
             --ease: cubic-bezier(0.32, 0.72, 0.0, 1);
             --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -47,6 +52,108 @@
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
+
+        [data-theme="obsidian"] {
+            /* --- obsidian (deep space + electric indigo) --- */
+            --ink:          #E8E8F0;
+            --ink-2:        #B0B0C8;
+            --ink-3:        #7070A0;
+            --accent:       #7C6FF7;
+            --accent-deep:  #5A50D4;
+            --accent-shadow: rgba(124, 111, 247, 0.30);
+            --paper:        #131320;
+            --paper-2:      #1C1C2E;
+            --card:         #1E1E30;
+            --line:         #2A2A45;
+            --line-soft:    #252540;
+            --muted:        #7070A0;
+            --muted-2:      #9090C0;
+            --danger:       #F76F7A;
+            --accent-name:  '靛蓝';
+
+            --r-sm: 10px;
+            --r-md: 16px;
+            --r-lg: 22px;
+            --r-xl: 28px;
+
+            --font-display: 'Cormorant Garamond', Georgia, serif;
+            --font-body:    'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono:    'JetBrains Mono', 'SF Mono', monospace;
+
+            --ease: cubic-bezier(0.32, 0.72, 0.0, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        [data-theme="gold"] {
+            /* --- gold (warm cream + antique champagne) --- */
+            --ink:          #2A2520;
+            --ink-2:        #3D3530;
+            --ink-3:        #524840;
+            --accent:       #C9A84C;
+            --accent-deep:  #A8882E;
+            --accent-shadow: rgba(201, 168, 76, 0.22);
+            --paper:        #FAF9F6;
+            --paper-2:      #F5F2EB;
+            --card:         #FFFFFF;
+            --line:         #E8E4D8;
+            --line-soft:    #F0EDE5;
+            --muted:        #8C8070;
+            --muted-2:      #B0A898;
+            --danger:       #C84040;
+            --accent-name:  '香槟金';
+
+            --r-sm: 10px;
+            --r-md: 16px;
+            --r-lg: 22px;
+            --r-xl: 28px;
+
+            --font-display: 'Cormorant Garamond', Georgia, serif;
+            --font-body:    'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono:    'JetBrains Mono', 'SF Mono', monospace;
+
+            --ease: cubic-bezier(0.32, 0.72, 0.0, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* Timer card is always ink-background with accent text — invert for obsidian */
+        [data-theme="obsidian"] .timer-card {
+            background: var(--paper);
+            color: var(--ink);
+        }
+        [data-theme="obsidian"] .timer-card .timer-display,
+        [data-theme="obsidian"] .timer-card .timer-shift .left strong {
+            color: var(--ink);
+        }
+        [data-theme="obsidian"] .timer-card .timer-status { color: var(--muted); }
+        [data-theme="obsidian"] .timer-card .timer-label { color: var(--muted-2); }
+        [data-theme="obsidian"] .timer-card .timer-range { color: var(--muted-2); }
+        [data-theme="obsidian"] .status-dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-shadow);
+        }
+        [data-theme="obsidian"] .progress-fill {
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent-shadow);
+        }
+        [data-theme="obsidian"] .progress-track { background: rgba(255,255,255,0.08); }
+        /* Dock in obsidian */
+        [data-theme="obsidian"] .dock { background: var(--paper-2); }
+        [data-theme="obsidian"] .dock-item { color: var(--ink-3); }
+        [data-theme="obsidian"] .dock-item.active { color: var(--accent); }
+        /* Income card accent in obsidian */
+        [data-theme="obsidian"] .stat-card.income {
+            background: var(--accent);
+            color: var(--paper);
+        }
+        [data-theme="obsidian"] .stat-card.income .stat-index,
+        [data-theme="obsidian"] .stat-card.income .stat-label,
+        [data-theme="obsidian"] .stat-card.income .stat-sub { color: var(--paper); }
 
         /* ============================================================
            RESET & BASE
@@ -264,8 +371,8 @@
             width: 7px;
             height: 7px;
             border-radius: 50%;
-            background: var(--acid);
-            box-shadow: 0 0 8px var(--acid);
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
             animation: pulse 1.6s ease-in-out infinite;
         }
         @keyframes pulse {
@@ -310,7 +417,7 @@
             font-weight: 600;
         }
         .timer-shift .pct {
-            color: var(--acid);
+            color: var(--accent);
             font-weight: 600;
             font-size: 11px;
         }
@@ -324,10 +431,10 @@
         .progress-fill {
             position: absolute;
             inset: 0 auto 0 0;
-            background: var(--acid);
+            background: var(--accent);
             border-radius: 2px;
             transition: width 0.6s var(--ease);
-            box-shadow: 0 0 12px var(--acid-shadow);
+            box-shadow: 0 0 12px var(--accent-shadow);
         }
         .timer-range {
             display: flex;
@@ -353,7 +460,7 @@
             font-family: var(--font-display);
             font-size: 28px;
             line-height: 0.6;
-            color: var(--acid-deep);
+            color: var(--accent-deep);
         }
         .quote-body {
             font-family: var(--font-display);
@@ -382,7 +489,7 @@
             min-width: 0;
         }
         .stat-card.income {
-            background: var(--acid);
+            background: var(--accent);
             color: var(--ink);
         }
         .stat-card.equivalent {
@@ -547,7 +654,7 @@
         }
         .convert-item:active {
             transform: scale(0.98);
-            border-color: var(--acid-deep);
+            border-color: var(--accent-deep);
         }
         .convert-item-icon {
             width: 44px;
@@ -670,7 +777,7 @@
             padding: 12px 10px;
             text-align: center;
         }
-        .cal-summary .card.green { background: var(--acid); color: var(--ink); }
+        .cal-summary .card.green { background: var(--accent); color: var(--ink); }
         .cal-summary .card.white { background: var(--card); border: 1px solid var(--line-soft); }
         .cal-summary .num {
             font-family: var(--font-display);
@@ -706,7 +813,7 @@
         }
         .cal-month-nav button:active {
             background: var(--ink);
-            color: var(--acid);
+            color: var(--accent);
         }
 
         .cal-grid { padding: 0 16px; }
@@ -754,7 +861,7 @@
         }
         .cal-day.today {
             background: var(--ink);
-            color: var(--acid);
+            color: var(--accent);
             border-color: var(--ink);
             font-weight: 700;
         }
@@ -767,7 +874,7 @@
             margin-top: 1px;
             font-weight: 500;
         }
-        .cal-day.today .earn { color: var(--acid); opacity: 0.85; }
+        .cal-day.today .earn { color: var(--accent); opacity: 0.85; }
         .cal-day.weekend .earn { opacity: 0.3; }
         .cal-day.override::after {
             content: '';
@@ -777,7 +884,7 @@
             width: 4px;
             height: 4px;
             border-radius: 50%;
-            background: var(--acid-deep);
+            background: var(--accent-deep);
         }
 
         /* ============================================================
@@ -861,7 +968,7 @@
             width: calc(100% - 32px);
             margin: 6px 16px 0;
             padding: 16px;
-            background: var(--acid);
+            background: var(--accent);
             color: var(--ink);
             border: none;
             border-radius: var(--r-md);
@@ -920,7 +1027,7 @@
             position: relative;
             -webkit-tap-highlight-color: transparent;
         }
-        .dock-item.active { color: var(--acid); }
+        .dock-item.active { color: var(--accent); }
         .dock-item .icon { width: 22px; height: 22px; margin-bottom: 2px; }
         .dock-item .label {
             font-family: var(--font-mono);
@@ -937,8 +1044,8 @@
             width: 4px;
             height: 4px;
             border-radius: 50%;
-            background: var(--acid);
-            box-shadow: 0 0 8px var(--acid);
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
         }
 
         /* ============================================================
@@ -1013,7 +1120,7 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .field input:focus {
-            border-color: var(--acid-deep);
+            border-color: var(--accent-deep);
             box-shadow: 0 0 0 3px rgba(159, 204, 0, 0.15);
         }
         .emoji-grid {
@@ -1038,9 +1145,17 @@
         }
         .emoji-grid button:active { background: var(--paper-2); }
         .emoji-grid button.selected {
-            background: var(--acid);
+            background: var(--accent);
             transform: scale(0.95);
         }
+
+        /* Theme swatch */
+        .theme-swatch.is-active {
+            border-color: var(--ink) !important;
+            transform: scale(1.2);
+            box-shadow: 0 0 0 3px var(--accent-shadow);
+        }
+        .theme-swatch:hover { transform: scale(1.1); }
         .sheet-actions {
             display: flex;
             gap: 10px;
@@ -1056,7 +1171,7 @@
         }
         .sheet-actions .primary {
             background: var(--ink);
-            color: var(--acid);
+            color: var(--accent);
         }
         .sheet-actions .primary:disabled {
             opacity: 0.4;
@@ -1081,7 +1196,7 @@
             left: 50%;
             transform: translate(-50%, 12px);
             background: var(--ink);
-            color: var(--acid);
+            color: var(--accent);
             padding: 12px 24px;
             border-radius: 100px;
             font-family: var(--font-mono);
@@ -1304,6 +1419,41 @@
                                     <span class="suffix">小时</span>
                                 </span>
                             </div>
+                            <div class="settings-row">
+                                <span class="label">休息模式</span>
+                                <span class="value">
+                                    <select id="set-rest-mode" style="border:none;background:transparent;font-family:var(--font-mono);font-size:15px;color:var(--muted);font-weight:600;outline:none;padding:2px 0;">
+                                        <option value="2">双休</option>
+                                        <option value="1">单休</option>
+                                        <option value="0">无休</option>
+                                    </select>
+                                    <span class="chevron">›</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="eyebrow">月度薪资 · Monthly</div>
+                        <div class="settings-card">
+                            <div class="settings-row" id="row-monthly-summary">
+                                <span class="label">本月记录</span>
+                                <span class="value" style="font-size:13px;" id="set-monthly-summary">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="eyebrow">主题 · Theme</div>
+                        <div class="settings-card">
+                            <div class="settings-row" id="theme-picker">
+                                <span class="label">配色方案</span>
+                                <span class="value" style="gap:10px;">
+                                    <button class="theme-swatch" data-theme="paper" title="柠檬黄" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#C8FF00;transition:transform .15s;"></button>
+                                    <button class="theme-swatch" data-theme="obsidian" title="靛蓝" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#7C6FF7;transition:transform .15s;"></button>
+                                    <button class="theme-swatch" data-theme="gold" title="香槟金" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#C9A84C;transition:transform .15s;"></button>
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -1328,7 +1478,12 @@
                     </div>
 
                     <button class="save-btn" id="save-btn">保存配置</button>
-                    <div class="settings-footer">v1.0 · 本地存储</div>
+
+                    <div class="settings-group" style="margin-top:18px;">
+                        <div class="eyebrow">月度记录 · Salary History</div>
+                        <div class="settings-card" id="monthly-history-list"></div>
+                    </div>
+                    <div class="settings-footer">v1.1 · 本地存储</div>
                 </section>
             </div>
 
@@ -1413,18 +1568,50 @@
         // ============================================================
         // CONSTANTS
         // ============================================================
-        const STORAGE_KEY = 'salary_timer_config_v1';
-        const ITEMS_KEY   = 'salary_timer_items_v1';
-        const OVERRIDES_KEY = 'salary_timer_day_overrides_v1';
+        const STORAGE_KEY     = 'salary_timer_config_v1';
+        const ITEMS_KEY       = 'salary_timer_items_v1';
+        const OVERRIDES_KEY   = 'salary_timer_day_overrides_v1';
+        const MONTHLY_KEY     = 'salary_timer_monthly_v1';
+        const MONTHLY_PREFIX  = 'salary_timer_m_';   // per-month record: MONTHLY_PREFIX+YYYYMM
 
         const DEFAULT_CONFIG = {
             monthlySalary: 15000,
-            workDays: 21,
             startTime: '09:00',
             endTime: '18:00',
             lunchBreak: 1,
             coffeePrice: 15,
+            restMode: 2,
+            lunchRest: true,
+            theme: 'paper',
         };
+
+        const REST_MODE_LABELS = {
+            0: '无休',
+            1: '单休',
+            2: '双休',
+        };
+
+        const THEMES = {
+            paper:    { label: '柠檬黄',     accent: '#C8FF00' },
+            obsidian: { label: '靛蓝',       accent: '#7C6FF7' },
+            gold:     { label: '香槟金',     accent: '#C9A84C' },
+        };
+
+        // Apply theme: sets data-theme on <html> + updates meta theme-color
+        function applyTheme(themeId) {
+            themeId = THEMES[themeId] ? themeId : 'paper';
+            document.documentElement.setAttribute('data-theme', themeId);
+            // Update theme-color meta to match paper background
+            const metaTheme = document.querySelector('meta[name="theme-color"]');
+            if (metaTheme) {
+                const colors = {
+                    paper:    '#F5F2EA',
+                    obsidian: '#131320',
+                    gold:     '#FAF9F6',
+                };
+                metaTheme.setAttribute('content', colors[themeId] || '#F5F2EA');
+            }
+        }
 
         const DEFAULT_ITEMS = [
             { id: 'preset-coffee', name: '咖啡',   price: 15,  icon: '☕', order: 0 },
@@ -1488,6 +1675,123 @@
         function persistOverrides() { saveJSON(OVERRIDES_KEY, dayOverrides); }
 
         // ============================================================
+        // MONTHLY RECORDS
+        // Each month has one record locked at month-end (or user manually).
+        // Structure: MONTHLY_PREFIX+YYYYMM → {
+        //   yyyy, mm, salary, workDays, dailyRate, hourlyRate,
+        //   totalEarned, locked, generatedAt
+        // }
+        // ============================================================
+        function loadMonthlyRecords() {
+            return loadJSON(MONTHLY_KEY, {});
+        }
+        function persistMonthlyRecords(records) {
+            saveJSON(MONTHLY_KEY, records);
+        }
+
+        // Get the record key for a YYYY, MM
+        function monthKey(yyyy, mm) {
+            return String(yyyy * 100 + mm);  // e.g. 202608
+        }
+
+        // Get record for a month (null if not generated yet)
+        function getMonthlyRecord(yyyy, mm) {
+            const records = loadMonthlyRecords();
+            return records[monthKey(yyyy, mm)] || null;
+        }
+
+        // Generate (or regenerate) a monthly record from current config
+        function generateMonthlyRecord(yyyy, mm) {
+            const workDays = workdaysInMonth(yyyy, mm);
+            const daily    = config.monthlySalary / Math.max(workDays, 1);
+            const hours    = Math.max(workSeconds() / 3600, 0.01);
+            const hourly   = daily / hours;
+            const now      = new Date();
+            const isCurrent = (yyyy === now.getFullYear() && mm === now.getMonth());
+            return {
+                yyyy, mm,
+                salary: config.monthlySalary,
+                workDays,
+                dailyRate: daily,
+                hourlyRate: hourly,
+                totalEarned: isCurrent ? monthEarnedSoFar(yyyy, mm) : daily * workDays,
+                locked: !isCurrent,
+                generatedAt: new Date().toISOString(),
+            };
+        }
+
+        // Save a monthly record
+        function saveMonthlyRecord(yyyy, mm, record) {
+            const records = loadMonthlyRecords();
+            records[monthKey(yyyy, mm)] = record;
+            persistMonthlyRecords(records);
+        }
+
+        // Compute month earned so far (for current month live display)
+        function monthEarnedSoFar(yyyy, mm) {
+            const now = new Date();
+            let earned = 0;
+            const daily = dailySalary(yyyy, mm);
+            for (let d = 1; d <= daysInMonthCalc(yyyy, mm); d++) {
+                const date = new Date(yyyy, mm, d);
+                if (date > now) break;
+                if (isWorkday(date)) earned += daily;
+            }
+            return earned;
+        }
+        function daysInMonthCalc(yyyy, mm) {
+            return new Date(yyyy, mm + 1, 0).getDate();
+        }
+
+        // Render monthly history in settings
+        function renderMonthlyHistory() {
+            const records = loadMonthlyRecords();
+            const listEl = $('monthly-history-list');
+            const months = Object.keys(records)
+                .map(Number)
+                .sort((a, b) => b - a);  // newest first
+
+            if (months.length === 0) {
+                listEl.innerHTML = `
+                    <div style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">
+                        暂无月度记录<br>
+                        <span style="font-size:11px;">本月结束后自动生成</span>
+                    </div>`;
+                return;
+            }
+
+            const monthNames = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+            listEl.innerHTML = months.map(k => {
+                const r = records[k];
+                return `
+                    <div class="settings-row" style="cursor:default;">
+                        <span class="label">${r.yyyy}年 ${monthNames[r.mm]}月</span>
+                        <span class="value">
+                            <span style="font-family:var(--font-display);font-size:15px;font-weight:600;">¥${Math.round(r.totalEarned).toLocaleString('en-US')}</span>
+                            <span style="font-size:11px;color:var(--muted);"> · ${r.workDays}天</span>
+                            ${r.locked ? '<span style="font-size:10px;color:var(--accent-deep);margin-left:4px;">已锁定</span>' : '<span style="font-size:10px;color:var(--muted);margin-left:4px;">本月</span>'}
+                        </span>
+                    </div>`;
+            }).join('');
+        }
+
+        // Render current month summary in settings header
+        function refreshMonthlySummary() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm   = now.getMonth();
+            const record = getMonthlyRecord(yyyy, mm);
+            const el = $('set-monthly-summary');
+            if (!el) return;
+            if (record) {
+                el.textContent = `¥${Math.round(record.totalEarned).toLocaleString('en-US')} / ${record.workDays}天`;
+            } else {
+                const wd = workdaysInMonth(yyyy, mm);
+                el.textContent = `${wd}天 · 记录中`;
+            }
+        }
+
+        // ============================================================
         // CALCULATIONS
         // ============================================================
         function parseTime(str) {
@@ -1537,7 +1841,9 @@
             if (dayOverrides[key] === 'rest') return false;
             if (isHoliday(date)) return false;
             const dow = date.getDay();
-            return dow !== 0 && dow !== 6;
+            if (config.restMode === 0) return true;          // 无休: 每天都工作日(节假日除外)
+            if (config.restMode === 1) return dow !== 0;      // 单休: 周日休息
+            return dow !== 0 && dow !== 6;                    // 双休: 周六日休息
         }
 
         function todayEarned() {
@@ -1551,12 +1857,14 @@
             if (nowM <= startM) return 0;
             if (nowM >= endM) return dailySalary();
 
-            // Subtract lunch break
-            const lunchStart = 12 * 60;
-            const lunchEnd   = lunchStart + config.lunchBreak * 60;
-            let workedMin    = nowM - startM;
-            if (nowM > lunchEnd)        workedMin -= config.lunchBreak * 60;
-            else if (nowM > lunchStart) workedMin -= (nowM - lunchStart);
+            let workedMin = nowM - startM;
+
+            if (config.lunchRest && config.lunchBreak > 0) {
+                const lunchStart = 12 * 60;
+                const lunchEnd   = lunchStart + config.lunchBreak * 60;
+                if (nowM > lunchEnd)         workedMin -= config.lunchBreak * 60;
+                else if (nowM > lunchStart) workedMin -= (nowM - lunchStart);
+            }
 
             return Math.max(perSecond() * workedMin * 60, 0);
         }
@@ -1603,7 +1911,10 @@
             if (!isWorkday(now)) return 0;
             if (nowM < startM) return 0;
             if (nowM >= endM) return 100;
-            return Math.min(((nowM - startM) / (endM - startM)) * 100, 100);
+
+            const totalWorkMins = Math.max(endM - startM - (config.lunchBreak || 0) * 60, 1);
+            const workedMins    = Math.min(nowM - startM, totalWorkMins);
+            return Math.min((workedMins / totalWorkMins) * 100, 100);
         }
 
         // ============================================================
@@ -1800,16 +2111,22 @@
             const earnedToday = todayEarned();
             const viewingKey = (d) => `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
+            // Month earned: use locked record if available, else compute live
             let monthEarned = 0;
-            if (year === now.getFullYear() && month === now.getMonth()) {
-                // Current month: only past workdays + today (real-time earned)
+            const record = getMonthlyRecord(year, month);
+
+            if (record) {
+                // Record exists: use its totalEarned directly
+                monthEarned = record.totalEarned;
+            } else if (year === now.getFullYear() && month === now.getMonth()) {
+                // Current month: real-time sum
                 for (let d = 1; d < now.getDate(); d++) {
                     const date = new Date(year, month, d);
                     if (isWorkday(date)) monthEarned += daily;
                 }
                 if (isWorkday(now)) monthEarned += earnedToday;
             } else if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth())) {
-                // Past month: count all workdays
+                // Past month without record: full month earned
                 for (let d = 1; d <= daysInMonth; d++) {
                     const date = new Date(year, month, d);
                     if (isWorkday(date)) monthEarned += daily;
@@ -1861,7 +2178,16 @@
             $('set-end-time').value = config.endTime;
             $('set-lunch-break').value = config.lunchBreak;
             $('set-coffee-price').value = config.coffeePrice;
+            $('set-rest-mode').value = String(config.restMode != null ? config.restMode : 2);
+
+            // Highlight active theme swatch
+            document.querySelectorAll('.theme-swatch').forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.theme === config.theme);
+            });
+
             refreshSettingsHints();
+            refreshMonthlySummary();
+            renderMonthlyHistory();
         }
 
         // ============================================================
@@ -2014,6 +2340,7 @@
             }
             persistOverrides();
             renderCalendar();
+            renderToday();   // workdays changed → refresh all live figures
             // Re-open sheet with updated data
             const newDate = new Date(y, m - 1, d);
             const newWork = isWorkday(newDate);
@@ -2040,6 +2367,7 @@
             const endTime = $('set-end-time').value;
             const lunch = parseFloat($('set-lunch-break').value) || 0;
             const coffee = parseFloat($('set-coffee-price').value);
+            const restMode = parseInt($('set-rest-mode').value, 10) || 2;
 
             if (isNaN(salary) || salary <= 0) { toast('请输入有效月薪'); return; }
             if (!startTime || !endTime || startTime >= endTime) { toast('上班时间必须早于下班时间'); return; }
@@ -2047,12 +2375,33 @@
             if (lunch * 60 >= workMins) { toast('午休过长'); return; }
             if (isNaN(coffee) || coffee <= 0) { toast('请输入咖啡单价'); return; }
 
-            config = { monthlySalary: salary, workDays: config.workDays, startTime, endTime, lunchBreak: lunch, coffeePrice: coffee };
+            config = {
+                ...config,   // preserve existing fields (theme, etc.)
+                monthlySalary: salary,
+                startTime, endTime,
+                lunchBreak: lunch,
+                coffeePrice: coffee,
+                restMode,
+                lunchRest: true,
+            };
             persistConfig();
+
+            // If current month already has a record, update it to reflect new salary
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm   = now.getMonth();
+            const record = getMonthlyRecord(yyyy, mm);
+            if (record && !record.locked) {
+                const updated = generateMonthlyRecord(yyyy, mm);
+                saveMonthlyRecord(yyyy, mm, updated);
+            }
+
             renderToday();
             renderConvert();
             renderCalendar();
             refreshSettingsHints();
+            refreshMonthlySummary();
+            renderMonthlyHistory();
             toast('已保存 ✓');
         }
 
@@ -2169,6 +2518,19 @@
             // Settings save
             $('save-btn').addEventListener('click', submitSettings);
 
+            // Theme swatches
+            document.querySelectorAll('.theme-swatch').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.theme;
+                    config.theme = t;
+                    persistConfig();
+                    applyTheme(t);
+                    document.querySelectorAll('.theme-swatch').forEach(b => b.classList.remove('is-active'));
+                    btn.classList.add('is-active');
+                    toast('主题已切换 ✓');
+                });
+            });
+
             // Empty state for overrides (long-press any day)
             $('goto-quotes').addEventListener('click', () => {
                 toast('批注每天自动轮换');
@@ -2182,6 +2544,7 @@
         buildEmojiGrid();
         updateQuote();
         updateStatusClock();
+        applyTheme(config.theme);       // apply saved theme before first paint
         renderToday();
         renderConvert();
         fillSettingsForm();
@@ -2196,11 +2559,39 @@
             if (active === 'calendar') renderCalendar();
         }, 1000);
 
-        // Re-render calendar at midnight
+        // Track last checked month for auto-lock detection
+        let _lastCheckedMonth = new Date().getMonth();
+
+        // Re-render calendar at midnight + auto-generate monthly records
         setInterval(() => {
             const now = new Date();
-            if (calState.year === now.getFullYear() && calState.month === now.getMonth()) {
+            const currMonth = now.getMonth();
+
+            // If displayed calendar view = current month, refresh it
+            if (calState.year === now.getFullYear() && calState.month === currMonth) {
                 renderCalendar();
+            }
+
+            // Auto-generate current month record if missing
+            if (getMonthlyRecord(now.getFullYear(), currMonth) === null) {
+                const record = generateMonthlyRecord(now.getFullYear(), currMonth);
+                saveMonthlyRecord(now.getFullYear(), currMonth, record);
+                renderMonthlyHistory();
+                refreshMonthlySummary();
+            }
+
+            // Month rolled over → lock the previous month
+            if (currMonth !== _lastCheckedMonth) {
+                const prevMonth = _lastCheckedMonth;
+                const prevYear = (currMonth === 0) ? now.getFullYear() - 1 : now.getFullYear();
+                const rec = getMonthlyRecord(prevYear, prevMonth);
+                if (rec && !rec.locked) {
+                    rec.locked = true;
+                    rec.totalEarned = monthEarnedSoFar(prevYear, prevMonth);
+                    saveMonthlyRecord(prevYear, prevMonth, rec);
+                    renderMonthlyHistory();
+                }
+                _lastCheckedMonth = currMonth;
             }
         }, 60 * 1000);
     })();
