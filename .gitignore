@@ -1,0 +1,33 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Capacitor / Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/release/
+android/app/debug/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Keystore (NEVER commit signing keys)
+*.keystore
+*.jks
+key.properties
+
+# Gradle wrapper jar is fine to commit; local distributions are not
+.gradle/
+
+# OS
+desktop.ini

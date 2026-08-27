@@ -1,0 +1,14 @@
+{
+  "name": "work-timer-helpers",
+  "private": true,
+  "description": "Auxiliary files only. The app is index.html — open it in a browser. The deps below were installed only for automated screenshot verification, not required to run the app.",
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}
