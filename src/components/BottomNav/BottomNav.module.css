@@ -1,16 +1,25 @@
-.dock {
+.wrap {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
-  background: var(--paper);
-  border-top: 1px solid var(--line);
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 深色 pill —— 不跟随主题,固定 #1a1a1a,选中态用主题强调色 */
+.dock {
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  z-index: 100;
+  justify-content: center;
+  gap: 4px;
+  height: 72px;
+  padding: 6px;
+  background: #1a1a1a;
+  border-radius: 40px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.10),
+    0 16px 40px rgba(0, 0, 0, 0.18);
 }
 
 .tab {
@@ -18,28 +27,70 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 16px;
+  gap: 4px;
+  width: 64px;
+  height: 60px;
+  padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--muted);
-  transition: color 0.2s;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.5px;
-  min-width: 60px;
+  color: rgba(255, 255, 255, 0.45);
+  border-radius: 16px;
+  transition:
+    color 0.5s var(--ease),
+    transform 0.5s var(--ease);
+  font-family: var(--font-body);
 }
 
-.tab:hover {
-  color: var(--ink);
+.tab:hover:not(.tabActive) {
+  color: rgba(255, 255, 255, 0.85);
 }
 
+/* 选中态:主题强调色 + 顶部实心小圆点 + 微弱高亮 */
 .tabActive {
-  color: var(--ink);
+  color: var(--accent);
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* 圆点常驻,靠 opacity 切换 */
+.tabIcon::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease);
+}
+
+/* active 时圆点亮起 */
+.tabActive .tabIcon::after {
+  opacity: 1;
 }
 
 .tabIcon {
-  font-size: 20px;
+  position: relative;
+  width: 22px;
+  height: 22px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabIcon svg {
+  display: block;
+}
+
+.tabLabel {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 1.2px;
+  line-height: 1;
+  font-weight: 600;
 }

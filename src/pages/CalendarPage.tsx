@@ -138,7 +138,7 @@ export function CalendarPage() {
               if (isToday && isWork) {
                 earnText = ''; // today 显示今天赚的(简化:省略)
               } else if (isPast) {
-                earnText = `¥${Math.round(daily)}`;
+                earnText = `¥${Math.round(daily).toLocaleString('en-US')}`;
               }
             }
 

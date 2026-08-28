@@ -1,7 +1,9 @@
 /**
  * BottomNav — 移动端底部 Tab 栏(<1024px)
+ * 深色 pill + active 用主题强调色描边 + 顶部绿色光晕
  */
 import type { TabId } from '../Sidebar';
+import { NavIcons } from '../NavIcons';
 import styles from './BottomNav.module.css';
 
 interface BottomNavProps {
@@ -9,27 +11,33 @@ interface BottomNavProps {
   onTabChange: (tab: TabId) => void;
 }
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'today',    label: '今日',    icon: '⏱' },
-  { id: 'convert',  label: '换算',    icon: '🔄' },
-  { id: 'calendar', label: '日历',    icon: '📅' },
-  { id: 'settings', label: '设置',    icon: '⚙' },
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'today',    label: 'TODAY' },
+  { id: 'convert',  label: 'SWAP' },
+  { id: 'calendar', label: 'MONTH' },
+  { id: 'settings', label: 'MINE' },
 ];
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
-    <nav className={styles.dock}>
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-          onClick={() => onTabChange(tab.id)}
-        >
-          <span className={styles.tabIcon}>{tab.icon}</span>
-          {tab.label}
-        </button>
-      ))}
-    </nav>
+    <div className={styles.wrap}>
+      <nav className={styles.dock}>
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              aria-label={tab.label}
+              className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
+              onClick={() => onTabChange(tab.id)}
+            >
+              <span className={styles.tabIcon}>{NavIcons[tab.id]}</span>
+              <span className={styles.tabLabel}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

@@ -72,7 +72,13 @@
 }
 
 .navIcon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navIcon svg {
+  display: block;
 }
 
 .divider {

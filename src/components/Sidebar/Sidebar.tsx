@@ -5,6 +5,7 @@
  */
 import { THEME_LIST } from '../../store/themeStore';
 import { useThemeStore } from '../../store/themeStore';
+import { NavIcons } from '../NavIcons';
 import styles from './Sidebar.module.css';
 
 export type TabId = 'today' | 'convert' | 'calendar' | 'settings';
@@ -14,11 +15,11 @@ interface SidebarProps {
   onTabChange: (tab: TabId) => void;
 }
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'today',    label: '今日',    icon: '⏱' },
-  { id: 'convert',  label: '换算',    icon: '🔄' },
-  { id: 'calendar', label: '日历',    icon: '📅' },
-  { id: 'settings', label: '设置',    icon: '⚙' },
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'today',    label: '今日' },
+  { id: 'convert',  label: '换算' },
+  { id: 'calendar', label: '日历' },
+  { id: 'settings', label: '设置' },
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
@@ -40,7 +41,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             className={`${styles.navItem} ${activeTab === tab.id ? styles.navItemActive : ''}`}
             onClick={() => onTabChange(tab.id)}
           >
-            <span className={styles.navIcon}>{tab.icon}</span>
+            <span className={styles.navIcon}>{NavIcons[tab.id]}</span>
             {tab.label}
           </button>
         ))}
