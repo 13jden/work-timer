@@ -1,6 +1,13 @@
 .head {
   padding: 20px 20px 12px;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.headLeft {
+  display: flex;
+  flex-direction: column;
 }
 
 .month {
@@ -202,4 +209,60 @@
   height: 4px;
   border-radius: 50%;
   background: var(--accent-deep);
+}
+
+/* ── Header dot 按钮 ───────────────────────────────── */
+.dotBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.dotBtn:active {
+  transform: scale(0.9);
+}
+
+.dotEmpty {
+  background: transparent;
+  border: 2px solid var(--line);
+}
+
+.dotEmpty:hover {
+  border-color: var(--accent);
+}
+
+.dotGenerated {
+  background: var(--accent);
+}
+
+.dotGenerated:hover {
+  box-shadow: 0 0 0 4px var(--accent-fade);
+}
+
+/* ── 已赚可点击卡片 ───────────────────────────────── */
+.earnCard {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: block;
+  width: 100%;
+  color: inherit;
+}
+
+.earnCard:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+}
+
+.earnCard .summaryNum {
+  color: var(--ink);
 }

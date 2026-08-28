@@ -15,8 +15,9 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 - **`src/store/calendarStore.ts`** — 新增 `setDayOverride` action,v2 key
 - **`src/store/monthlyStore.ts`** — 重构为 `MonthlySnapshot` 快照表,用户手动 `createSnapshot`
 - **`src/components/DaySheet/`** — UI 重做:类型 select 下拉 + 加班倍率 input + 保存/重置
-- **`src/pages/CalendarPage.tsx`** — day cell 显示带单位的 ¥daily × units
-- **`src/pages/SettingsPage.tsx`** — 改用快照,加「生成当月薪资」按钮
+- **`src/components/GenerateSheet/`** — 新增:点击 Month header dot 生成月度薪资(月薪 input + 预览)
+- **`src/components/EarnSheet/`** — 新增:点击已赚卡片修改月薪
+- **`src/pages/CalendarPage.tsx`** — header dot 指示器 + GenerateSheet + EarnSheet + day cell ¥daily × units
 - **`docs/plans/bugfix/TASK-010-month-records.md`** — 计划文档
 
 ### Features
