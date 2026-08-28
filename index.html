@@ -174,13 +174,13 @@
         input { -webkit-appearance: none; appearance: none; outline: none; }
 
         /* ============================================================
-           APP SHELL — desktop: side-by-side hero, mobile: stacked
+           APP SHELL — desktop: sidebar + main, mobile: stacked
            ============================================================ */
         .stage {
             min-height: 100vh;
             background:
-                radial-gradient(circle at 15% 0%, rgba(200,255,0,0.06) 0%, transparent 40%),
-                radial-gradient(circle at 85% 100%, rgba(200,255,0,0.04) 0%, transparent 35%),
+                radial-gradient(circle at 0% 0%, rgba(200,255,0,0.05) 0%, transparent 35%),
+                radial-gradient(circle at 100% 100%, rgba(200,255,0,0.04) 0%, transparent 30%),
                 var(--paper);
             display: flex;
             flex-direction: column;
@@ -190,14 +190,278 @@
             width: 100%;
             max-width: 1080px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 20px 40px;
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
 
         /* ============================================================
-           HERO SECTION (desktop: 2-col, mobile: stacked)
+           DESKTOP SIDEBAR (>=1024px)
+           ============================================================ */
+        .sidebar {
+            display: none;
+        }
+        @media (min-width: 1024px) {
+            .stage {
+                flex-direction: row;
+                align-items: stretch;
+            }
+            .sidebar {
+                display: flex;
+                flex-direction: column;
+                width: var(--sidebar-w, 240px);
+                flex-shrink: 0;
+                border-right: 1px solid var(--line);
+                background: var(--paper);
+                padding: 28px 0 20px;
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                z-index: 10;
+            }
+            .app-inner {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 36px 48px 60px;
+            }
+        }
+
+        .sidebar .brand {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--line-soft);
+            margin-bottom: 16px;
+        }
+        .sidebar .brand-mark {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-size: 24px;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+            color: var(--ink);
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        .sidebar .brand-sub {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .sidebar .nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 0 12px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .sidebar .nav::-webkit-scrollbar { width: 4px; }
+        .sidebar .nav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+        .sidebar .nav-section {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted-2);
+            padding: 14px 10px 6px;
+        }
+        .sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--r-sm);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            color: var(--ink-3);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            position: relative;
+            text-align: left;
+            border: none;
+            background: none;
+            width: 100%;
+        }
+        .sidebar .nav-item:hover {
+            background: var(--paper-2);
+            color: var(--ink);
+        }
+        .sidebar .nav-item.is-active {
+            background: var(--ink);
+            color: var(--accent);
+        }
+        .sidebar .nav-item.is-active::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .sidebar .nav-item svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+        .sidebar .nav-item .nav-label { flex: 1; }
+        .sidebar .nav-item .nav-badge {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: var(--accent);
+            color: var(--ink);
+        }
+        .sidebar .nav-item .nav-chev {
+            color: inherit;
+            font-size: 16px;
+            line-height: 1;
+            opacity: 0.5;
+            transition: transform 0.2s var(--ease);
+        }
+        .sidebar .nav-item.is-active .nav-chev { transform: rotate(90deg); }
+
+        /* Inline settings panel inside sidebar */
+        .sidebar-settings {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px 4px 12px;
+            margin: 4px 0 8px;
+        }
+        .sidebar-settings.is-open { display: flex; }
+
+        .sidebar-settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: var(--r-sm);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .sidebar-settings-row:hover { background: var(--paper-2); }
+        .sidebar-settings-row .lbl {
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .sidebar-settings-row .val {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--ink);
+            font-weight: 600;
+        }
+        .sidebar-settings-row .prefix {
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .sidebar-settings-row input {
+            width: 70px;
+            padding: 4px 6px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: var(--ink);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            text-align: right;
+        }
+        .sidebar-settings-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: var(--card);
+        }
+        .sidebar-settings-row input[type="time"] { width: 90px; }
+        .sidebar-settings-row select {
+            background: transparent;
+            border: none;
+            color: var(--ink);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            outline: none;
+            padding: 4px 0;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: var(--line-soft);
+            margin: 6px 8px;
+        }
+        .sidebar-section-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 8px 10px 6px;
+        }
+        .sidebar-stat {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 6px 10px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+        .sidebar-stat .lbl { color: var(--muted); letter-spacing: 0.5px; }
+        .sidebar-stat .val-strong {
+            color: var(--ink);
+            font-weight: 700;
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 8px;
+            padding: 4px 10px;
+        }
+        .theme-swatch {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s var(--ease-spring), border-color 0.2s;
+        }
+        .theme-swatch[data-theme="paper"]    { background: #C8FF00; }
+        .theme-swatch[data-theme="obsidian"] { background: #7C6FF7; }
+        .theme-swatch[data-theme="gold"]     { background: #C9A84C; }
+        .theme-swatch:hover { transform: scale(1.12); }
+        .theme-swatch.is-active { border-color: var(--ink); }
+
+        .sidebar-footer {
+            padding: 14px 24px 0;
+            border-top: 1px solid var(--line-soft);
+            margin-top: 12px;
+        }
+        .sidebar-version {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            letter-spacing: 1px;
+        }
+
+        /* ============================================================
+           HERO SECTION (mobile: stacked, desktop: 2-col)
            ============================================================ */
         .hero {
             display: flex;
@@ -207,13 +471,11 @@
         }
         .hero-col-left  { flex: 1.6; min-width: 0; }
         .hero-col-right { flex: 1;   min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-
-        /* Desktop hero: side-by-side */
         @media (min-width: 680px) {
             .hero {
                 flex-direction: row;
                 align-items: stretch;
-                padding: 28px 0 20px;
+                padding: 0 0 20px;
                 gap: 18px;
             }
             .hero-col-left  { flex: 1.5; }
@@ -221,9 +483,9 @@
         }
 
         /* ============================================================
-           STATUS BAR
+           STATUS BAR — mobile only
            ============================================================ */
-        .status-bar {
+        .status-bar-mobile {
             height: 40px;
             display: flex;
             align-items: center;
@@ -238,24 +500,30 @@
             z-index: 50;
             border-bottom: 1px solid var(--line);
         }
-        .status-bar .right {
+        .status-bar-mobile .right {
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        .status-bar svg { display: block; }
+        @media (min-width: 1024px) {
+            .status-bar-mobile { display: none; }
+        }
 
         /* ============================================================
-           TAB NAV (desktop: horizontal bar, mobile: bottom dock)
+           MOBILE TAB NAV (bottom bar, <1024px)
            ============================================================ */
-        .tab-nav {
+        .tab-nav-mobile {
             display: flex;
             align-items: center;
             gap: 4px;
             padding: 8px 0;
-            border-bottom: 1px solid var(--line);
+            border-top: 1px solid var(--line);
+            position: sticky;
+            bottom: 0;
+            background: var(--paper);
+            z-index: 50;
         }
-        .tab-nav .nav-item {
+        .tab-nav-mobile .nav-item {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -272,18 +540,13 @@
             background: none;
             white-space: nowrap;
         }
-        .tab-nav .nav-item:hover { background: var(--paper-2); color: var(--ink); }
-        .tab-nav .nav-item.is-active {
+        .tab-nav-mobile .nav-item:hover { background: var(--paper-2); color: var(--ink); }
+        .tab-nav-mobile .nav-item.is-active {
             background: var(--ink);
             color: var(--accent);
         }
-        .tab-nav .nav-item.is-active .tab-indicator {
-            display: inline-block;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 6px var(--accent);
+        @media (min-width: 1024px) {
+            .tab-nav-mobile { display: none; }
         }
 
         /* ============================================================
@@ -315,11 +578,11 @@
         .page-inner {
             max-width: 680px;
             margin: 0 auto;
-            padding: 0 20px 80px;
+            padding: 0 0 80px;
         }
-        @media (min-width: 680px) {
+        @media (min-width: 1024px) {
             .page-inner {
-                max-width: 680px;
+                max-width: 900px;
             }
         }
 
@@ -484,14 +747,6 @@
             align-items: center;
             gap: 12px;
             border: 1px solid var(--line-soft);
-        }
-        /* Mobile: show mobile quote, hide desktop quote */
-        #quote-card-mobile { display: flex; }
-        #quote-card-desktop { display: none; }
-        /* Desktop: show desktop quote, hide mobile quote */
-        @media (min-width: 680px) {
-            #quote-card-mobile  { display: none; }
-            #quote-card-desktop { display: flex; margin: 0 0 16px; }
         }
         .quote-mark {
             font-family: var(--font-display);
@@ -1228,9 +1483,103 @@
 
 <body>
     <div class="stage">
+        <!-- ====== SIDEBAR (desktop only) ====== -->
+        <aside class="sidebar" aria-label="侧边导航">
+            <div class="brand">
+                <div class="brand-mark">Salary Timer</div>
+                <div class="brand-sub">今日出售时间</div>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-section">Overview</div>
+                <button class="nav-item is-active" data-tab="today">
+                    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="9"/>
+                        <path d="M11 6v5l3 2"/>
+                    </svg>
+                    <span class="nav-label">今日</span>
+                    <span class="nav-badge">LIVE</span>
+                </button>
+
+                <div class="nav-section">Settings</div>
+                <button class="nav-item" data-tab="settings" id="nav-settings-btn">
+                    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="3"/>
+                        <path d="M11 2v2M11 18v2M2 11h2M18 11h2M4.9 4.9l1.4 1.4M15.7 15.7l1.4 1.4M4.9 17.1l1.4-1.4M15.7 6.3l1.4-1.4"/>
+                    </svg>
+                    <span class="nav-label">设置</span>
+                    <span class="nav-chev">›</span>
+                </button>
+
+                <!-- Inline settings panel (desktop only) -->
+                <div class="sidebar-settings" id="sidebar-settings">
+                    <div class="sidebar-settings-row">
+                        <span class="lbl">月薪</span>
+                        <span class="val">
+                            <span class="prefix">¥</span>
+                            <input type="number" inputmode="decimal" id="sidebar-monthly-salary" min="1">
+                        </span>
+                    </div>
+                    <div class="sidebar-settings-row">
+                        <span class="lbl">上班</span>
+                        <span class="val"><input type="time" id="sidebar-start-time"></span>
+                    </div>
+                    <div class="sidebar-settings-row">
+                        <span class="lbl">下班</span>
+                        <span class="val"><input type="time" id="sidebar-end-time"></span>
+                    </div>
+                    <div class="sidebar-settings-row">
+                        <span class="lbl">休息</span>
+                        <span class="val">
+                            <select id="sidebar-rest-mode">
+                                <option value="2">双休</option>
+                                <option value="1">单休</option>
+                                <option value="0">无休</option>
+                            </select>
+                        </span>
+                    </div>
+                    <div class="sidebar-settings-row">
+                        <span class="lbl">咖啡单价</span>
+                        <span class="val">
+                            <span class="prefix">¥</span>
+                            <input type="number" inputmode="decimal" id="sidebar-coffee-price" min="0.01">
+                        </span>
+                    </div>
+
+                    <!-- Live derived stats -->
+                    <div class="sidebar-divider"></div>
+                    <div class="sidebar-stat">
+                        <span class="lbl">时薪</span>
+                        <span class="val-strong" id="sidebar-hourly">¥0.00</span>
+                    </div>
+                    <div class="sidebar-stat">
+                        <span class="lbl">每秒</span>
+                        <span class="val-strong" id="sidebar-per-second">¥0.0000</span>
+                    </div>
+                    <div class="sidebar-stat">
+                        <span class="lbl">日均</span>
+                        <span class="val-strong" id="sidebar-daily">¥0.00</span>
+                    </div>
+
+                    <div class="sidebar-divider"></div>
+                    <div class="sidebar-section-label">Theme</div>
+                    <div class="theme-switcher">
+                        <button class="theme-swatch is-active" data-theme="paper" title="柠檬黄"></button>
+                        <button class="theme-swatch" data-theme="obsidian" title="�蓝"></button>
+                        <button class="theme-swatch" data-theme="gold" title="香槟金"></button>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-version">v1.2 · Desktop</div>
+            </div>
+        </aside>
+
+        <!-- ====== MAIN AREA ====== -->
         <div class="app-inner">
-            <!-- Status Bar -->
-            <div class="status-bar">
+            <!-- Mobile-only status bar -->
+            <div class="status-bar status-bar-mobile">
                 <span id="status-time">9:41</span>
                 <span class="right">
                     <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor" aria-hidden="true">
@@ -1244,7 +1593,7 @@
                 </span>
             </div>
 
-            <!-- Hero: Timer + Stats (2-col on desktop, stacked on mobile) -->
+            <!-- Hero: Timer + Stats -->
             <div class="hero">
                 <div class="hero-col-left">
                     <!-- Timer Card -->
@@ -1273,12 +1622,6 @@
                             <span id="time-end">18:00</span>
                         </div>
                     </div>
-
-                    <!-- Quote Card (mobile only, hidden on desktop) -->
-                    <div class="quote-card" id="quote-card-mobile">
-                        <span class="quote-mark">"</span>
-                        <span class="quote-body" id="daily-quote">下班不是奖励，是边界。</span>
-                    </div>
                 </div>
 
                 <div class="hero-col-right">
@@ -1299,14 +1642,14 @@
                 </div>
             </div>
 
-            <!-- Quote (desktop only) -->
-            <div class="quote-card" id="quote-card-desktop">
+            <!-- Quote (always visible below hero) -->
+            <div class="quote-card">
                 <span class="quote-mark">"</span>
-                <span class="quote-body" id="daily-quote-desktop">下班不是奖励，是边界。</span>
+                <span class="quote-body" id="daily-quote">下班不是奖励，是边界。</span>
             </div>
 
-            <!-- Tab Nav: horizontal on desktop, bottom bar on mobile -->
-            <nav class="tab-nav" aria-label="主导航">
+            <!-- Mobile-only tab nav (bottom) -->
+            <nav class="tab-nav tab-nav-mobile" aria-label="主导航">
                 <button class="nav-item is-active" data-tab="today" aria-label="今日">
                     <svg width="14" height="14" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="9"/>
@@ -1339,8 +1682,8 @@
 
             <!-- ====== PAGES ====== -->
             <div class="pages">
-                <!-- ============= TODAY PAGE ============= -->
-                <section class="page is-active" id="page-today" aria-label="今日">
+                <!-- TODAY (always active in desktop; integrated into main view) -->
+                <section class="page is-active" id="page-today" aria-label="今日" style="pointer-events:auto;">
                     <div class="page-inner">
                         <div class="topbar">
                             <span class="eyebrow">Today · <span id="today-date-full">08.27</span></span>
@@ -1350,7 +1693,7 @@
                     </div>
                 </section>
 
-                <!-- ============= CONVERT PAGE ============= -->
+                <!-- CONVERT -->
                 <section class="page" id="page-convert" aria-label="换算" style="pointer-events:none;">
                     <div class="page-inner">
                         <div class="page-head">
@@ -1365,7 +1708,7 @@
                     </div>
                 </section>
 
-                <!-- ============= CALENDAR PAGE ============= -->
+                <!-- CALENDAR -->
                 <section class="page" id="page-calendar" aria-label="日历" style="pointer-events:none;">
                     <div class="page-inner">
                         <div class="calendar-head">
@@ -1408,7 +1751,7 @@
                     </div>
                 </section>
 
-                <!-- ============= SETTINGS PAGE ============= -->
+                <!-- SETTINGS (mobile full page) -->
                 <section class="page" id="page-settings" aria-label="设置" style="pointer-events:none;">
                     <div class="page-inner">
                         <div class="page-head">
@@ -1448,17 +1791,6 @@
                                     <span class="value"><input type="time" id="set-end-time" value="18:00"></span>
                                 </div>
                                 <div class="settings-row">
-                                    <span class="label">午休开始</span>
-                                    <span class="value"><input type="time" id="set-lunch-start" value="12:00"></span>
-                                </div>
-                                <div class="settings-row">
-                                    <span class="label">午休时长</span>
-                                    <span class="value">
-                                        <input type="number" inputmode="decimal" id="set-lunch-break" placeholder="1" value="1" min="0" max="4" step="0.5">
-                                        <span class="suffix">小时</span>
-                                    </span>
-                                </div>
-                                <div class="settings-row">
                                     <span class="label">休息模式</span>
                                     <span class="value">
                                         <select id="set-rest-mode" style="border:none;background:transparent;font-family:var(--font-mono);font-size:15px;color:var(--muted);font-weight:600;outline:none;padding:2px 0;">
@@ -1473,24 +1805,14 @@
                         </div>
 
                         <div class="settings-group">
-                            <div class="eyebrow">月度薪资 · Monthly</div>
-                            <div class="settings-card">
-                                <div class="settings-row" id="row-monthly-summary">
-                                    <span class="label">本月记录</span>
-                                    <span class="value" style="font-size:13px;" id="set-monthly-summary">—</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="settings-group">
                             <div class="eyebrow">主题 · Theme</div>
                             <div class="settings-card">
                                 <div class="settings-row" id="theme-picker">
                                     <span class="label">配色方案</span>
                                     <span class="value" style="gap:10px;">
-                                        <button class="theme-swatch" data-theme="paper" title="柠檬黄" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#C8FF00;transition:transform .15s;"></button>
-                                        <button class="theme-swatch" data-theme="obsidian" title="靛蓝" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#7C6FF7;transition:transform .15s;"></button>
-                                        <button class="theme-swatch" data-theme="gold" title="香槟金" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#C9A84C;transition:transform .15s;"></button>
+                                        <button class="theme-swatch" data-theme="paper" title="柠檬黄"></button>
+                                        <button class="theme-swatch" data-theme="obsidian" title="靛蓝"></button>
+                                        <button class="theme-swatch" data-theme="gold" title="香槟金"></button>
                                     </span>
                                 </div>
                             </div>
@@ -1522,7 +1844,7 @@
                             <div class="eyebrow">月度记录 · Salary History</div>
                             <div class="settings-card" id="monthly-history-list"></div>
                         </div>
-                        <div class="settings-footer">v1.1 · 本地存储</div>
+                        <div class="settings-footer">v1.2 · 本地存储</div>
                     </div>
                 </section>
             </div>
@@ -1586,11 +1908,8 @@
             monthlySalary: 15000,
             startTime: '09:00',
             endTime: '18:00',
-            lunchBreak: 1,
-            lunchStart: '12:00',
             coffeePrice: 15,
             restMode: 2,
-            lunchRest: true,
             theme: 'paper',
         };
 
@@ -1620,6 +1939,10 @@
                 };
                 metaTheme.setAttribute('content', colors[themeId] || '#F5F2EA');
             }
+            // Sync active swatch in both pickers
+            document.querySelectorAll('.theme-swatch').forEach(b => {
+                b.classList.toggle('is-active', b.dataset.theme === themeId);
+            });
         }
 
         const DEFAULT_ITEMS = [
@@ -1815,8 +2138,7 @@
         function workSeconds() {
             const start = toMinutes(config.startTime);
             const end   = toMinutes(config.endTime);
-            const total  = Math.max(end - start - config.lunchBreak * 60, 0) * 60;
-            return total;
+            return Math.max(end - start, 0) * 60;
         }
 
         // Total calendar minutes from midnight to current second-precision now
@@ -1871,16 +2193,7 @@
             if (nowM <= startM) return 0;
             if (nowM >= endM) return dailySalary();
 
-            let workedMin = nowM - startM;
-
-            if (config.lunchRest && config.lunchBreak > 0) {
-                const lunchStart = toMinutes(config.lunchStart || '12:00');
-                const lunchEnd   = lunchStart + config.lunchBreak * 60;
-                if (nowM >= lunchEnd)       workedMin -= config.lunchBreak * 60;
-                else if (nowM > lunchStart) workedMin -= (nowM - lunchStart);
-            }
-
-            return Math.max(perSecond() * workedMin * 60, 0);
+            return Math.max(perSecond() * (nowM - startM) * 60, 0);
         }
 
         function dayState() {
@@ -1922,9 +2235,9 @@
             if (nowM < startM) return 0;
             if (nowM >= endM) return 100;
 
-            const totalWorkMins = Math.max(endM - startM - (config.lunchBreak || 0) * 60, 1);
-            const workedMins    = Math.min(nowM - startM, totalWorkMins);
-            return Math.min((workedMins / totalWorkMins) * 100, 100);
+            const totalMins = Math.max(endM - startM, 1);
+            const workedMins = Math.min(nowM - startM, totalMins);
+            return Math.min((workedMins / totalMins) * 100, 100);
         }
 
         // ============================================================
@@ -2186,8 +2499,6 @@
             $('set-monthly-salary').value = config.monthlySalary;
             $('set-start-time').value = config.startTime;
             $('set-end-time').value = config.endTime;
-            $('set-lunch-start').value = config.lunchStart || '12:00';
-            $('set-lunch-break').value = config.lunchBreak;
             $('set-coffee-price').value = config.coffeePrice;
             $('set-rest-mode').value = String(config.restMode != null ? config.restMode : 2);
 
@@ -2376,29 +2687,19 @@
             const salary = parseFloat($('set-monthly-salary').value);
             const startTime = $('set-start-time').value;
             const endTime = $('set-end-time').value;
-            const lunchStart = $('set-lunch-start').value || '12:00';
-            const lunch = parseFloat($('set-lunch-break').value) || 0;
             const coffee = parseFloat($('set-coffee-price').value);
             const restMode = parseInt($('set-rest-mode').value, 10) || 2;
 
             if (isNaN(salary) || salary <= 0) { toast('请输入有效月薪'); return; }
             if (!startTime || !endTime || startTime >= endTime) { toast('上班时间必须早于下班时间'); return; }
-            const workMins = toMinutes(endTime) - toMinutes(startTime);
-            if (lunch * 60 >= workMins) { toast('午休过长'); return; }
-            if (toMinutes(lunchStart) < toMinutes(startTime) || toMinutes(lunchStart) + lunch * 60 > toMinutes(endTime)) {
-                toast('午休时间应在工作时间之内'); return;
-            }
             if (isNaN(coffee) || coffee <= 0) { toast('请输入咖啡单价'); return; }
 
             config = {
                 ...config,   // preserve existing fields (theme, etc.)
                 monthlySalary: salary,
                 startTime, endTime,
-                lunchStart,
-                lunchBreak: lunch,
                 coffeePrice: coffee,
                 restMode,
-                lunchRest: true,
             };
             persistConfig();
 
@@ -2442,9 +2743,8 @@
         function updateQuote() {
             const today = new Date();
             const quote = QUOTES[today.getDate() % QUOTES.length];
-            $('daily-quote').textContent = quote;
-            const d = $('daily-quote-desktop');
-            if (d) d.textContent = quote;
+            const el = $('daily-quote');
+            if (el) el.textContent = quote;
         }
 
         // ============================================================
@@ -2554,6 +2854,81 @@
             $('goto-quotes').addEventListener('click', () => {
                 toast('批注每天自动轮换');
             });
+
+            // ============================================================
+            // DESKTOP SIDEBAR (≥1024px only)
+            // ============================================================
+            const sidebarSettings = $('sidebar-settings');
+            const navSettingsBtn  = $('nav-settings-btn');
+            const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+
+            if (navSettingsBtn) {
+                navSettingsBtn.addEventListener('click', () => {
+                    if (!isDesktop()) {
+                        switchTab('settings');
+                        return;
+                    }
+                    sidebarSettings.classList.toggle('is-open');
+                    navSettingsBtn.classList.toggle('is-active', sidebarSettings.classList.contains('is-open'));
+                });
+            }
+
+            // Sidebar input bindings: live update config, persist on blur/change
+            function bindSidebarInput(id, key, transform) {
+                const el = $(id);
+                if (!el) return;
+                el.addEventListener('input', () => {
+                    let v = el.value;
+                    if (transform) v = transform(v);
+                    if (v === '' || v == null) return;
+                    config[key] = v;
+                    persistConfig();
+                    refreshDerivedStats();
+                    // Mirror into mobile settings form if visible
+                    syncMobileForm();
+                });
+                el.addEventListener('change', () => {
+                    persistConfig();
+                    renderToday();
+                });
+            }
+            bindSidebarInput('sidebar-monthly-salary', 'monthlySalary', v => parseFloat(v));
+            bindSidebarInput('sidebar-start-time',    'startTime');
+            bindSidebarInput('sidebar-end-time',      'endTime');
+            bindSidebarInput('sidebar-coffee-price',  'coffeePrice', v => parseFloat(v));
+            const sidebarRest = $('sidebar-rest-mode');
+            if (sidebarRest) {
+                sidebarRest.addEventListener('change', () => {
+                    config.restMode = parseInt(sidebarRest.value, 10) || 2;
+                    persistConfig();
+                    syncMobileForm();
+                    renderToday();
+                    renderCalendar();
+                });
+            }
+        }
+
+        function syncMobileForm() {
+            const m = $('set-monthly-salary'); if (m) m.value = config.monthlySalary;
+            const s = $('set-start-time');     if (s) s.value = config.startTime;
+            const e = $('set-end-time');       if (e) e.value = config.endTime;
+            const c = $('set-coffee-price');   if (c) c.value = config.coffeePrice;
+            const r = $('set-rest-mode');      if (r) r.value = String(config.restMode);
+            // Sidebar mirror
+            const sm = $('sidebar-monthly-salary'); if (sm) sm.value = config.monthlySalary;
+            const ss = $('sidebar-start-time');     if (ss) ss.value = config.startTime;
+            const se = $('sidebar-end-time');       if (se) se.value = config.endTime;
+            const sc = $('sidebar-coffee-price');   if (sc) sc.value = config.coffeePrice;
+            const sr = $('sidebar-rest-mode');      if (sr) sr.value = String(config.restMode);
+        }
+
+        function refreshDerivedStats() {
+            const h = $('sidebar-hourly');
+            const p = $('sidebar-per-second');
+            const d = $('sidebar-daily');
+            if (h) h.textContent = fmtMoney(hourlyRate());
+            if (p) p.textContent = fmtMoneyFloat(perSecond(), 4);
+            if (d) d.textContent = fmtMoney(dailySalary());
         }
 
         // ============================================================
@@ -2564,18 +2939,23 @@
         updateQuote();
         updateStatusClock();
         applyTheme(config.theme);       // apply saved theme before first paint
+        syncMobileForm();                // mirror config to sidebar + mobile form
         renderToday();
         renderConvert();
         fillSettingsForm();
+        refreshDerivedStats();
 
         // Tick every second
         setInterval(() => {
             updateStatusClock();
             renderToday();
+            refreshDerivedStats();
             // Re-render whichever sub page is active
-            const active = document.querySelector('.nav-item.is-active').dataset.tab;
-            if (active === 'convert') renderConvert();
-            if (active === 'calendar') renderCalendar();
+            const active = document.querySelector('.nav-item.is-active');
+            if (!active) return;
+            const tab = active.dataset.tab;
+            if (tab === 'convert') renderConvert();
+            if (tab === 'calendar') renderCalendar();
         }, 1000);
 
         // Track last checked month for auto-lock detection

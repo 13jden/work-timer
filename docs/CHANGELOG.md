@@ -28,6 +28,41 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ---
 
+## [Unreleased] · 2026-08-28
+
+### Added
+- **Desktop Sidebar (≥1024px)**: 左侧 240px 固定侧边栏
+  - `Salary Timer` 品牌头
+  - 仅两个导航项: `今日` (默认激活) + `设置` (可点击展开)
+  - **设置面板内嵌 sidebar**: 月薪 / 上班时间 / 下班时间 / 休息模式 / 咖啡单价,实时双向绑定到 `config`
+  - **实时派生统计**: 时薪 / 每秒 / 日均,跟随输入立刻刷新
+  - 主题切换器 (柠檬黄 / 靛蓝 / 香槟金) 置于 sidebar footer
+  - 移动端 (<1024px) 隐藏 sidebar,保留底部 tab 导航
+- **Desktop 集成主页**: timer card + 收入/价值双卡 + quote 全部直接显示,无需切换 tab
+- **桌面端今日页默认始终可见** (`.page-today` 永久 `is-active`),移动端仍走 tab 切换
+- **Theme swatch active class 统一同步**: `applyTheme()` 自动标记当前主题 active 态
+
+### Removed
+- **午休设置功能** (`config.lunchBreak` / `config.lunchStart` / `config.lunchRest` 字段)
+  - 设置页移除「午休开始 / 午休时长」输入项
+  - `todayEarned()` / `progressPct()` / `workSeconds()` 不再扣除午休时长
+  - 计算逻辑简化为: `hourly = monthly / days / workHours`,workHours = end - start
+
+### Fixed
+- **手机框移除**: 移除了原来的手机模拟框(`.stage` + `.device`),改为自适应全宽布局;桌面端切换到 sidebar + main 双栏结构
+- **`dayState` / `progressPct` 时间 bug**: 漏写 `now.getMinutes()`,全天时间判断比真实时间慢约 30 分钟
+- **完成工时定格**: 下班后 (`now >= endTime`) 计时器显示定格 `00:00:00` + 「今日已完成」,不再继续倒数
+
+### Changed
+- **`DEFAULT_CONFIG`**: 移除 `lunchBreak` / `lunchStart` / `lunchRest` 三个字段
+- **`workSeconds()`**: 简化为 `Math.max(endM - startM, 0) * 60`
+- **`progressPct()`**: 分母从 `(endM - startM - lunchBreak * 60)` 改为 `(endM - startM)`
+- **`dayState()` done 模式**: 不再返回总工作时长,而是定格 `00:00:00` + 「今日已完成」
+- **`updateQuote()`**: 简化为单一 quote 元素 (桌面/移动共享)
+- **`bindEvents()`**: 增加 sidebar 设置面板交互 + 实时 config 同步 + `syncMobileForm()` 双向同步移动端表单
+
+---
+
 ## [v1.0.0] · 2026-08-27
 
 ### Added
