@@ -5,11 +5,11 @@
  * - 薪资配置(月薪、上班、下班、咖啡价)
  * - 休息模式
  * - 主题切换
- * - 月度记录列表
+ * - 月度记录列表(快照)
  *
  * 所有改动实时写入 configStore(Zustand persist 自动持久化)。
  */
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
@@ -27,24 +27,28 @@ export function SettingsPage() {
   const setConfig = useConfigStore((s) => s.setConfig);
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const records = useMonthlyStore((s) => s.records);
-  const generateForMonth = useMonthlyStore((s) => s.generateForMonth);
+  const snapshots = useMonthlyStore((s) => s.snapshots);
+  const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
   const now = useNow(60_000);
-
-  // 每次 tick 检查当月记录是否存在
-  useEffect(() => {
-    generateForMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
-  }, [now, config, overrides, generateForMonth]);
 
   const workdays = useMemo(
     () => workdaysInMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS),
     [now, config, overrides],
   );
 
-  const sortedKeys = useMemo(
-    () => Object.keys(records).map(Number).sort((a, b) => b - a),
-    [records],
+  // 当前月 key
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  // 排序快照列表(新→旧)
+  const sortedSnapshots = useMemo(
+    () =>
+      Object.values(snapshots).sort((a, b) => b.key.localeCompare(a.key)),
+    [snapshots],
   );
+
+  function handleGenerateCurrent() {
+    createSnapshot(now.getFullYear(), now.getMonth(), config.monthlySalary, config, overrides, HOLIDAYS);
+  }
 
   return (
     <>
@@ -153,26 +157,37 @@ export function SettingsPage() {
       <div className={styles.group}>
         <div className={styles.eyebrow}>月度记录 · History</div>
         <div className={styles.card}>
+          {/* 生成当月按钮 */}
+          {!snapshots[currentKey] && (
+            <button type="button" className={styles.generateBtn} onClick={handleGenerateCurrent}>
+              生成当月薪资
+            </button>
+          )}
+
           <div className={styles.historyList}>
-            {sortedKeys.length === 0 ? (
+            {sortedSnapshots.length === 0 ? (
               <div className={styles.historyEmpty}>
                 暂无月度记录
-                <span>本月结束后自动生成</span>
+                <span>点击上方按钮生成</span>
               </div>
             ) : (
-              sortedKeys.map((k) => {
-                const r = records[k]!;
+              sortedSnapshots.map((s) => {
+                const isCurrent = s.key === currentKey;
+                const [yyyy, mm] = s.key.split('-') as [string, string];
+                const yearNum = parseInt(yyyy, 10);
+                const monthNum = parseInt(mm, 10) - 1;
+                const earned = s.dailyRate * s.totalUnits;
                 return (
-                  <div key={k} className={styles.historyItem}>
+                  <div key={s.key} className={styles.historyItem}>
                     <span className={styles.historyMonth}>
-                      {r.yyyy}年 {MONTH_NAMES[r.mm]}
+                      {yearNum}年 {MONTH_NAMES[monthNum]}
                     </span>
                     <span className={styles.historyRight}>
                       <span className={styles.historyAmount}>
-                        ¥{Math.round(r.totalEarned).toLocaleString('en-US')}
+                        ¥{Math.round(earned).toLocaleString('en-US')}
                       </span>
                       <span className={styles.historyBadge}>
-                        {r.locked ? '已锁定' : '本月'}
+                        {isCurrent ? '本月' : '已锁定'}
                       </span>
                     </span>
                   </div>

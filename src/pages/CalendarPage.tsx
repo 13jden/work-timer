@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
-import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar } from '../lib/compute';
+import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { useNow } from '../hooks/useNow';
 import { StatusBar } from '../components/StatusBar';
@@ -24,14 +24,16 @@ export function CalendarPage() {
   const nextMonth = useCalendarStore((s) => s.nextMonth);
   const prevMonth = useCalendarStore((s) => s.prevMonth);
   const goToToday = useCalendarStore((s) => s.goToToday);
-  const toggleDay = useCalendarStore((s) => s.toggleDay);
+  const setDayOverride = useCalendarStore((s) => s.setDayOverride);
   const clearOverride = useCalendarStore((s) => s.clearOverride);
 
+  // 日均(用于 summary 卡片,取整数)
   const daily = useMemo(
     () => dailySalary(year, month, config, overrides, HOLIDAYS),
     [year, month, config, overrides],
   );
 
+  // 工作日数
   const workdaysCount = useMemo(() => {
     let count = 0;
     const days = daysInMonthCalc(year, month);
@@ -41,6 +43,7 @@ export function CalendarPage() {
     return count;
   }, [year, month, config, overrides]);
 
+  // 当月已赚
   const monthEarned = useMemo(
     () => monthEarnedSoFar(year, month, now, config, overrides, HOLIDAYS),
     [year, month, now, config, overrides],
@@ -59,11 +62,13 @@ export function CalendarPage() {
     setSheetOpen(true);
   }
 
-  const isPickedWorkday = pickedDate
+  const pickedKey = pickedDate ? formatDateKey(pickedDate) : '';
+  const pickedEntry = pickedKey ? (overrides[pickedKey] ?? null) : null;
+
+  // 是否工作日(用于初始类型推断)
+  const isPickedWork = pickedDate
     ? isWorkday(pickedDate, config, overrides, HOLIDAYS)
     : false;
-  const pickedKey = pickedDate ? formatDateKey(pickedDate) : '';
-  const pickedHasOverride = pickedKey in overrides;
 
   return (
     <>
@@ -115,6 +120,7 @@ export function CalendarPage() {
             const d = i + 1;
             const date = new Date(year, month, d);
             const isWork = isWorkday(date, config, overrides, HOLIDAYS);
+            const units = dayUnits(date, config, overrides, HOLIDAYS);
             const isToday =
               d === now.getDate() &&
               month === now.getMonth() &&
@@ -133,12 +139,14 @@ export function CalendarPage() {
               hasOv ? styles.dayOverride : '',
             ].filter(Boolean).join(' ');
 
+            // 过去已过工作日:显示 dayEarn(¥daily × units)
             let earnText = '';
             if (isWork) {
-              if (isToday && isWork) {
-                earnText = ''; // today 显示今天赚的(简化:省略)
-              } else if (isPast) {
-                earnText = `¥${Math.round(daily).toLocaleString('en-US')}`;
+              if (isToday) {
+                earnText = ''; // 今天实时显示
+              } else if (isPast && units > 0) {
+                const dayEarn = daily * units;
+                earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
               }
             }
 
@@ -160,19 +168,12 @@ export function CalendarPage() {
       <DaySheet
         open={sheetOpen}
         date={pickedDate}
-        isWork={isPickedWorkday}
+        isWork={isPickedWork}
         dailyEarning={daily}
-        hasOverride={pickedHasOverride}
+        currentEntry={pickedEntry}
         onClose={() => setSheetOpen(false)}
-        onToggle={() => {
-          if (pickedDate) {
-            const make = isPickedWorkday ? 'rest' : 'work';
-            toggleDay(formatDateKey(pickedDate), make);
-          }
-        }}
-        onReset={() => {
-          if (pickedDate) clearOverride(formatDateKey(pickedDate));
-        }}
+        onSave={(key, entry) => setDayOverride(key, entry)}
+        onReset={(key) => clearOverride(key)}
       />
     </>
   );

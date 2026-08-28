@@ -8,9 +8,6 @@
   pointer-events: none;
   transition: opacity 0.3s var(--ease);
   z-index: 200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
 }
 
 .backdropOpen {
@@ -19,18 +16,22 @@
 }
 
 .sheet {
-  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  width: min(100vw, 420px);
   background: var(--paper);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  padding: 8px 20px calc(20px + var(--safe-bottom));
-  transform: translateY(100%);
+  border-radius: 24px 24px 0 0;
+  padding: 8px 20px calc(20px + var(--safe-bottom, 0px));
   transition: transform 0.4s var(--ease-spring);
-  max-height: 85%;
+  max-height: 85vh;
   overflow-y: auto;
+  z-index: 201;
 }
 
-.backdropOpen .sheet {
-  transform: none;
+.sheetOpen {
+  transform: translateX(-50%) translateY(0);
 }
 
 .handle {
@@ -47,26 +48,99 @@
   font-size: 28px;
   font-weight: 400;
   text-align: center;
-  margin: 0 0 6px 0;
+  margin: 0 0 18px 0;
   letter-spacing: -0.5px;
 }
 
-.type {
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 22px;
+/* ── 类型选择(select 下拉) ─────────────────────────── */
+.typeRow {
+  margin-bottom: 12px;
 }
 
+.typeSelect {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.typeSelect:focus {
+  border-color: var(--accent);
+}
+
+.typeSelect option {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* ── 倍率输入 ───────────────────────────────────── */
+.multRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+}
+
+.multLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.multInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.multInput::-webkit-outer-spin-button,
+.multInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.multUnit {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ── 薪资卡片 ───────────────────────────────────── */
 .figure {
   text-align: center;
-  padding: 18px 16px;
+  padding: 20px 16px;
   background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-md);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 16px;
   margin-bottom: 18px;
 }
 
@@ -77,7 +151,7 @@
   font-weight: 400;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: var(--ink);
 }
 
@@ -89,10 +163,11 @@
   text-transform: uppercase;
 }
 
+/* ── 操作按钮 ───────────────────────────────────── */
 .actions {
   display: flex;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .toggle {
@@ -101,25 +176,36 @@
   background: var(--ink);
   color: var(--accent);
   border: none;
-  border-radius: var(--r-md);
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.toggle:active {
+  transform: scale(0.97);
 }
 
 .reset {
-  padding: 16px 20px;
+  padding: 16px 18px;
   background: transparent;
   color: var(--muted);
   border: 1.5px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.reset:hover {
+  color: var(--ink);
+  border-color: var(--ink);
 }

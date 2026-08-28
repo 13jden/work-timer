@@ -6,6 +6,53 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-010 完成 · 月度记录重做 + 工作日类型 + 用户记录区间
+
+- **`src/lib/types.ts`** — 新增 `DayType` / `DayOverrideEntry` / `MonthlySnapshot`
+- **`src/lib/constants.ts`** — 新增 `STORAGE_KEY_V2` / `OVERRIDES_KEY_V2` / `SNAPSHOTS_KEY` / `DAY_TYPE_OPTIONS`
+- **`src/lib/compute.ts`** — 新增 `dayUnits` / `getDayOverride`(兼容旧 v1 字符串)
+- **`src/store/configStore.ts`** — v2 升级 + `recordedFromDate` 初始化
+- **`src/store/calendarStore.ts`** — 新增 `setDayOverride` action,v2 key
+- **`src/store/monthlyStore.ts`** — 重构为 `MonthlySnapshot` 快照表,用户手动 `createSnapshot`
+- **`src/components/DaySheet/`** — UI 重做:类型 select 下拉 + 加班倍率 input + 保存/重置
+- **`src/pages/CalendarPage.tsx`** — day cell 显示带单位的 ¥daily × units
+- **`src/pages/SettingsPage.tsx`** — 改用快照,加「生成当月薪资」按钮
+- **`docs/plans/bugfix/TASK-010-month-records.md`** — 计划文档
+
+### Features
+
+- **工作日类型**:工作日(1x)/ 加班(默认 1.5x,自定义)/ 请假(0x)/ 休息(0x)
+- **倍率可自定义**:加班日可在 DaySheet 里改倍率 input,实时保存
+- **请假扣减**:请假日的 units=0,贡献 = 0,等同从已赚中扣除 daily
+- **加班加成**:加班日的 units=1.5(可改),贡献 = daily × 1.5
+- **月度快照**:用户手动点击「生成当月薪资」创建,锁定该月月薪不受 config 变化影响
+- **历史月份独立**:每个快照独立存储 salary、workDays、dailyRate、totalUnits
+- **用户记录区间**:`recordedFromDate` 在 configStore 初始化时自动写入今天
+- **数据兼容**:旧 v1 字符串 override (`'work'|'rest'`) 在读取时自动归一化为 v2 entry
+
+### Storage 变更
+
+- `salary_timer_config_v1` → `salary_timer_config_v2`(加 `recordedFromDate`)
+- `salary_timer_day_overrides_v1` → `salary_timer_day_overrides_v2`(值改为 entry 对象)
+- 新增 `salary_timer_monthly_snapshots_v1`(月度快照表)
+- 旧 v1 keys 保留不动,数据**直接覆盖**(用户接受)
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:93 / 93 通过(compute 71 + store 22)
+- ✅ `npm run build`:179KB / gzip 59KB
+
+### Notes
+
+- 阶段 1 进度:**7 / 9 → 8 / 9**(TASK-010 加入并完成)
+- TASK-008(响应式布局)/ TASK-009(主题系统接入)未做
+- future scope:记账功能已为 `MonthlySnapshot` 预留 schema
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-007 完成 · 设置页 + 月度记录
 
 - **`src/store/monthlyStore.ts`** — 月度记录 store

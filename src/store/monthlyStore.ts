@@ -1,84 +1,103 @@
 /**
  * Salary Timer — Monthly Store
  *
- * 管理月度薪资记录:当月实时累计、跨月自动锁定历史记录。
+ * 管理月度薪资快照:用户手动点击"生成"时创建,
+ * 历史月份用快照实时不受 config 影响。
  */
 import { create } from 'zustand';
-import { MONTHLY_KEY } from '../lib/constants';
-import { saveJSON } from '../lib/storage';
-import type { MonthlyRecord } from '../lib/types';
-import {
-  workdaysInMonth,
-  dailySalary,
-  workSeconds,
-  monthEarnedSoFar,
-} from '../lib/compute';
+import { SNAPSHOTS_KEY } from '../lib/constants';
+import { loadJSON, saveJSON } from '../lib/storage';
+import type { MonthlySnapshot, MonthlySnapshots } from '../lib/types';
+import { workdaysInMonth, dayUnits, daysInMonthCalc } from '../lib/compute';
 import type { Config, DayOverrides, HolidayMap } from '../lib/types';
 
 interface MonthlyStore {
-  /** key = "YYYYMM"(如 "202608") */
-  records: Record<string, MonthlyRecord>;
+  /** 快照表 key=YYYY-MM */
+  snapshots: MonthlySnapshots;
 
-  /** 生成当月记录(若不存在) */
-  generateForMonth: (year: number, month: number, config: Config, overrides: DayOverrides, holidays: HolidayMap) => void;
+  /**
+   * 创建或更新某月快照
+   * @param year 年
+   * @param month 月(0-11)
+   * @param salary 该月月薪(用户输入)
+   */
+  createSnapshot: (year: number, month: number, salary: number, config: Config, overrides: DayOverrides, holidays: HolidayMap) => void;
 
-  /** 锁定上月(每月初自动调用) */
-  lockPrevMonth: () => void;
+  /** 删除某月快照 */
+  removeSnapshot: (year: number, month: number) => void;
 
-  /** 读某月记录 */
-  getRecord: (year: number, month: number) => MonthlyRecord | null;
+  /** 读某月快照 */
+  getSnapshot: (year: number, month: number) => MonthlySnapshot | null;
+
+  /** 获取入职以来所有月份快照列表(用于弹窗展示) */
+  getAllSnapshots: () => MonthlySnapshot[];
 }
 
+function monthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+function computeSnapshot(
+  year: number,
+  month: number,
+  salary: number,
+  config: Config,
+  overrides: DayOverrides,
+  holidays: HolidayMap,
+): MonthlySnapshot {
+  // 计算 totalUnits:遍历当月每天累加
+  const days = daysInMonthCalc(year, month);
+  let totalUnits = 0;
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(year, month, d);
+    totalUnits += dayUnits(date, config, overrides, holidays);
+  }
+
+  const workDays = workdaysInMonth(year, month, config, overrides, holidays);
+  const dailyRate = salary / Math.max(workDays, 1);
+  const key = monthKey(year, month);
+
+  return {
+    key,
+    salary,
+    workDays,
+    dailyRate,
+    totalUnits,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+const initialSnapshots = (() => {
+  const stored = loadJSON<MonthlySnapshots | null>(SNAPSHOTS_KEY, null);
+  return stored ?? {};
+})();
+
 export const useMonthlyStore = create<MonthlyStore>()((set, get) => ({
-  records: {},
+  snapshots: initialSnapshots,
 
-  generateForMonth: (year, month, config, overrides, holidays) => {
-    const key = String(year * 100 + month);
-    if (get().records[key]) return;
-
-    const workDays = workdaysInMonth(year, month, config, overrides, holidays);
-    const daily = dailySalary(year, month, config, overrides, holidays);
-    const hours = Math.max(workSeconds(config) / 3600, 0.01);
-    const hourly = daily / hours;
-    const now = new Date();
-    const isCurrent = year === now.getFullYear() && month === now.getMonth();
-
-    const totalEarned = isCurrent
-      ? monthEarnedSoFar(year, month, now, config, overrides, holidays)
-      : daily * workDays;
-
-    const record: MonthlyRecord = {
-      yyyy: year,
-      mm: month,
-      salary: config.monthlySalary,
-      workDays,
-      dailyRate: daily,
-      hourlyRate: hourly,
-      totalEarned,
-      locked: !isCurrent,
-      generatedAt: new Date().toISOString(),
-    };
-
-    const newRecords = { ...get().records, [key]: record };
-    set({ records: newRecords });
-    saveJSON(MONTHLY_KEY, newRecords);
+  createSnapshot: (year, month, salary, config, overrides, holidays) => {
+    const key = monthKey(year, month);
+    const snapshot = computeSnapshot(year, month, salary, config, overrides, holidays);
+    const newSnapshots = { ...get().snapshots, [key]: snapshot };
+    set({ snapshots: newSnapshots });
+    saveJSON(SNAPSHOTS_KEY, newSnapshots);
   },
 
-  lockPrevMonth: () => {
-    const now = new Date();
-    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-    const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-    const key = String(prevYear * 100 + prevMonth);
-    const records = get().records;
-    if (records[key] && !records[key].locked) {
-      const updated = { ...records, [key]: { ...records[key]!, locked: true } };
-      set({ records: updated });
-      saveJSON(MONTHLY_KEY, updated);
-    }
+  removeSnapshot: (year, month) => {
+    const key = monthKey(year, month);
+    const newSnapshots = { ...get().snapshots };
+    delete newSnapshots[key];
+    set({ snapshots: newSnapshots });
+    saveJSON(SNAPSHOTS_KEY, newSnapshots);
   },
 
-  getRecord: (year, month) => {
-    const key = String(year * 100 + month);
-    return get().records[key] ?? null;
+  getSnapshot: (year, month) => {
+    const key = monthKey(year, month);
+    return get().snapshots[key] ?? null;
+  },
+
+  getAllSnapshots: () => {
+    const all = Object.values(get().snapshots);
+    return all.sort((a, b) => a.key.localeCompare(b.key));
   },
 }));
