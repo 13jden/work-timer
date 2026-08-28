@@ -6,6 +6,41 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-004 完成 · 今日页 UI
+
+- **`src/hooks/useNow.ts`** — 全局 ticker,每秒返回 Date
+- **`src/hooks/useNowTime.ts`** — StatusBar 用,分钟级同步时间
+- **`src/components/StatusBar/`** — 顶栏(时间 + 信号 + 电池)
+- **`src/components/TimerCard/`** — 主计时卡(签名元素)
+- **`src/components/StatCard/`** — 数据卡(Income / Worth)
+- **`src/components/QuoteCard/`** — 每日 quote
+- **`src/pages/TodayPage.tsx`** — 今日页组合
+- **`src/pages/TodayPage.module.css`** — 响应式 grid 布局
+- **`src/styles/tokens.css`** — 全局设计令牌(三套主题 + reset)
+- **`src/css.d.ts`** — CSS Modules 类型声明
+
+### Changed
+
+- **`src/App.tsx`** — 接入 `bootstrapTheme()`(防止主题闪烁),渲染 `<TodayPage />`
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:67 / 67 通过(本任务未加新测试)
+- ✅ `npm run build`:**155KB / gzip 51KB**
+
+### Notes
+
+- 阶段 1 进度:**4 / 9**(TASK-001 ~ 004 完成)
+- TimerCard 黑底 / 倒计时 display 字体 / 进度条 / dot 脉冲动画与原 HTML 版完全一致
+- Obsidian 主题下 TimerCard 自动反转配色
+- 桌面端 quote 在 hero 下方,移动端 quote 在 hero 内(响应式)
+- 路由层未接入,目前只有 TodayPage;TASK-005 完成后接 Tab 切换
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-003 完成 · 状态层迁移到 Zustand
 
 - **`zustand`** v5 安装

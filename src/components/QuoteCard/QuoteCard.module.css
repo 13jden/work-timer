@@ -1,0 +1,26 @@
+.card {
+  margin: 0 16px 14px;
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line-soft);
+}
+
+.mark {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 0.6;
+  color: var(--accent-deep);
+}
+
+.body {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+  flex: 1;
+  line-height: 1.4;
+}

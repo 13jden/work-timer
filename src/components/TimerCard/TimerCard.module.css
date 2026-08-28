@@ -1,0 +1,174 @@
+.card {
+  margin: 6px 16px 14px;
+  background: var(--ink);
+  border-radius: var(--r-xl);
+  padding: 22px 22px 18px;
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(200, 255, 0, 0.18) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.7); }
+}
+
+.display {
+  font-family: var(--font-display);
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 400;
+  color: #FFFFFF;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 4px;
+  min-height: 1em;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.shift {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.shiftLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shiftLeft strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.pct {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s var(--ease);
+  box-shadow: 0 0 12px var(--accent-shadow);
+}
+
+.range {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted-2);
+  margin-top: 6px;
+}
+
+.range span {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 休息日:卡片仍保留,但整体调灰一点 */
+.rest {
+  filter: grayscale(0.4);
+  opacity: 0.85;
+}
+
+/* Obsidian 主题:卡片用 paper 底 */
+:global([data-theme='obsidian']) .card {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+:global([data-theme='obsidian']) .display {
+  color: var(--ink);
+}
+
+:global([data-theme='obsidian']) .shiftLeft strong {
+  color: var(--ink);
+}
+
+:global([data-theme='obsidian']) .status {
+  color: var(--muted);
+}
+
+:global([data-theme='obsidian']) .label {
+  color: var(--muted-2);
+}
+
+:global([data-theme='obsidian']) .range {
+  color: var(--muted-2);
+}
+
+:global([data-theme='obsidian']) .dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-shadow);
+}
+
+:global([data-theme='obsidian']) .fill {
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-shadow);
+}
+
+:global([data-theme='obsidian']) .progress {
+  background: rgba(255, 255, 255, 0.08);
+}
