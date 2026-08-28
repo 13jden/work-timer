@@ -161,10 +161,10 @@ export function CalendarPage() {
         </button>
 
         <div className={styles.monthWrap}>
-          {/* 月份标题:无快照时可点击打开 GenerateSheet / 有快照时可点击打开 EarnSheet */}
+          {/* 月份标题:整个可点击打开 sheet(无快照 → generate / 有快照 → earn) */}
           <button
             type="button"
-            className={`${styles.monthBtn} ${hasSnapshot ? styles.monthBtnActive : dotCanGenerate ? styles.monthBtnCanGen : styles.monthBtnInactive}`}
+            className={`${styles.monthBtn} ${isBeforeRecordedDate ? styles.monthBtnInactive : ''}`}
             onClick={() => {
               if (isBeforeRecordedDate) return;
               if (hasSnapshot) setEarnOpen(true);
@@ -174,14 +174,11 @@ export function CalendarPage() {
           >
             <span className={styles.monthInner}>
               {monthLabel}
-              {/* Dot:叠在月份文字右上角 */}
+              {/* Dot:无快照时叠在月份文字右上角 */}
               {!hasSnapshot && (
                 <span
                   className={`${styles.dot} ${dotCanGenerate ? styles.dotCanGenerate : styles.dotCannot}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isBeforeRecordedDate) setGenOpen(true);
-                  }}
+                  aria-label="生成月度薪资"
                   title={isBeforeRecordedDate ? '早于入职日期,无法生成' : '点击生成薪资'}
                 />
               )}
@@ -222,15 +219,6 @@ export function CalendarPage() {
               </div>
               <div className={styles.summaryLbl}>已赚</div>
             </div>
-            {/* 当日已赚(仅当前月有) */}
-            {isCurrentMonth && todayEarn > 0 && (
-              <div className={`${styles.summaryCard} ${styles.accent}`}>
-                <div className={styles.summaryNum}>
-                  ¥{todayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className={styles.summaryLbl}>今日已赚</div>
-              </div>
-            )}
           </>
         ) : (
           <div className={styles.noSnapshot}>
@@ -273,10 +261,15 @@ export function CalendarPage() {
               hasOv ? styles.dayOverride : '',
             ].filter(Boolean).join(' ');
 
-            // 只有已生成快照时,才显示 ¥ 金额
+            // 显示 ¥ 金额规则:
+            // - 已生成快照:过去工作日显示「已结算金额」(daily × units)
+            // - 今天 + 当前月 + 已生成快照:实时累积「今日已赚」(每秒刷新)
+            // - 今天 + 当前月 + 无快照:不显示(用户没确认数据,不该瞎猜)
             let earnText = '';
             if (hasSnapshot && isWork) {
-              if (!isToday && isPast && units > 0) {
+              if (isToday) {
+                earnText = `¥${todayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              } else if (isPast && units > 0) {
                 const dayEarn = daily * units;
                 earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
               }

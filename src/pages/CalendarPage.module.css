@@ -12,7 +12,7 @@
   justify-content: center;
 }
 
-/* 月份按钮:无快照时可点击打开生成 / 有快照时可点击打开编辑 */
+/* 月份按钮:点整个区域打开 sheet(无快照 → generate / 有快照 → earn) */
 .monthBtn {
   display: flex;
   flex-direction: column;
@@ -20,26 +20,18 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 12px;
   line-height: 1;
+  border-radius: var(--r-sm);
+  transition: background 0.15s;
+}
+
+.monthBtn:hover:not(:disabled) {
+  background: var(--card-hover);
 }
 
 .monthBtn:disabled {
   cursor: default;
-}
-
-.monthBtnActive {
-  cursor: pointer;
-}
-
-.monthBtnActive .monthInner {
-  text-decoration: underline;
-  text-decoration-style: dashed;
-  text-underline-offset: 4px;
-}
-
-.monthBtnCanGen .monthInner {
-  color: var(--muted);
 }
 
 .monthBtnInactive {
