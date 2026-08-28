@@ -7,6 +7,10 @@ yarn-error.log
 dist/
 .vite/
 
+# Test coverage
+coverage/
+*.lcov
+
 # Tauri build (Phase 2+)
 src-tauri/target/
 src-tauri/gen/

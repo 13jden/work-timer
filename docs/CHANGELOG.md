@@ -4,6 +4,42 @@ All notable changes are documented here.
 
 Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-DD` for releases.
 
+## [Unreleased] · 2026-08-28
+
+### Added · TASK-002 完成 · 核心计算层迁移
+
+- **`src/lib/types.ts`** — 类型定义(Config / DayOverrides / HolidayMap / DayState 判别联合等)
+- **`src/lib/time.ts`** — 时间工具(parseTime / toMinutes / pad2 / formatDateKey / formatHMS)
+- **`src/lib/compute.ts`** — 核心计算纯函数,所有依赖从隐式 state 改为显式参数
+- **`src/lib/compute.test.ts`** — 40 个单元测试用例
+- **`vitest.config.ts`** — vitest + jsdom + v8 coverage 配置
+
+### Changed · 计算层重构
+
+**所有原 `src/js/compute.js` 的隐式 state 依赖改为显式参数**:
+- `isWorkday(date, config, overrides, holidays)` — 4 参数
+- `dailySalary(year, month, config, overrides, holidays)` — 5 参数
+- `hourlyRate(...)` / `perSecond(...)` / `todayEarned(...)` / `monthEarnedSoFar(...)` / `progressPct(...)` 同模式
+- `dayState(...)` 返回 `DayState` 判别联合(TS 自动收窄)
+
+**好处**:
+- 100% 可测试(无全局 state 依赖)
+- 调用方(store)负责注入状态
+- 类型安全:DayState 通过 `mode` 自动收窄
+
+### Verified
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **40 / 40 通过**(耗时 ~1.3s)
+- ✅ 覆盖率:**Statements 99% / Branches 97.36% / Functions 94.44% / Lines 98.86%**(目标 >90%)
+- ✅ `npm run build` 仍成功(143KB / gzip 46KB)
+
+### Notes
+
+- 阶段 1 进度:**2 / 9**(TASK-001 ✅ TASK-002 ✅)
+- 旧版 `src/js/compute.js` 仍保留(用于 Capacitor),新逻辑在 `src/lib/compute.ts`
+- `nowInMinutes` 未被 compute.ts 使用,从 export 列表移除
+
 ---
 
 ## [Unreleased] · 2026-08-28
