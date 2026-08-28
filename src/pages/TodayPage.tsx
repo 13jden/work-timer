@@ -66,9 +66,7 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
           </div>
         </div>
       </div>
-      <div className={styles.desktopQuote}>
-        <QuoteCard index={dayOfYear} />
-      </div>
+
     </>
   );
 }
