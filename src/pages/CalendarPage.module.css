@@ -1,5 +1,30 @@
 .head {
+  width: 100%;
   padding: 20px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+
+.head:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.head:active:not(:disabled) {
+  opacity: 0.6;
+}
+
+.headInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
@@ -11,6 +36,17 @@
   font-weight: 400;
   letter-spacing: -1px;
   margin: 0;
+  color: var(--ink);
+}
+
+/* paper 主题下月份纯黑,深色主题用主题色 */
+[data-theme='paper'] .month {
+  color: #000;
+}
+
+[data-theme='obsidian'] .month,
+[data-theme='gold'] .month {
+  color: var(--accent);
 }
 
 .year {
@@ -22,6 +58,7 @@
   text-transform: uppercase;
 }
 
+/* ── Summary ───────────────────────────────────── */
 .summary {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -34,6 +71,7 @@
   border-radius: var(--r-md);
   padding: 12px 10px;
   text-align: center;
+  font-family: inherit;
 }
 
 .summaryCard.green {
@@ -44,6 +82,40 @@
 .summaryCard.white {
   background: var(--card);
   border: 1px solid var(--line-soft);
+}
+
+/* 已赚卡片:button 形态 */
+.summaryEarn {
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s, background 0.15s;
+  color: inherit;
+}
+
+.summaryEarn:hover {
+  background: var(--paper-2);
+}
+
+.summaryEarn:active {
+  transform: scale(0.96);
+}
+
+/* 已赚右上角小圆点:提示可点击 */
+.earnDot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  animation: earnPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes earnPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
 }
 
 .summaryNum {
@@ -64,6 +136,7 @@
   opacity: 0.6;
 }
 
+/* ── 月份导航 ───────────────────────────────────── */
 .nav {
   display: flex;
   align-items: center;
@@ -96,14 +169,21 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 1.5px;
-  color: var(--muted);
+  color: var(--accent);
   text-transform: uppercase;
   cursor: pointer;
   border: none;
   background: none;
   padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
 
+.navTitle:hover {
+  background: var(--ink);
+}
+
+/* ── 网格 ───────────────────────────────────── */
 .grid {
   padding: 0 16px 24px;
 }

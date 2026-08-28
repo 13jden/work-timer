@@ -6,6 +6,116 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Changed · TASK-011 增量调整 · 月份主题色 + 圆点规则 + now 按钮 + 已赚合并到 GenerateSheet
+
+#### 月份主题色(随主题切换)
+- `paper`(浅色):月份「八月」= **纯黑 `#000`**
+- `obsidian`(暗紫):月份 = **accent 紫 `#7C6FF7`**
+- `gold`(香槟金):月份 = **accent 金 `#C9A84C`**
+
+#### 圆点规则:过去月 + 当前月显示,未来月不显示
+- 删掉 `isBeforeRecordedDate` 判断(`recordedFromDate` 太严,会把历史月挡掉)
+- 新增 `isFutureMonth`:未来月不能生成/调整,Header 灰显 + 已赚卡片无圆点
+
+#### nav `now` 按钮
+- 仅 `!isCurrentMonth` 时显示
+- 颜色 = `var(--accent)`,hover 加深色背景
+
+#### 已赚点击 → 合并到 GenerateSheet
+- 删除 `EarnSheet` 组件的使用 / import / handleEarnEdit
+- 已赚卡片点击 → 统一打开 `GenerateSheet`(展示月薪 input + 工作日 + 日均 + 总收入预览)
+- 无快照 → 创建快照;有快照 → 覆盖
+- 当前月同步 `useConfigStore.setState({ monthlySalary })`
+
+---
+
+## [Unreleased] · 2026-08-28
+
+### Added · TASK-011 完成 · CalendarPage header 居中 + 历史月份引导
+
+- **`src/pages/CalendarPage.tsx`** — Header 改 `<button>`(月份居中可点),Summary 始终三卡,已赚卡片改 button + 圆点指示器
+- **`src/pages/CalendarPage.module.css`** — 新增 `.headInner` / `.summaryEarn` / `.earnDot`,删除 `.headLeft` / `.dotBtn` / `.dotEmpty` / `.dotGenerated` / `.noSnapshot`
+- **`docs/plans/bugfix/TASK-011-calendar-header-rework.md`** — 计划文档
+
+### Changed
+
+- **Header 月份居中**:删掉右上角 dot 按钮,「月份 / 年份」整块可点击 → 弹出 `GenerateSheet`
+- **Summary 始终三卡**:无论是否有快照,都显示「工作日 / 日均 / 已赚」三张卡片
+- **无快照时已赚 = ¥0**:`monthEarned` / `todayEarn` 在无快照时直接返回 0,日历格不显示金额
+- **已赚卡片圆点指示器**:无快照 + 未到记录区间 → 右上角 6px 圆点 + 1.6s 脉冲动画,提示可点击
+- **已赚卡片点击逻辑**:
+  - 无快照 → 打开 `GenerateSheet`(生成 → 圆点消失,已赚显示真实数字)
+  - 有快照 → 打开 `EarnSheet`(调整月薪;当前月同步 `config.monthlySalary`,历史月仅更新快照)
+- **Header 禁用态**:早于 `recordedFromDate` 时整个 header 灰显且不可点
+
+### Removed
+
+- `.dotBtn` / `.dotEmpty` / `.dotGenerated`(右上角圆点按钮 + 其样式)
+- `.noSnapshot` 提示条(已无意义,改用三卡 + 圆点)
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:93 / 93 通过
+- ✅ `npm run build`:184KB / gzip 60KB
+
+### Notes
+
+- 本次只调整 UI 行为,store / compute / sheet 组件均未改动,所有原有逻辑保留
+- 阶段 1 进度:**8 / 9 → 9 / 9**(阶段 1 完成,待 TASK-008 / 009 收尾)
+
+---
+
+## [Unreleased] · 2026-08-28
+
+### Added · TASK-010 完成 · 月度记录重做 + 工作日类型 + 用户记录区间
+
+- **`src/lib/types.ts`** — 新增 `DayType` / `DayOverrideEntry` / `MonthlySnapshot`
+- **`src/lib/constants.ts`** — 新增 `STORAGE_KEY_V2` / `OVERRIDES_KEY_V2` / `SNAPSHOTS_KEY` / `DAY_TYPE_OPTIONS`
+- **`src/lib/compute.ts`** — 新增 `dayUnits` / `getDayOverride`(兼容旧 v1 字符串)
+- **`src/store/configStore.ts`** — v2 升级 + `recordedFromDate` 初始化
+- **`src/store/calendarStore.ts`** — 新增 `setDayOverride` action,v2 key
+- **`src/store/monthlyStore.ts`** — 重构为 `MonthlySnapshot` 快照表,用户手动 `createSnapshot`
+- **`src/components/DaySheet/`** — UI 重做:类型 select 下拉 + 加班倍率 input + 保存/重置
+- **`src/components/GenerateSheet/`** — 新增:点击 Month header dot 生成月度薪资(月薪 input + 预览)
+- **`src/components/EarnSheet/`** — 新增:点击已赚卡片修改月薪
+- **`src/pages/CalendarPage.tsx`** — header dot 指示器 + GenerateSheet + EarnSheet + day cell ¥daily × units
+- **`docs/plans/bugfix/TASK-010-month-records.md`** — 计划文档
+
+### Features
+
+- **工作日类型**:工作日(1x)/ 加班(默认 1.5x,自定义)/ 请假(0x)/ 休息(0x)
+- **倍率可自定义**:加班日可在 DaySheet 里改倍率 input,实时保存
+- **请假扣减**:请假日的 units=0,贡献 = 0,等同从已赚中扣除 daily
+- **加班加成**:加班日的 units=1.5(可改),贡献 = daily × 1.5
+- **月度快照**:用户手动点击「生成当月薪资」创建,锁定该月月薪不受 config 变化影响
+- **历史月份独立**:每个快照独立存储 salary、workDays、dailyRate、totalUnits
+- **用户记录区间**:`recordedFromDate` 在 configStore 初始化时自动写入今天
+- **数据兼容**:旧 v1 字符串 override (`'work'|'rest'`) 在读取时自动归一化为 v2 entry
+
+### Storage 变更
+
+- `salary_timer_config_v1` → `salary_timer_config_v2`(加 `recordedFromDate`)
+- `salary_timer_day_overrides_v1` → `salary_timer_day_overrides_v2`(值改为 entry 对象)
+- 新增 `salary_timer_monthly_snapshots_v1`(月度快照表)
+- 旧 v1 keys 保留不动,数据**直接覆盖**(用户接受)
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:93 / 93 通过(compute 71 + store 22)
+- ✅ `npm run build`:179KB / gzip 59KB
+
+### Notes
+
+- 阶段 1 进度:**7 / 9 → 8 / 9**(TASK-010 加入并完成)
+- TASK-008(响应式布局)/ TASK-009(主题系统接入)未做
+- future scope:记账功能已为 `MonthlySnapshot` 预留 schema
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-007 完成 · 设置页 + 月度记录
 
 - **`src/store/monthlyStore.ts`** — 月度记录 store

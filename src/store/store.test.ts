@@ -8,14 +8,13 @@ import { useConfigStore } from './configStore';
 import { useItemsStore } from './itemsStore';
 import { useCalendarStore } from './calendarStore';
 import { useThemeStore, bootstrapTheme, THEME_LIST } from './themeStore';
-import { DEFAULT_CONFIG, OVERRIDES_KEY, ITEMS_KEY, STORAGE_KEY } from '../lib/constants';
+import { DEFAULT_CONFIG, OVERRIDES_KEY_V2, ITEMS_KEY, STORAGE_KEY_V2 } from '../lib/constants';
 
 const STORAGE_PREFIX = 'salary_timer_';
 
 describe('configStore', () => {
   beforeEach(() => {
     localStorage.clear();
-    // 重新初始化 store
     useConfigStore.setState({ ...DEFAULT_CONFIG });
   });
 
@@ -40,11 +39,21 @@ describe('configStore', () => {
     expect(useConfigStore.getState().monthlySalary).toBe(15000);
   });
 
-  it('persists to localStorage with key salary_timer_config_v1', () => {
+  it('persists to localStorage with key salary_timer_config_v2', () => {
     useConfigStore.getState().setConfig({ monthlySalary: 99999 });
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY_V2);
     expect(raw).toBeTruthy();
     expect(raw).toContain('99999');
+  });
+
+  it('recordedFromDate is non-empty string after init', () => {
+    // 用今天的 ISO 格式覆盖默认值
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    useConfigStore.setState({ recordedFromDate: todayStr });
+    const s = useConfigStore.getState();
+    expect(typeof s.recordedFromDate).toBe('string');
+    expect(s.recordedFromDate.length).toBeGreaterThan(0);
   });
 });
 
@@ -93,6 +102,7 @@ describe('itemsStore', () => {
 describe('calendarStore', () => {
   beforeEach(() => {
     localStorage.clear();
+    useCalendarStore.setState({ dayOverrides: {} });
   });
 
   it('initializes year/month to today', () => {
@@ -114,20 +124,42 @@ describe('calendarStore', () => {
     expect(useCalendarStore.getState()).toMatchObject({ year: 2025, month: 11 });
   });
 
-  it('toggleDay sets override', () => {
+  it('toggleDay sets override as entry object', () => {
     useCalendarStore.getState().toggleDay('2026-08-31', 'rest');
-    expect(useCalendarStore.getState().dayOverrides['2026-08-31']).toBe('rest');
+    const entry = useCalendarStore.getState().dayOverrides['2026-08-31']!;
+    expect(entry.type).toBe('rest');
+    expect(entry.multiplier).toBe(0);
+  });
+
+  it('toggleDay converts work string to entry', () => {
+    useCalendarStore.getState().toggleDay('2026-08-31', 'work');
+    const entry = useCalendarStore.getState().dayOverrides['2026-08-31']!;
+    expect(entry.type).toBe('work');
+    expect(entry.multiplier).toBe(1);
   });
 
   it('clearOverride removes override', () => {
-    useCalendarStore.setState({ dayOverrides: { '2026-08-31': 'work' } });
+    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'rest', multiplier: 0 } } });
     useCalendarStore.getState().clearOverride('2026-08-31');
     expect(useCalendarStore.getState().dayOverrides['2026-08-31']).toBeUndefined();
   });
 
-  it('persists to localStorage', () => {
+  it('persists to localStorage v2', () => {
     useCalendarStore.getState().toggleDay('2026-08-31', 'work');
-    expect(localStorage.getItem(OVERRIDES_KEY)).toBeTruthy();
+    expect(localStorage.getItem(OVERRIDES_KEY_V2)).toBeTruthy();
+  });
+
+  it('setDayOverride with null removes entry', () => {
+    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'work', multiplier: 1 } } });
+    useCalendarStore.getState().setDayOverride('2026-08-31', null);
+    expect(useCalendarStore.getState().dayOverrides['2026-08-31']).toBeUndefined();
+  });
+
+  it('setDayOverride with entry sets it', () => {
+    useCalendarStore.getState().setDayOverride('2026-08-28', { type: 'paid_overtime', multiplier: 2 });
+    const entry = useCalendarStore.getState().dayOverrides['2026-08-28']!;
+    expect(entry.type).toBe('paid_overtime');
+    expect(entry.multiplier).toBe(2);
   });
 });
 
@@ -135,7 +167,6 @@ describe('themeStore', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
-    // 重置 store
     useThemeStore.setState({ theme: 'paper' });
   });
 

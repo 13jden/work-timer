@@ -5,14 +5,12 @@
  * - 薪资配置(月薪、上班、下班、咖啡价)
  * - 休息模式
  * - 主题切换
- * - 月度记录列表
  *
  * 所有改动实时写入 configStore(Zustand persist 自动持久化)。
  */
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
-import { useMonthlyStore } from '../store/monthlyStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
 import { HOLIDAYS } from '../lib/constants';
 import { workdaysInMonth } from '../lib/compute';
@@ -20,30 +18,16 @@ import { useNow } from '../hooks/useNow';
 import { StatusBar } from '../components/StatusBar';
 import styles from './SettingsPage.module.css';
 
-const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-
 export function SettingsPage() {
   const config = useConfigStore();
   const setConfig = useConfigStore((s) => s.setConfig);
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const records = useMonthlyStore((s) => s.records);
-  const generateForMonth = useMonthlyStore((s) => s.generateForMonth);
   const now = useNow(60_000);
-
-  // 每次 tick 检查当月记录是否存在
-  useEffect(() => {
-    generateForMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
-  }, [now, config, overrides, generateForMonth]);
 
   const workdays = useMemo(
     () => workdaysInMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS),
     [now, config, overrides],
-  );
-
-  const sortedKeys = useMemo(
-    () => Object.keys(records).map(Number).sort((a, b) => b - a),
-    [records],
   );
 
   return (
@@ -145,40 +129,6 @@ export function SettingsPage() {
                 {THEME_LIST.find((t) => t.id === config.theme)?.label ?? ''}
               </span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 月度记录 */}
-      <div className={styles.group}>
-        <div className={styles.eyebrow}>月度记录 · History</div>
-        <div className={styles.card}>
-          <div className={styles.historyList}>
-            {sortedKeys.length === 0 ? (
-              <div className={styles.historyEmpty}>
-                暂无月度记录
-                <span>本月结束后自动生成</span>
-              </div>
-            ) : (
-              sortedKeys.map((k) => {
-                const r = records[k]!;
-                return (
-                  <div key={k} className={styles.historyItem}>
-                    <span className={styles.historyMonth}>
-                      {r.yyyy}年 {MONTH_NAMES[r.mm]}
-                    </span>
-                    <span className={styles.historyRight}>
-                      <span className={styles.historyAmount}>
-                        ¥{Math.round(r.totalEarned).toLocaleString('en-US')}
-                      </span>
-                      <span className={styles.historyBadge}>
-                        {r.locked ? '已锁定' : '本月'}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })
-            )}
           </div>
         </div>
       </div>

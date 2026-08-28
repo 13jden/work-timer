@@ -14,6 +14,7 @@
   --paper:        #F5F2EA;
   --paper-2:      #ECEAE0;
   --card:         #FFFFFF;
+  --card-hover:  #F5F2EA;
   --line:         #E5E2D8;
   --line-soft:    #EFEEE6;
   --muted:        #8B8B82;
@@ -50,6 +51,7 @@
   --paper:        #FAF9F6;
   --paper-2:      #F5F2EB;
   --card:         #FFFFFF;
+  --card-hover:  #F5F2EA;
   --line:         #E8E4D8;
   --line-soft:    #F0EDE5;
   --muted:        #8C8070;
