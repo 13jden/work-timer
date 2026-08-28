@@ -120,27 +120,35 @@ export function CalendarPage() {
         />
       </div>
 
-      {/* Summary */}
+      {/* Summary:无快照时显示提示 */}
       <div className={styles.summary}>
-        <div className={`${styles.summaryCard} ${styles.green}`}>
-          <div className={styles.summaryNum}>{workdaysCount}</div>
-          <div className={styles.summaryLbl}>工作日</div>
-        </div>
-        <div className={`${styles.summaryCard} ${styles.white}`}>
-          <div className={styles.summaryNum}>¥{Math.round(daily).toLocaleString('en-US')}</div>
-          <div className={styles.summaryLbl}>日均</div>
-        </div>
-        <button
-          type="button"
-          className={`${styles.summaryCard} ${styles.white} ${styles.earnCard}`}
-          onClick={() => snapshot ? setEarnOpen(true) : setGenOpen(true)}
-          title={snapshot ? '点击调整月薪' : '点击生成薪资'}
-        >
-          <div className={styles.summaryNum}>
-            ¥{Math.round(monthEarned).toLocaleString('en-US')}
+        {hasSnapshot ? (
+          <>
+            <div className={`${styles.summaryCard} ${styles.green}`}>
+              <div className={styles.summaryNum}>{workdaysCount}</div>
+              <div className={styles.summaryLbl}>工作日</div>
+            </div>
+            <div className={`${styles.summaryCard} ${styles.white}`}>
+              <div className={styles.summaryNum}>¥{Math.round(daily).toLocaleString('en-US')}</div>
+              <div className={styles.summaryLbl}>日均</div>
+            </div>
+            <button
+              type="button"
+              className={`${styles.summaryCard} ${styles.white} ${styles.earnCard}`}
+              onClick={() => snapshot ? setEarnOpen(true) : setGenOpen(true)}
+              title={snapshot ? '点击调整月薪' : '点击生成薪资'}
+            >
+              <div className={styles.summaryNum}>
+                ¥{Math.round(monthEarned).toLocaleString('en-US')}
+              </div>
+              <div className={styles.summaryLbl}>已赚</div>
+            </button>
+          </>
+        ) : (
+          <div className={styles.noSnapshot}>
+            点击右上角生成薪资
           </div>
-          <div className={styles.summaryLbl}>已赚</div>
-        </button>
+        )}
       </div>
 
       {/* 导航 */}
@@ -190,12 +198,10 @@ export function CalendarPage() {
               hasOv ? styles.dayOverride : '',
             ].filter(Boolean).join(' ');
 
-            // 过去已过工作日:显示 dayEarn(¥daily × units)
+            // 只有已生成快照时,才显示 ¥ 金额
             let earnText = '';
-            if (isWork) {
-              if (isToday) {
-                earnText = '';
-              } else if (isPast && units > 0) {
+            if (hasSnapshot && isWork) {
+              if (!isToday && isPast && units > 0) {
                 const dayEarn = daily * units;
                 earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
               }
