@@ -6,6 +6,36 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-005 完成 · 换算页 + 物品 sheet
+
+- **`src/pages/ConvertPage.tsx`** + `ConvertPage.module.css`
+- **`src/components/ItemSheet/`** — 底部弹窗(添加 / 编辑 / 删除)
+
+### Features
+
+- 物品列表:`icon / name / 需要工作 X 小时分钟`
+- 点击列表项 → 编辑模式(sheet 预填字段)
+- 添加按钮 → sheet 空白,默认 icon `📦`
+- 实时校验:名称正则、单价 > 0
+- 删除按钮仅编辑模式可见
+- 订阅 itemsStore / configStore 实现实时重算
+- sheet 关闭:点 backdrop 或保存 / 删除后自动 close
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:67 / 67 通过
+
+### Notes
+
+- 阶段 1 进度:**5 / 9**
+- 路由未接入,App.tsx 暂未显示 ConvertPage(由后续 TAB 切换组件统一管理)
+- 滑动删除未做(TASK-008 响应式时一起处理)
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-004 完成 · 今日页 UI
 
 - **`src/hooks/useNow.ts`** — 全局 ticker,每秒返回 Date
