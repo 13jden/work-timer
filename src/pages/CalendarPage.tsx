@@ -147,9 +147,6 @@ export function CalendarPage() {
   const monthLabel = `${MONTH_NAMES[month]}`;
   const yearLabel = `${year}`;
 
-  // dot 是否可点击
-  const dotCanGenerate = !hasSnapshot && !isBeforeRecordedDate;
-
   return (
     <>
       <StatusBar />
@@ -174,12 +171,12 @@ export function CalendarPage() {
           >
             <span className={styles.monthInner}>
               {monthLabel}
-              {/* Dot:无快照时叠在月份文字右上角 */}
+              {/* Dot:无快照时叠在月份文字右上角,始终accent色 */}
               {!hasSnapshot && (
                 <span
-                  className={`${styles.dot} ${dotCanGenerate ? styles.dotCanGenerate : styles.dotCannot}`}
+                  className={styles.dot}
                   aria-label="生成月度薪资"
-                  title={isBeforeRecordedDate ? '早于入职日期,无法生成' : '点击生成薪资'}
+                  title={isBeforeRecordedDate ? '早于记录日期,无法生成' : '点击生成薪资'}
                 />
               )}
             </span>
@@ -192,11 +189,11 @@ export function CalendarPage() {
         </button>
       </div>
 
-      {/* 今天快捷跳转 */}
+      {/* 今天快捷跳转:实时时间戳 */}
       {!isCurrentMonth && (
         <div className={styles.todayJump}>
           <button type="button" className={styles.todayBtn} onClick={goToToday}>
-            今天
+            NOW {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}:{String(now.getSeconds()).padStart(2, '0')}
           </button>
         </div>
       )}
@@ -222,7 +219,7 @@ export function CalendarPage() {
           </>
         ) : (
           <div className={styles.noSnapshot}>
-            {isBeforeRecordedDate ? '早于入职日期' : '点击上方月份生成薪资'}
+            {isBeforeRecordedDate ? '早于记录日期' : '点击上方月份生成薪资'}
           </div>
         )}
       </div>

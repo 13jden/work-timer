@@ -39,8 +39,7 @@
 }
 
 .monthBtnInactive .monthInner {
-  color: var(--muted);
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 .monthInner {
@@ -63,25 +62,11 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  background: var(--accent);
   border: none;
   cursor: pointer;
-  transition: transform 0.15s;
   padding: 0;
   z-index: 1;
-}
-
-.dot:active {
-  transform: scale(0.8);
-}
-
-.dotCanGenerate {
-  background: var(--accent);
-}
-
-.dotCannot {
-  background: transparent;
-  border: 2px solid var(--line);
-  cursor: not-allowed;
 }
 
 /* ── Summary ───────────────────────────────────── */
@@ -155,45 +140,58 @@
   grid-column: 1 / -1;
 }
 
-/* ── 导航 ───────────────────────────────────── */
-.nav {
+/* ── 今天快捷按钮 ─────────────────────────────────── */
+/* 实时时间戳样式:像计时器上的 NOW 刻度 */
+.todayJump {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 16px 12px;
-}
-
-.navBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  color: var(--muted);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.2s, color 0.2s;
+  padding: 6px 0 10px;
 }
 
-.navBtn:hover {
-  background: var(--ink);
-  color: var(--accent);
-}
-
-.navTitle {
+.todayBtn {
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
   text-transform: uppercase;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 4px 14px;
   cursor: pointer;
-  border: none;
-  background: none;
-  padding: 4px 8px;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 秒级脉冲动画,表示这是实时时刻 */
+.todayBtn::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.todayBtn:hover {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.todayBtn:hover::before {
+  background: var(--ink);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+  50%       { opacity: 0.4; transform: translateY(-50%) scale(0.7); }
 }
 
 /* ── 网格 ───────────────────────────────────── */
