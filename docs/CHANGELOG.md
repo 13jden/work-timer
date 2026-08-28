@@ -6,6 +6,68 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Changed · TASK-011 增量调整 · 月份主题色 + 圆点规则 + now 按钮 + 已赚合并到 GenerateSheet
+
+#### 月份主题色(随主题切换)
+- `paper`(浅色):月份「八月」= **纯黑 `#000`**
+- `obsidian`(暗紫):月份 = **accent 紫 `#7C6FF7`**
+- `gold`(香槟金):月份 = **accent 金 `#C9A84C`**
+
+#### 圆点规则:过去月 + 当前月显示,未来月不显示
+- 删掉 `isBeforeRecordedDate` 判断(`recordedFromDate` 太严,会把历史月挡掉)
+- 新增 `isFutureMonth`:未来月不能生成/调整,Header 灰显 + 已赚卡片无圆点
+
+#### nav `now` 按钮
+- 仅 `!isCurrentMonth` 时显示
+- 颜色 = `var(--accent)`,hover 加深色背景
+
+#### 已赚点击 → 合并到 GenerateSheet
+- 删除 `EarnSheet` 组件的使用 / import / handleEarnEdit
+- 已赚卡片点击 → 统一打开 `GenerateSheet`(展示月薪 input + 工作日 + 日均 + 总收入预览)
+- 无快照 → 创建快照;有快照 → 覆盖
+- 当前月同步 `useConfigStore.setState({ monthlySalary })`
+
+---
+
+## [Unreleased] · 2026-08-28
+
+### Added · TASK-011 完成 · CalendarPage header 居中 + 历史月份引导
+
+- **`src/pages/CalendarPage.tsx`** — Header 改 `<button>`(月份居中可点),Summary 始终三卡,已赚卡片改 button + 圆点指示器
+- **`src/pages/CalendarPage.module.css`** — 新增 `.headInner` / `.summaryEarn` / `.earnDot`,删除 `.headLeft` / `.dotBtn` / `.dotEmpty` / `.dotGenerated` / `.noSnapshot`
+- **`docs/plans/bugfix/TASK-011-calendar-header-rework.md`** — 计划文档
+
+### Changed
+
+- **Header 月份居中**:删掉右上角 dot 按钮,「月份 / 年份」整块可点击 → 弹出 `GenerateSheet`
+- **Summary 始终三卡**:无论是否有快照,都显示「工作日 / 日均 / 已赚」三张卡片
+- **无快照时已赚 = ¥0**:`monthEarned` / `todayEarn` 在无快照时直接返回 0,日历格不显示金额
+- **已赚卡片圆点指示器**:无快照 + 未到记录区间 → 右上角 6px 圆点 + 1.6s 脉冲动画,提示可点击
+- **已赚卡片点击逻辑**:
+  - 无快照 → 打开 `GenerateSheet`(生成 → 圆点消失,已赚显示真实数字)
+  - 有快照 → 打开 `EarnSheet`(调整月薪;当前月同步 `config.monthlySalary`,历史月仅更新快照)
+- **Header 禁用态**:早于 `recordedFromDate` 时整个 header 灰显且不可点
+
+### Removed
+
+- `.dotBtn` / `.dotEmpty` / `.dotGenerated`(右上角圆点按钮 + 其样式)
+- `.noSnapshot` 提示条(已无意义,改用三卡 + 圆点)
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:93 / 93 通过
+- ✅ `npm run build`:184KB / gzip 60KB
+
+### Notes
+
+- 本次只调整 UI 行为,store / compute / sheet 组件均未改动,所有原有逻辑保留
+- 阶段 1 进度:**8 / 9 → 9 / 9**(阶段 1 完成,待 TASK-008 / 009 收尾)
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-010 完成 · 月度记录重做 + 工作日类型 + 用户记录区间
 
 - **`src/lib/types.ts`** — 新增 `DayType` / `DayOverrideEntry` / `MonthlySnapshot`

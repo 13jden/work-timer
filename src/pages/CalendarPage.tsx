@@ -11,7 +11,6 @@ import { formatDateKey } from '../lib/time';
 import { StatusBar } from '../components/StatusBar';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
-import { EarnSheet } from '../components/EarnSheet';
 import styles from './CalendarPage.module.css';
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
@@ -44,7 +43,6 @@ export function CalendarPage() {
   const clearOverride = useCalendarStore((s) => s.clearOverride);
   const snapshots = useMonthlyStore((s) => s.snapshots);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
-  const setConfig = useConfigStore((s) => s.setConfig);
 
   // 当前月的快照
   const currentKey = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -55,15 +53,10 @@ export function CalendarPage() {
   const isCurrentMonth =
     year === now.getFullYear() && month === now.getMonth();
 
-  // 是否早于 recordedFromDate(不能生成快照)
-  const isBeforeRecordedDate = useMemo(() => {
-    const rd = config.recordedFromDate;
-    if (!rd) return false; // 空则不限制
-    const [ry, rm, rd2] = rd.split('-').map(Number);
-    const recTs = new Date(ry!, rm! - 1, rd2!).getTime();
-    const viewTs = new Date(year, month, 1).getTime();
-    return viewTs < recTs;
-  }, [config.recordedFromDate, year, month]);
+  // 是否未来月(未来月不允许补生成)
+  const isFutureMonth =
+    year > now.getFullYear() ||
+    (year === now.getFullYear() && month > now.getMonth());
 
   // 快照日均
   const daily = useMemo(
@@ -77,20 +70,20 @@ export function CalendarPage() {
   // 快照月薪
   const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
 
-  // 当月已赚(用快照月薪,若快照存在)
-  const monthEarned = useMemo(
-    () => {
-      const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
-      return monthEarnedSoFar(year, month, now, effectiveConfig, overrides, HOLIDAYS);
-    },
-    [year, month, now, config, overrides, effectiveSalary],
-  );
+  // 当月已赚(用快照月薪,若快照存在;无快照则固定显示 ¥0)
+  const monthEarned = hasSnapshot
+    ? (() => {
+        const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
+        return monthEarnedSoFar(year, month, now, effectiveConfig, overrides, HOLIDAYS);
+      })()
+    : 0;
 
-  // 当日已赚(仅当前月显示)
+  // 当日已赚(仅当前月 + 有快照时显示)
   const todayEarn = useMemo(() => {
-    if (!isCurrentMonth) return 0;
-    return todayEarned(now, config, overrides, HOLIDAYS);
-  }, [isCurrentMonth, now, config, overrides]);
+    if (!isCurrentMonth || !hasSnapshot) return 0;
+    const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
+    return todayEarned(now, effectiveConfig, overrides, HOLIDAYS);
+  }, [isCurrentMonth, hasSnapshot, now, config, overrides, effectiveSalary]);
 
   // 工作日数
   const workdaysCount = useMemo(() => {
@@ -113,9 +106,6 @@ export function CalendarPage() {
   // GenerateSheet
   const [genOpen, setGenOpen] = useState(false);
 
-  // EarnSheet
-  const [earnOpen, setEarnOpen] = useState(false);
-
   function openDay(d: number) {
     const date = new Date(year, month, d);
     setPickedDate(date);
@@ -128,19 +118,14 @@ export function CalendarPage() {
     ? isWorkday(pickedDate, config, overrides, HOLIDAYS)
     : false;
 
+  /**
+   * GenerateSheet 确认:统一创建 / 覆盖快照。
+   * 当前月时同步更新 config.monthlySalary,让设置页和其它计算页立刻生效。
+   */
   function handleGenerate(salary: number) {
     createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
-  }
-
-  /**
-   * EarnSheet 确认:
-   * - 当前月 → 同时更新 config.monthlySalary(设置页同步)
-   * - 历史月 → 只更新快照
-   */
-  function handleEarnEdit(salary: number) {
-    createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
     if (isCurrentMonth) {
-      setConfig({ monthlySalary: salary });
+      useConfigStore.setState({ monthlySalary: salary });
     }
   }
 
@@ -151,57 +136,59 @@ export function CalendarPage() {
     <>
       <StatusBar />
 
-      {/* Header:月份居中,Dot 叠在右上角 */}
-      {/* Header:只显示月份 + dot */}
-      <div className={styles.head}>
-        <div className={styles.headLeft}>
+      {/* Header:月份居中可点击 → 弹出 GenerateSheet(未来月不可点) */}
+      <button
+        type="button"
+        className={styles.head}
+        onClick={() => !isFutureMonth && setGenOpen(true)}
+        disabled={isFutureMonth}
+        title={isFutureMonth ? '未来月份,无法生成' : '点击设置月度薪资'}
+        aria-label="设置当月薪资"
+      >
+        <div className={styles.headInner}>
           <div className={styles.month}>{monthLabel}</div>
           <div className={styles.year}>{yearLabel}</div>
         </div>
+      </button>
+
+      {/* Summary:始终三卡;已赚无快照时显示 ¥0 + 右上角小圆点 */}
+      <div className={styles.summary}>
+        <div className={`${styles.summaryCard} ${styles.green}`}>
+          <div className={styles.summaryNum}>{workdaysCount}</div>
+          <div className={styles.summaryLbl}>工作日</div>
+        </div>
+        <div className={`${styles.summaryCard} ${styles.white}`}>
+          <div className={styles.summaryNum}>
+            ¥{Math.round(daily).toLocaleString('en-US')}
+          </div>
+          <div className={styles.summaryLbl}>日均</div>
+        </div>
         <button
           type="button"
-          className={`${styles.dotBtn} ${hasSnapshot ? styles.dotGenerated : styles.dotEmpty}`}
-          onClick={() => !isBeforeRecordedDate && setGenOpen(true)}
-          disabled={isBeforeRecordedDate}
-          title={isBeforeRecordedDate ? '早于记录日期,无法生成' : hasSnapshot ? '已生成薪资' : '点击生成薪资'}
-          aria-label="生成月度薪资"
-        />
-      </div>
-
-      {/* Summary:无快照时显示提示 */}
-      <div className={styles.summary}>
-        {hasSnapshot ? (
-          <>
-            <div className={`${styles.summaryCard} ${styles.green}`}>
-              <div className={styles.summaryNum}>{workdaysCount}</div>
-              <div className={styles.summaryLbl}>工作日</div>
-            </div>
-            <div className={`${styles.summaryCard} ${styles.white}`}>
-              <div className={styles.summaryNum}>¥{Math.round(daily).toLocaleString('en-US')}</div>
-              <div className={styles.summaryLbl}>日均</div>
-            </div>
-            <div className={`${styles.summaryCard} ${styles.white}`}>
-              <div className={styles.summaryNum}>
-                ¥{Math.round(monthEarned).toLocaleString('en-US')}
-              </div>
-              <div className={styles.summaryLbl}>已赚</div>
-            </div>
-          </>
-        ) : (
-          <div className={styles.noSnapshot}>
-            {isBeforeRecordedDate ? '早于记录日期' : '点击上方月份生成薪资'}
+          className={`${styles.summaryCard} ${styles.white} ${styles.summaryEarn}`}
+          onClick={() => setGenOpen(true)}
+          title={hasSnapshot ? '调整月薪' : '生成当月薪资'}
+        >
+          <div className={styles.summaryNum}>
+            ¥{Math.round(monthEarned).toLocaleString('en-US')}
           </div>
-        )}
+          <div className={styles.summaryLbl}>已赚</div>
+          {!hasSnapshot && !isFutureMonth && (
+            <span className={styles.earnDot} aria-label="可点击生成薪资" />
+          )}
+        </button>
       </div>
 
-      {/* 月份导航:‹  now  › */}
+      {/* 月份导航:‹  [now]  › (now 仅非当月显示,颜色用主题 accent) */}
       <div className={styles.nav}>
         <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
           ‹
         </button>
-        <button type="button" className={styles.navTitle} onClick={goToToday}>
-          now
-        </button>
+        {!isCurrentMonth && (
+          <button type="button" className={styles.navTitle} onClick={goToToday}>
+            now
+          </button>
+        )}
         <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
           ›
         </button>
@@ -282,7 +269,7 @@ export function CalendarPage() {
         onReset={(key) => clearOverride(key)}
       />
 
-      {/* GenerateSheet:生成月度薪资 */}
+      {/* GenerateSheet:点击月份 / 已赚 → 设置 / 调整月薪 */}
       <GenerateSheet
         open={genOpen}
         year={year}
@@ -293,16 +280,6 @@ export function CalendarPage() {
         holidays={HOLIDAYS}
         onClose={() => setGenOpen(false)}
         onConfirm={handleGenerate}
-      />
-
-      {/* EarnSheet:点击已赚修改月薪 */}
-      <EarnSheet
-        open={earnOpen}
-        year={year}
-        month={month}
-        currentSalary={snapshot?.salary ?? config.monthlySalary}
-        onClose={() => setEarnOpen(false)}
-        onConfirm={handleEarnEdit}
       />
     </>
   );
