@@ -6,6 +6,44 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-003 完成 · 状态层迁移到 Zustand
+
+- **`zustand`** v5 安装
+- **`src/lib/constants.ts`** — 从 `state.js` 迁移所有常量(STORAGE_KEY、DEFAULT_CONFIG、THEMES、DEFAULT_ITEMS、QUOTES、EMOJI_CHOICES、HOLIDAYS)
+- **`src/lib/storage.ts`** — `loadJSON` / `saveJSON` / `removeJSON` 类型化封装
+- **`src/store/configStore.ts`** — 配置 store(自动持久化,排除 theme 字段)
+- **`src/store/itemsStore.ts`** — 物品 store(自动持久化,add 时 uuid 自增 order)
+- **`src/store/calendarStore.ts`** — 日历 store(年/月 + dayOverrides)
+- **`src/store/themeStore.ts`** — 主题 store(独立 storage key,DOM + meta 同步,导出 `bootstrapTheme()`)
+- **`src/lib/storage.test.ts`** — storage 单测(7 例)
+- **`src/store/store.test.ts`** — 全部 store 单测(19 例)
+
+### Changed
+
+- **`storage key 保持向后兼容`**:
+  - `salary_timer_config_v1`(config)
+  - `salary_timer_items_v1`(items)
+  - `salary_timer_day_overrides_v1`(overrides)
+  - `salary_timer_theme_v1`(新增,独立管理 theme)
+- 旧版 HTML 应用的数据**无需迁移**即可被 React 版读取
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:**67 / 67 通过**
+- ✅ 覆盖率:**96.92% statements / 91.3% branches / 95.23% functions / 99.11% lines**
+- ✅ `npm run build`:143KB / 600ms
+
+### Notes
+
+- 阶段 1 进度:**3 / 9**(TASK-001 ✅ TASK-002 ✅ TASK-003 ✅)
+- 状态层完成,后续 UI 任务可以直接订阅 store
+- `bootstrapTheme()` 需要在 App.tsx 启动时调用,防止主题闪烁
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-002 完成 · 核心计算层迁移
 
 - **`src/lib/types.ts`** — 类型定义(Config / DayOverrides / HolidayMap / DayState 判别联合等)
