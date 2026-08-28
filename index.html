@@ -1448,6 +1448,10 @@
                                     <span class="value"><input type="time" id="set-end-time" value="18:00"></span>
                                 </div>
                                 <div class="settings-row">
+                                    <span class="label">午休开始</span>
+                                    <span class="value"><input type="time" id="set-lunch-start" value="12:00"></span>
+                                </div>
+                                <div class="settings-row">
                                     <span class="label">午休时长</span>
                                     <span class="value">
                                         <input type="number" inputmode="decimal" id="set-lunch-break" placeholder="1" value="1" min="0" max="4" step="0.5">
@@ -1583,6 +1587,7 @@
             startTime: '09:00',
             endTime: '18:00',
             lunchBreak: 1,
+            lunchStart: '12:00',
             coffeePrice: 15,
             restMode: 2,
             lunchRest: true,
@@ -1814,6 +1819,11 @@
             return total;
         }
 
+        // Total calendar minutes from midnight to current second-precision now
+        function nowInMinutes(d = new Date()) {
+            return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+        }
+
         function workdaysInMonth(year, month) {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             let count = 0;
@@ -1856,7 +1866,7 @@
 
             const startM = toMinutes(config.startTime);
             const endM   = toMinutes(config.endTime);
-            const nowM   = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+            const nowM   = nowInMinutes(now);
 
             if (nowM <= startM) return 0;
             if (nowM >= endM) return dailySalary();
@@ -1864,9 +1874,9 @@
             let workedMin = nowM - startM;
 
             if (config.lunchRest && config.lunchBreak > 0) {
-                const lunchStart = 12 * 60;
+                const lunchStart = toMinutes(config.lunchStart || '12:00');
                 const lunchEnd   = lunchStart + config.lunchBreak * 60;
-                if (nowM > lunchEnd)         workedMin -= config.lunchBreak * 60;
+                if (nowM >= lunchEnd)       workedMin -= config.lunchBreak * 60;
                 else if (nowM > lunchStart) workedMin -= (nowM - lunchStart);
             }
 
@@ -1877,7 +1887,7 @@
             const now = new Date();
             const startM = toMinutes(config.startTime);
             const endM   = toMinutes(config.endTime);
-            const nowM   = now.getHours() * 60 + now.getSeconds() / 60;
+            const nowM   = nowInMinutes(now);
 
             if (!isWorkday(now)) return { mode: 'rest' };
             if (nowM < startM) {
@@ -1885,11 +1895,7 @@
                 return formatHMS(diff * 60 * 1000, '等待开工', '距离上班还有');
             }
             if (nowM >= endM) {
-                const total = Math.floor((endM - startM - config.lunchBreak * 60) * 60);
-                const h = Math.floor(total / 3600);
-                const m = Math.floor((total % 3600) / 60);
-                const display = pad2(h) + ':' + pad2(m) + ':' + '00';
-                return { mode: 'done', display, label: '今日完成', status: '今日收工', totalSeconds: total };
+                return { mode: 'done', display: '00:00:00', label: '今日已完成', status: '今日收工' };
             }
             const diff = (endM - nowM) * 60 * 1000;
             return formatHMS(diff, '工作计价中', '距离今天下班');
@@ -1911,7 +1917,7 @@
             const now = new Date();
             const startM = toMinutes(config.startTime);
             const endM   = toMinutes(config.endTime);
-            const nowM   = now.getHours() * 60 + now.getSeconds() / 60;
+            const nowM   = nowInMinutes(now);
             if (!isWorkday(now)) return 0;
             if (nowM < startM) return 0;
             if (nowM >= endM) return 100;
@@ -2180,6 +2186,7 @@
             $('set-monthly-salary').value = config.monthlySalary;
             $('set-start-time').value = config.startTime;
             $('set-end-time').value = config.endTime;
+            $('set-lunch-start').value = config.lunchStart || '12:00';
             $('set-lunch-break').value = config.lunchBreak;
             $('set-coffee-price').value = config.coffeePrice;
             $('set-rest-mode').value = String(config.restMode != null ? config.restMode : 2);
@@ -2369,6 +2376,7 @@
             const salary = parseFloat($('set-monthly-salary').value);
             const startTime = $('set-start-time').value;
             const endTime = $('set-end-time').value;
+            const lunchStart = $('set-lunch-start').value || '12:00';
             const lunch = parseFloat($('set-lunch-break').value) || 0;
             const coffee = parseFloat($('set-coffee-price').value);
             const restMode = parseInt($('set-rest-mode').value, 10) || 2;
@@ -2377,12 +2385,16 @@
             if (!startTime || !endTime || startTime >= endTime) { toast('上班时间必须早于下班时间'); return; }
             const workMins = toMinutes(endTime) - toMinutes(startTime);
             if (lunch * 60 >= workMins) { toast('午休过长'); return; }
+            if (toMinutes(lunchStart) < toMinutes(startTime) || toMinutes(lunchStart) + lunch * 60 > toMinutes(endTime)) {
+                toast('午休时间应在工作时间之内'); return;
+            }
             if (isNaN(coffee) || coffee <= 0) { toast('请输入咖啡单价'); return; }
 
             config = {
                 ...config,   // preserve existing fields (theme, etc.)
                 monthlySalary: salary,
                 startTime, endTime,
+                lunchStart,
                 lunchBreak: lunch,
                 coffeePrice: coffee,
                 restMode,
