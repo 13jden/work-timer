@@ -152,51 +152,21 @@ export function CalendarPage() {
       <StatusBar />
 
       {/* Header:月份居中,Dot 叠在右上角 */}
+      {/* Header:只显示月份 + dot */}
       <div className={styles.head}>
-        <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
-          ‹
-        </button>
-
-        <div className={styles.monthWrap}>
-          {/* 月份标题:整个可点击打开 sheet(无快照 → generate / 有快照 → earn) */}
-          <button
-            type="button"
-            className={`${styles.monthBtn} ${isBeforeRecordedDate ? styles.monthBtnInactive : ''}`}
-            onClick={() => {
-              if (isBeforeRecordedDate) return;
-              if (hasSnapshot) setEarnOpen(true);
-              else setGenOpen(true);
-            }}
-            disabled={isBeforeRecordedDate}
-          >
-            <span className={styles.monthInner}>
-              {monthLabel}
-              {/* Dot:无快照时叠在月份文字右上角,始终accent色 */}
-              {!hasSnapshot && (
-                <span
-                  className={styles.dot}
-                  aria-label="生成月度薪资"
-                  title={isBeforeRecordedDate ? '早于记录日期,无法生成' : '点击生成薪资'}
-                />
-              )}
-            </span>
-            <span className={styles.year}>{yearLabel}</span>
-          </button>
+        <div className={styles.headLeft}>
+          <div className={styles.month}>{monthLabel}</div>
+          <div className={styles.year}>{yearLabel}</div>
         </div>
-
-        <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
-          ›
-        </button>
+        <button
+          type="button"
+          className={`${styles.dotBtn} ${hasSnapshot ? styles.dotGenerated : styles.dotEmpty}`}
+          onClick={() => !isBeforeRecordedDate && setGenOpen(true)}
+          disabled={isBeforeRecordedDate}
+          title={isBeforeRecordedDate ? '早于记录日期,无法生成' : hasSnapshot ? '已生成薪资' : '点击生成薪资'}
+          aria-label="生成月度薪资"
+        />
       </div>
-
-      {/* 今天快捷跳转:实时时间戳 */}
-      {!isCurrentMonth && (
-        <div className={styles.todayJump}>
-          <button type="button" className={styles.todayBtn} onClick={goToToday}>
-            NOW {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}:{String(now.getSeconds()).padStart(2, '0')}
-          </button>
-        </div>
-      )}
 
       {/* Summary:无快照时显示提示 */}
       <div className={styles.summary}>
@@ -222,6 +192,19 @@ export function CalendarPage() {
             {isBeforeRecordedDate ? '早于记录日期' : '点击上方月份生成薪资'}
           </div>
         )}
+      </div>
+
+      {/* 月份导航:‹  now  › */}
+      <div className={styles.nav}>
+        <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
+          ‹
+        </button>
+        <button type="button" className={styles.navTitle} onClick={goToToday}>
+          now
+        </button>
+        <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
+          ›
+        </button>
       </div>
 
       {/* 网格 */}

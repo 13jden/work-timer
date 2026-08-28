@@ -1,48 +1,16 @@
 .head {
+  padding: 20px 20px 12px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 20px 16px 12px;
 }
 
-.monthWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 月份按钮:点整个区域打开 sheet(无快照 → generate / 有快照 → earn) */
-.monthBtn {
+.headLeft {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 4px 12px;
-  line-height: 1;
-  border-radius: var(--r-sm);
-  transition: background 0.15s;
 }
 
-.monthBtn:hover:not(:disabled) {
-  background: var(--card-hover);
-}
-
-.monthBtn:disabled {
-  cursor: default;
-}
-
-.monthBtnInactive {
-  cursor: default;
-}
-
-.monthBtnInactive .monthInner {
-  opacity: 0.3;
-}
-
-.monthInner {
+.month {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 38px;
@@ -50,23 +18,50 @@
   font-weight: 400;
   letter-spacing: -1px;
   margin: 0;
-  display: inline-block;
-  position: relative;
+  color: var(--ink);
 }
 
-/* Dot:绝对定位在月份文字右上角 */
-.dot {
-  position: absolute;
-  top: 2px;
-  right: -14px;
-  width: 10px;
-  height: 10px;
+.year {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+/* ── Dot(右上角) ───────────────────────────────── */
+.dotBtn {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--accent);
   border: none;
   cursor: pointer;
-  padding: 0;
-  z-index: 1;
+  margin-top: 4px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.dotBtn:active {
+  transform: scale(0.9);
+}
+
+.dotBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.dotEmpty {
+  background: var(--accent);
+}
+
+.dotEmpty:hover {
+  box-shadow: 0 0 0 4px var(--accent-shadow);
+}
+
+.dotGenerated {
+  background: transparent;
+  border: 2px solid var(--line);
 }
 
 /* ── Summary ───────────────────────────────────── */
@@ -94,11 +89,6 @@
   border: 1px solid var(--line-soft);
 }
 
-.summaryCard.accent {
-  background: var(--ink);
-  color: var(--accent);
-}
-
 .summaryNum {
   font-family: var(--font-display);
   font-size: 22px;
@@ -109,20 +99,12 @@
   margin-bottom: 4px;
 }
 
-.summaryCard.accent .summaryNum {
-  color: var(--accent);
-}
-
 .summaryLbl {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.6;
-}
-
-.summaryCard.accent .summaryLbl {
-  opacity: 0.7;
 }
 
 .noSnapshot {
@@ -140,58 +122,45 @@
   grid-column: 1 / -1;
 }
 
-/* ── 今天快捷按钮 ─────────────────────────────────── */
-/* 实时时间戳样式:像计时器上的 NOW 刻度 */
-.todayJump {
+/* ── 月份导航 ───────────────────────────────────── */
+.nav {
   display: flex;
-  justify-content: center;
-  padding: 6px 0 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 12px;
 }
 
-.todayBtn {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: transparent;
-  border: 1px solid var(--accent);
-  border-radius: 20px;
-  padding: 4px 14px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-
-/* 秒级脉冲动画,表示这是实时时刻 */
-.todayBtn::before {
-  content: '';
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 5px;
-  height: 5px;
+.navBtn {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s, color 0.2s;
 }
 
-.todayBtn:hover {
-  background: var(--accent);
-  color: var(--ink);
-}
-
-.todayBtn:hover::before {
+.navBtn:hover {
   background: var(--ink);
-  animation: none;
+  color: var(--accent);
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
-  50%       { opacity: 0.4; transform: translateY(-50%) scale(0.7); }
+.navTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 4px 8px;
 }
 
 /* ── 网格 ───────────────────────────────────── */
