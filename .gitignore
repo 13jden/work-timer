@@ -3,6 +3,14 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Vite / React build
+dist/
+.vite/
+
+# Tauri build (Phase 2+)
+src-tauri/target/
+src-tauri/gen/
+
 # Capacitor / Android build artifacts
 android/.gradle/
 android/build/

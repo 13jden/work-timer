@@ -1,0 +1,104 @@
+/* ============================================================
+   SETTINGS PAGE
+   ============================================================ */
+.settings-group {
+    margin: 0 16px 18px;
+}
+.settings-group .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 0 4px 8px;
+}
+.settings-card {
+    background: var(--card);
+    border-radius: var(--r-md);
+    border: 1px solid var(--line-soft);
+    overflow: hidden;
+}
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    gap: 12px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row .label {
+    font-size: 14px;
+    font-weight: 500;
+}
+.settings-row .value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 14px;
+}
+.settings-row input[type=number],
+.settings-row input[type=time] {
+    width: 110px;
+    text-align: right;
+    border: none;
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--ink);
+    font-weight: 600;
+    outline: none;
+    padding: 2px 0;
+}
+.settings-row input[type=time] { width: 90px; }
+.settings-row input::placeholder { color: var(--muted-2); }
+.settings-row .prefix, .settings-row .suffix {
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-size: 13px;
+}
+.settings-row .chevron {
+    color: var(--muted-2);
+    font-size: 14px;
+}
+.settings-action {
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    text-align: right;
+    font-weight: 600;
+}
+.settings-action:active { color: var(--muted); }
+
+.save-btn {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 6px 16px 0;
+    padding: 16px;
+    background: var(--accent);
+    color: var(--ink);
+    border: none;
+    border-radius: var(--r-md);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+}
+.save-btn:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+.settings-footer {
+    text-align: center;
+    padding: 28px 20px 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted-2);
+    text-transform: uppercase;
+}

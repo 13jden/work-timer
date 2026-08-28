@@ -1,0 +1,74 @@
+<!--
+  Mobile Hero  ·  Status Bar + Hero + Stats
+  Rendered on every viewport, but the layout collapses to single-column on mobile.
+  Mobile-only: status bar, topbar (page header on each page).
+-->
+<div class="status-bar">
+    <span id="status-time">9:41</span>
+    <span class="right">
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor" aria-hidden="true">
+            <path d="M1 7h2v3H1zM5 5h2v5H5zM9 3h2v7H9zM13 1h2v9h-2z"/>
+        </svg>
+        <svg width="24" height="11" viewBox="0 0 24 11" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <rect x="0.5" y="0.5" width="20" height="10" rx="2"/>
+            <rect x="2" y="2" width="17" height="7" rx="1" fill="currentColor" stroke="none"/>
+            <path d="M22 3.5v4"/>
+        </svg>
+    </span>
+</div>
+
+<div class="hero">
+    <div class="hero-col-left">
+        <div class="timer-card">
+            <div class="timer-status">
+                <span class="status-dot"></span>
+                <span id="work-status-text">计算中</span>
+            </div>
+            <div class="timer-display" id="timer-display">--:--:--</div>
+            <div class="timer-label" id="timer-label">距离下班</div>
+            <div class="timer-shift">
+                <div class="left">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1"/>
+                        <path d="M5 2v3l2 1"/>
+                    </svg>
+                    <strong id="shift-label">SHIFT</strong>
+                </div>
+                <span class="pct" id="progress-percent">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+            <div class="timer-range">
+                <span id="time-start">09:00</span>
+                <span id="time-end">18:00</span>
+            </div>
+        </div>
+
+        <div class="quote-card" id="quote-card-mobile">
+            <span class="quote-mark">"</span>
+            <span class="quote-body" id="daily-quote">下班不是奖励，是边界。</span>
+        </div>
+    </div>
+
+    <div class="hero-col-right">
+        <div class="stat-card income">
+            <div class="stat-index">01 / INCOME</div>
+            <div class="stat-value" id="today-earned">¥0.00</div>
+            <div class="stat-sub" id="hourly-rate">¥0.00 / 小时</div>
+            <div class="stat-extra" id="per-second">¥0.0000 / 秒</div>
+        </div>
+        <div class="stat-card equivalent">
+            <div class="stat-index">02 / WORTH</div>
+            <div class="stat-value flavor" id="coffee-count">0 杯</div>
+            <div class="stat-sub" id="coffee-price-sub">按 ¥15 算</div>
+            <div class="stat-extra" id="open-convert" style="cursor:pointer;">查看更多 →</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quote shown only on desktop (≥680px) -->
+<div class="quote-card" id="quote-card-desktop">
+    <span class="quote-mark">"</span>
+    <span class="quote-body" id="daily-quote-desktop">下班不是奖励，是边界。</span>
+</div>

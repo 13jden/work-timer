@@ -1,0 +1,41 @@
+<!--
+  Sheets & Toast  ·  Modal bottom-sheets and global toast container.
+-->
+<div class="sheet-backdrop" id="sheet-backdrop">
+    <!-- Item Sheet: add / edit convert items -->
+    <div class="sheet" id="item-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="item-sheet-title">添加物品</div>
+        <div class="field">
+            <label>名称</label>
+            <input type="text" id="item-name" maxlength="20" placeholder="比如：拿铁、电影票">
+        </div>
+        <div class="field">
+            <label>单价（元）</label>
+            <input type="number" inputmode="decimal" id="item-price" placeholder="0.00" min="0.01">
+        </div>
+        <div class="field">
+            <label>图标</label>
+            <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+        <div class="sheet-actions">
+            <button class="secondary" id="item-cancel">取消</button>
+            <button class="danger hidden" id="item-delete">删除</button>
+            <button class="primary" id="item-save">保存</button>
+        </div>
+    </div>
+
+    <!-- Day Sheet: calendar day detail / toggle -->
+    <div class="sheet" id="day-sheet" style="display:none;">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="day-sheet-date">8月27日 周四</div>
+        <div style="text-align:center;font-family:var(--font-display);font-size:36px;line-height:1;margin-bottom:6px;" id="day-sheet-earn">¥0</div>
+        <div style="text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:24px;" id="day-sheet-type">工作日</div>
+        <div class="sheet-actions">
+            <button class="secondary" id="day-toggle" style="flex:2;">切换为休息日</button>
+            <button class="primary" id="day-reset" style="flex:1;">重置</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>

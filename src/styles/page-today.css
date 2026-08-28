@@ -1,0 +1,37 @@
+/* ============================================================
+   TOP BAR (mobile only)
+   ============================================================ */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 10px;
+}
+@media (min-width: 680px) {
+    .topbar { display: none; }
+}
+.topbar .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+.topbar .center {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: 0.2px;
+}
+.topbar .right { font-size: 11px; color: var(--muted); }
+.topbar .right-link {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 0;
+}

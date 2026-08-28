@@ -1,0 +1,168 @@
+/* ============================================================
+   MODAL / SHEET
+   ============================================================ */
+.sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,15,15,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ease);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.sheet-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.sheet {
+    width: 100%;
+    background: var(--paper);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding: 8px 20px calc(20px + var(--safe-bottom));
+    transform: translateY(100%);
+    transition: transform 0.4s var(--ease-spring);
+    max-height: 85%;
+    overflow-y: auto;
+}
+.sheet-backdrop.is-open .sheet { transform: none; }
+.sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+}
+.sheet-title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 400;
+    text-align: center;
+    margin-bottom: 16px;
+}
+.field {
+    margin-bottom: 14px;
+}
+.field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-left: 4px;
+}
+.field input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-sm);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field input:focus {
+    border-color: var(--accent-deep);
+    box-shadow: 0 0 0 3px rgba(159, 204, 0, 0.15);
+}
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-sm);
+}
+.emoji-grid button {
+    aspect-ratio: 1;
+    font-size: 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.emoji-grid button:active { background: var(--paper-2); }
+.emoji-grid button.selected {
+    background: var(--accent);
+    transform: scale(0.95);
+}
+
+/* Theme swatch */
+.theme-swatch.is-active {
+    border-color: var(--ink) !important;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 3px var(--accent-shadow);
+}
+.theme-swatch:hover { transform: scale(1.1); }
+.sheet-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+.sheet-actions button {
+    flex: 1;
+    padding: 14px;
+    border-radius: var(--r-md);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.sheet-actions .primary {
+    background: var(--ink);
+    color: var(--accent);
+}
+.sheet-actions .primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.sheet-actions .secondary {
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line-soft);
+}
+.sheet-actions .danger {
+    background: var(--danger);
+    color: white;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translate(-50%, 12px);
+    background: var(--ink);
+    color: var(--accent);
+    padding: 12px 24px;
+    border-radius: 100px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 12px 32px -8px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 300;
+    transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* Utility */
+.hidden { display: none !important; }
