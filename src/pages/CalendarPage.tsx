@@ -1,14 +1,13 @@
 /**
  * CalendarPage — 月度工作日网格
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { HOLIDAYS } from '../lib/constants';
-import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits } from '../lib/compute';
+import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, todayEarned } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
-import { useNow } from '../hooks/useNow';
 import { StatusBar } from '../components/StatusBar';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
@@ -19,7 +18,21 @@ const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月',
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 export function CalendarPage() {
-  const now = useNow(60_000);
+  // 页面可见时刷新 now(秒级)
+  const [now, setNow] = useState(() => new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    function tick() {
+      setNow(new Date());
+    }
+    tick();
+    intervalRef.current = setInterval(tick, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   const config = useConfigStore();
   const year = useCalendarStore((s) => s.year);
   const month = useCalendarStore((s) => s.month);
@@ -31,15 +44,28 @@ export function CalendarPage() {
   const clearOverride = useCalendarStore((s) => s.clearOverride);
   const snapshots = useMonthlyStore((s) => s.snapshots);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
+  const setConfig = useConfigStore((s) => s.setConfig);
 
   // 当前月的快照
   const currentKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const hasSnapshot = currentKey in snapshots;
   const snapshot = hasSnapshot ? snapshots[currentKey] : null;
 
-  // 日均(若已生成快照则用快照的,否则用实时计算的)
-  const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
+  // 是否当前月
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth();
 
+  // 是否早于 recordedFromDate(不能生成快照)
+  const isBeforeRecordedDate = useMemo(() => {
+    const rd = config.recordedFromDate;
+    if (!rd) return false; // 空则不限制
+    const [ry, rm, rd2] = rd.split('-').map(Number);
+    const recTs = new Date(ry!, rm! - 1, rd2!).getTime();
+    const viewTs = new Date(year, month, 1).getTime();
+    return viewTs < recTs;
+  }, [config.recordedFromDate, year, month]);
+
+  // 快照日均
   const daily = useMemo(
     () => {
       if (snapshot) return snapshot.dailyRate;
@@ -48,7 +74,10 @@ export function CalendarPage() {
     [year, month, config, overrides, snapshot],
   );
 
-  // 当月已赚:用 effectiveSalary 计算(快照已锁定的月薪)
+  // 快照月薪
+  const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
+
+  // 当月已赚(用快照月薪,若快照存在)
   const monthEarned = useMemo(
     () => {
       const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
@@ -56,6 +85,12 @@ export function CalendarPage() {
     },
     [year, month, now, config, overrides, effectiveSalary],
   );
+
+  // 当日已赚(仅当前月显示)
+  const todayEarn = useMemo(() => {
+    if (!isCurrentMonth) return 0;
+    return todayEarned(now, config, overrides, HOLIDAYS);
+  }, [isCurrentMonth, now, config, overrides]);
 
   // 工作日数
   const workdaysCount = useMemo(() => {
@@ -97,28 +132,77 @@ export function CalendarPage() {
     createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
   }
 
+  /**
+   * EarnSheet 确认:
+   * - 当前月 → 同时更新 config.monthlySalary(设置页同步)
+   * - 历史月 → 只更新快照
+   */
   function handleEarnEdit(salary: number) {
     createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
+    if (isCurrentMonth) {
+      setConfig({ monthlySalary: salary });
+    }
   }
+
+  const monthLabel = `${MONTH_NAMES[month]}`;
+  const yearLabel = `${year}`;
+
+  // dot 是否可点击
+  const dotCanGenerate = !hasSnapshot && !isBeforeRecordedDate;
 
   return (
     <>
       <StatusBar />
 
-      {/* Header:月份 + 右上角 dot */}
+      {/* Header:月份居中,Dot 叠在右上角 */}
       <div className={styles.head}>
-        <div className={styles.headLeft}>
-          <div className={styles.month}>{MONTH_NAMES[month]}</div>
-          <div className={styles.year}>{year}</div>
+        <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
+          ‹
+        </button>
+
+        <div className={styles.monthWrap}>
+          {/* 月份标题:无快照时可点击打开 GenerateSheet / 有快照时可点击打开 EarnSheet */}
+          <button
+            type="button"
+            className={`${styles.monthBtn} ${hasSnapshot ? styles.monthBtnActive : dotCanGenerate ? styles.monthBtnCanGen : styles.monthBtnInactive}`}
+            onClick={() => {
+              if (isBeforeRecordedDate) return;
+              if (hasSnapshot) setEarnOpen(true);
+              else setGenOpen(true);
+            }}
+            disabled={isBeforeRecordedDate}
+          >
+            <span className={styles.monthInner}>
+              {monthLabel}
+              {/* Dot:叠在月份文字右上角 */}
+              {!hasSnapshot && (
+                <span
+                  className={`${styles.dot} ${dotCanGenerate ? styles.dotCanGenerate : styles.dotCannot}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isBeforeRecordedDate) setGenOpen(true);
+                  }}
+                  title={isBeforeRecordedDate ? '早于入职日期,无法生成' : '点击生成薪资'}
+                />
+              )}
+            </span>
+            <span className={styles.year}>{yearLabel}</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className={`${styles.dotBtn} ${hasSnapshot ? styles.dotGenerated : styles.dotEmpty}`}
-          onClick={() => setGenOpen(true)}
-          title={hasSnapshot ? '已生成薪资' : '点击生成薪资'}
-          aria-label="生成月度薪资"
-        />
+
+        <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
+          ›
+        </button>
       </div>
+
+      {/* 今天快捷跳转 */}
+      {!isCurrentMonth && (
+        <div className={styles.todayJump}>
+          <button type="button" className={styles.todayBtn} onClick={goToToday}>
+            今天
+          </button>
+        </div>
+      )}
 
       {/* Summary:无快照时显示提示 */}
       <div className={styles.summary}>
@@ -132,36 +216,27 @@ export function CalendarPage() {
               <div className={styles.summaryNum}>¥{Math.round(daily).toLocaleString('en-US')}</div>
               <div className={styles.summaryLbl}>日均</div>
             </div>
-            <button
-              type="button"
-              className={`${styles.summaryCard} ${styles.white} ${styles.earnCard}`}
-              onClick={() => snapshot ? setEarnOpen(true) : setGenOpen(true)}
-              title={snapshot ? '点击调整月薪' : '点击生成薪资'}
-            >
+            <div className={`${styles.summaryCard} ${styles.white}`}>
               <div className={styles.summaryNum}>
                 ¥{Math.round(monthEarned).toLocaleString('en-US')}
               </div>
               <div className={styles.summaryLbl}>已赚</div>
-            </button>
+            </div>
+            {/* 当日已赚(仅当前月有) */}
+            {isCurrentMonth && todayEarn > 0 && (
+              <div className={`${styles.summaryCard} ${styles.accent}`}>
+                <div className={styles.summaryNum}>
+                  ¥{todayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className={styles.summaryLbl}>今日已赚</div>
+              </div>
+            )}
           </>
         ) : (
           <div className={styles.noSnapshot}>
-            点击右上角生成薪资
+            {isBeforeRecordedDate ? '早于入职日期' : '点击上方月份生成薪资'}
           </div>
         )}
-      </div>
-
-      {/* 导航 */}
-      <div className={styles.nav}>
-        <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
-          ‹
-        </button>
-        <button type="button" className={styles.navTitle} onClick={goToToday}>
-          今天
-        </button>
-        <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
-          ›
-        </button>
       </div>
 
       {/* 网格 */}

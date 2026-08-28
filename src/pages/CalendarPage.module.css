@@ -1,16 +1,57 @@
 .head {
-  padding: 20px 20px 12px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  padding: 20px 16px 12px;
 }
 
-.headLeft {
+.monthWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 月份按钮:无快照时可点击打开生成 / 有快照时可点击打开编辑 */
+.monthBtn {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
 }
 
-.month {
+.monthBtn:disabled {
+  cursor: default;
+}
+
+.monthBtnActive {
+  cursor: pointer;
+}
+
+.monthBtnActive .monthInner {
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+}
+
+.monthBtnCanGen .monthInner {
+  color: var(--muted);
+}
+
+.monthBtnInactive {
+  cursor: default;
+}
+
+.monthBtnInactive .monthInner {
+  color: var(--muted);
+  opacity: 0.4;
+}
+
+.monthInner {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 38px;
@@ -18,17 +59,40 @@
   font-weight: 400;
   letter-spacing: -1px;
   margin: 0;
+  display: inline-block;
+  position: relative;
 }
 
-.year {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  margin-top: 4px;
-  text-transform: uppercase;
+/* Dot:绝对定位在月份文字右上角 */
+.dot {
+  position: absolute;
+  top: 2px;
+  right: -14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s;
+  padding: 0;
+  z-index: 1;
 }
 
+.dot:active {
+  transform: scale(0.8);
+}
+
+.dotCanGenerate {
+  background: var(--accent);
+}
+
+.dotCannot {
+  background: transparent;
+  border: 2px solid var(--line);
+  cursor: not-allowed;
+}
+
+/* ── Summary ───────────────────────────────────── */
 .summary {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -53,6 +117,11 @@
   border: 1px solid var(--line-soft);
 }
 
+.summaryCard.accent {
+  background: var(--ink);
+  color: var(--accent);
+}
+
 .summaryNum {
   font-family: var(--font-display);
   font-size: 22px;
@@ -63,12 +132,20 @@
   margin-bottom: 4px;
 }
 
+.summaryCard.accent .summaryNum {
+  color: var(--accent);
+}
+
 .summaryLbl {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.6;
+}
+
+.summaryCard.accent .summaryLbl {
+  opacity: 0.7;
 }
 
 .noSnapshot {
@@ -86,6 +163,7 @@
   grid-column: 1 / -1;
 }
 
+/* ── 导航 ───────────────────────────────────── */
 .nav {
   display: flex;
   align-items: center;
@@ -126,6 +204,7 @@
   padding: 4px 8px;
 }
 
+/* ── 网格 ───────────────────────────────────── */
 .grid {
   padding: 0 16px 24px;
 }
@@ -224,60 +303,4 @@
   height: 4px;
   border-radius: 50%;
   background: var(--accent-deep);
-}
-
-/* ── Header dot 按钮 ───────────────────────────────── */
-.dotBtn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  margin-top: 4px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  flex-shrink: 0;
-}
-
-.dotBtn:active {
-  transform: scale(0.9);
-}
-
-.dotEmpty {
-  background: transparent;
-  border: 2px solid var(--line);
-}
-
-.dotEmpty:hover {
-  border-color: var(--accent);
-}
-
-.dotGenerated {
-  background: var(--accent);
-}
-
-.dotGenerated:hover {
-  box-shadow: 0 0 0 4px var(--accent-fade);
-}
-
-/* ── 已赚可点击卡片 ───────────────────────────────── */
-.earnCard {
-  background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-md);
-  padding: 12px 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  display: block;
-  width: 100%;
-  color: inherit;
-}
-
-.earnCard:hover {
-  background: var(--card-hover);
-  border-color: var(--accent);
-}
-
-.earnCard .summaryNum {
-  color: var(--ink);
 }
