@@ -1,0 +1,204 @@
+.head {
+  padding: 20px 20px 12px;
+  text-align: center;
+}
+
+.month {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -1px;
+  margin: 0;
+}
+
+.year {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+
+.summaryCard {
+  border-radius: var(--r-md);
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.summaryCard.green {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.summaryCard.white {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+}
+
+.summaryNum {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.summaryLbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 12px;
+}
+
+.navBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navBtn:hover {
+  background: var(--ink);
+  color: var(--accent);
+}
+
+.navTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 4px 8px;
+}
+
+.grid {
+  padding: 0 16px 24px;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+
+.weekdayCell {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 6px 0;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 13px;
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: transform 0.1s;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+.dayEmpty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.dayWeekend {
+  background: var(--paper-2);
+  color: var(--muted);
+  border-color: transparent;
+}
+
+.dayToday {
+  background: var(--ink);
+  color: var(--accent);
+  border-color: var(--ink);
+  font-weight: 700;
+}
+
+.day:active:not(.dayEmpty) {
+  transform: scale(0.92);
+}
+
+.dayNum {
+  font-variant-numeric: tabular-nums;
+}
+
+.earn {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  opacity: 0.55;
+  margin-top: 1px;
+  font-weight: 500;
+}
+
+.dayToday .earn {
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.dayWeekend .earn {
+  opacity: 0.3;
+}
+
+.dayOverride::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+}

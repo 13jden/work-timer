@@ -6,6 +6,35 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-006 完成 · 日历页 + 日期 sheet
+
+- **`src/pages/CalendarPage.tsx`** + `CalendarPage.module.css`
+- **`src/components/DaySheet/`** — 日期详情弹窗
+
+### Features
+
+- 月度网格:工作日白 / 周末灰 / 今日黑色高亮
+- override 天数右上角小圆点标记
+- 上月 / 下月 / 今天 导航
+- Summary:工作日数 + 日均 + 已赚
+- 点击日期 → DaySheet(切换 work/rest + 重置)
+- 订阅 calendarStore,月切换和 override 均持久化
+- 网格 1 分钟级更新,避免秒级重渲染
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:67 / 67 通过
+
+### Notes
+
+- 阶段 1 进度:**6 / 9**
+- 农历 / 节日高亮未做(节假日仅用于判定)
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-005 完成 · 换算页 + 物品 sheet
 
 - **`src/pages/ConvertPage.tsx`** + `ConvertPage.module.css`
