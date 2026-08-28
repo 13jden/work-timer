@@ -1,0 +1,176 @@
+.group {
+  margin: 0 16px 18px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0 4px 8px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  gap: 12px;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.input {
+  width: 110px;
+  text-align: right;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--ink);
+  font-weight: 600;
+  outline: none;
+  padding: 2px 0;
+}
+
+.input::placeholder {
+  color: var(--muted-2);
+}
+
+.prefix {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.select {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  outline: none;
+  padding: 2px 0;
+}
+
+/* Theme swatches */
+.swatchRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatchActive {
+  border-color: var(--ink);
+}
+
+.swatchLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Monthly history */
+.historyList {
+  margin-top: 8px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: default;
+}
+
+.historyItem:last-child {
+  border-bottom: none;
+}
+
+.historyMonth {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.historyRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historyAmount {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.historyBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.historyBadgeCurrent {
+  color: var(--muted);
+}
+
+.historyEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.historyEmpty span {
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+}
+
+.footer {
+  text-align: center;
+  padding: 28px 20px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+}

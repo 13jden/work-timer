@@ -6,6 +6,34 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 
 ## [Unreleased] · 2026-08-28
 
+### Added · TASK-007 完成 · 设置页 + 月度记录
+
+- **`src/store/monthlyStore.ts`** — 月度记录 store
+- **`src/pages/SettingsPage.tsx`** + `SettingsPage.module.css`
+
+### Features
+
+- 薪资配置:月薪 / 上班 / 下班 / 咖啡价(实时双向绑定 → configStore)
+- 休息模式下拉(0 无休 / 1 单休 / 2 双休)
+- 主题切换:三色圆点点,点击立即切换
+- 当月工作日数实时计算显示
+- 月度记录列表:本月"本月"、历史"已锁定"
+- monthlyStore:当月自动生成、跨月自动锁定历史
+
+### Verified
+
+- ✅ `npm run typecheck`:0 errors
+- ✅ `npm run test`:67 / 67 通过
+
+### Notes
+
+- 阶段 1 进度:**7 / 9**
+- 导出/导入配置未做
+
+---
+
+## [Unreleased] · 2026-08-28
+
 ### Added · TASK-006 完成 · 日历页 + 日期 sheet
 
 - **`src/pages/CalendarPage.tsx`** + `CalendarPage.module.css`
