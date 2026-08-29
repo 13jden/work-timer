@@ -1,7 +1,11 @@
 ﻿/**
- * TodayPage — 今日页(Timer + Stats)
- * 用户打开 App 第一眼看到的内容。
+ * TodayPage — 今日页(Timer + Stats + 摸鱼 Widget)
+ *
+ * v1.3 扩展:
+ *   - SlackingWidget 摸鱼卡片
+ *   - 详情页路由(通过 showSlackingDetail state)
  */
+import { useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
@@ -10,6 +14,8 @@ import { useNow } from '../hooks/useNow';
 import { TimerCard } from '../components/TimerCard';
 import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
+import { SlackingWidget } from '../components/SlackingWidget';
+import { SlackingDetailPage } from './SlackingDetailPage';
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
@@ -24,6 +30,8 @@ function formatDate(date: Date): string {
 }
 
 export function TodayPage({ onOpenConvert }: TodayPageProps) {
+  const [showSlackingDetail, setShowSlackingDetail] = useState(false);
+
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
@@ -39,6 +47,15 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
     const diff = now.getTime() - start.getTime();
     return Math.floor(diff / 86_400_000);
   })();
+
+  // ── 详情页路由 ──
+  if (showSlackingDetail) {
+    return (
+      <SlackingDetailPage
+        onBack={() => setShowSlackingDetail(false)}
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -60,6 +77,11 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
       {/* ============ QuoteCard (在 Timer 和 Stats 之间) ============ */}
       <div className={styles.quoteWrap}>
         <QuoteCard index={dayOfYear} />
+      </div>
+
+      {/* ============ SlackingWidget (v1.3) ============ */}
+      <div className={styles.slackingWrap}>
+        <SlackingWidget onOpenDetail={() => setShowSlackingDetail(true)} />
       </div>
 
       {/* ============ Stats Row (两卡片并排) ============ */}

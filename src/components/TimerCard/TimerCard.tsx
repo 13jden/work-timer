@@ -1,12 +1,13 @@
 ﻿/**
  * TimerCard — 主计时卡(签名元素)
- * 显示倒计时 / 进度 / 状态
+ * v1.3 扩展:加班胶囊(paid_overtime 时显示 ⚡×N)
  */
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
 import { HOLIDAYS } from '../../lib/constants';
-import { dayState, progressPct } from '../../lib/compute';
+import { dayState, progressPct, getDayOverride } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
+import { formatDateKey } from '../../lib/time';
 import styles from './TimerCard.module.css';
 
 export function TimerCard() {
@@ -17,6 +18,12 @@ export function TimerCard() {
   const ds = dayState(now, config, overrides, HOLIDAYS);
   const pct = progressPct(now, config, overrides, HOLIDAYS);
 
+  // v1.3 加班胶囊:paid_overtime 日
+  const dateKey = formatDateKey(now);
+  const entry = getDayOverride(overrides, dateKey);
+  const isOvertime = entry?.type === 'paid_overtime';
+  const mult = entry?.multiplier ?? 1;
+
   // ===== REST MODE: 匹配参考图 & index.html —— 显示 "REST" 衬线大字体 =====
   if (ds.mode === 'rest') {
     return (
@@ -24,6 +31,11 @@ export function TimerCard() {
         <div className={styles.status}>
           <span className={styles.dot} />
           <span>今日休息</span>
+          {isOvertime && (
+            <span className={styles.overtimeBadge}>
+              ⚡ ×{mult}
+            </span>
+          )}
         </div>
         <div className={styles.display}>REST</div>
         <div className={styles.label}>享受休息日</div>
@@ -56,6 +68,11 @@ export function TimerCard() {
       <div className={styles.status}>
         <span className={styles.dot} />
         <span>{isDone ? ds.status : ds.status}</span>
+        {isOvertime && (
+          <span className={styles.overtimeBadge}>
+            ⚡ ×{mult}
+          </span>
+        )}
       </div>
       <div className={styles.display}>{display}</div>
       <div className={styles.label}>{ds.label}</div>

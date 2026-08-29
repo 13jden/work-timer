@@ -1,0 +1,420 @@
+.page {
+  padding: 0 16px 100px;
+  position: relative;
+}
+
+.back {
+  margin: 12px 0 0;
+  padding: 6px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+}
+
+.head {
+  margin: 12px 0 16px;
+}
+
+.eyebrow {
+  font: 400 10px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+}
+
+/* ── Dashboard ── */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px;
+  text-align: center;
+  position: relative;
+}
+
+.card.clickable {
+  cursor: pointer;
+  transition: border-color 150ms;
+}
+
+.card.clickable:hover {
+  border-color: var(--accent);
+}
+
+.cardLabel {
+  font: 400 10px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cardValue {
+  font: 500 18px var(--font-num, var(--font-sans));
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.card.negative .cardValue {
+  color: var(--danger, #E5484D);
+}
+
+.card.positive .cardValue {
+  color: var(--accent-deep, #9FCC00);
+}
+
+.popup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font: 400 11px var(--font-sans);
+  line-height: 1.6;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+.popup::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+
+.popupRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Summary ── */
+.summary {
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 14px;
+}
+
+.sumItem {
+  text-align: center;
+}
+
+.sumLabel {
+  font: 400 10px var(--font-mono);
+  color: rgba(245, 242, 234, 0.5);
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.sumValue {
+  font: 500 18px var(--font-num, var(--font-sans));
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Records ── */
+.section {
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.record {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.recIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.recInfo {
+  flex: 1;
+}
+
+.recLabel {
+  font: 500 12px var(--font-sans);
+  color: var(--ink);
+}
+
+.recTime {
+  font: 400 10px var(--font-mono);
+  color: var(--muted);
+}
+
+.recDuration {
+  font: 500 13px var(--font-num, var(--font-sans));
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.recActions {
+  display: flex;
+  gap: 4px;
+}
+
+.recBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px;
+  font-size: 14px;
+}
+
+.recBtn:hover {
+  color: var(--ink);
+}
+
+.recBtnDanger:hover {
+  color: var(--danger, #E5484D);
+}
+
+.addBtn {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px;
+  text-align: center;
+  color: var(--muted);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+  background: transparent;
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ── Formula ── */
+.formula {
+  background: var(--paper-2);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font: 400 11px var(--font-mono);
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* ── Footer ── */
+.footer {
+  font: 400 11px var(--font-mono);
+  color: var(--muted);
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
+.historyHint {
+  text-align: center;
+  font: 400 11px var(--font-sans);
+  color: var(--muted-2);
+  padding: 8px;
+  background: var(--paper-2);
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+/* ── Sheet ── */
+.sheetOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  background: var(--paper);
+  border-radius: 24px 24px 0 0;
+  padding: 20px 16px 32px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheetHandle {
+  width: 36px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 999px;
+  margin: 0 auto 16px;
+}
+
+.sheetTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.sheetLabel {
+  font: 500 10px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 12px 0 6px;
+}
+
+.sheetLabelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sheetRadio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  font: 400 13px var(--font-sans);
+  color: var(--ink);
+}
+
+.sheetRadio:hover {
+  border-color: var(--accent);
+}
+
+.sheetRadioActive {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.sheetRadioDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.sheetRadioActive .sheetRadioDot {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.sheetInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font: 500 13px var(--font-mono);
+  color: var(--ink);
+  background: var(--card);
+  margin-bottom: 8px;
+}
+
+.sheetTimeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sheetDash {
+  color: var(--muted-2);
+}
+
+.sheetButtons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sheetSave {
+  flex: 1;
+  padding: 12px;
+  background: var(--accent);
+  color: var(--ink);
+  border: none;
+  border-radius: var(--r-sm);
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.sheetCancel {
+  padding: 12px 16px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+}

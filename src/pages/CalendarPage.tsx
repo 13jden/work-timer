@@ -314,6 +314,7 @@ export function CalendarPage() {
         isWork={isPickedWork}
         dailyEarning={daily}
         currentEntry={pickedEntry}
+        salaryMode={config.salaryMode}
         onClose={() => setSheetOpen(false)}
         onSave={(key, entry) => setDayOverride(key, entry)}
         onReset={(key) => clearOverride(key)}

@@ -1,15 +1,24 @@
+/**
+ * ConvertPage — 等价换算页
+ *
+ * v1.3 扩展:
+ *   - 加班胶囊:加班日显示时薪换算提示
+ *   - 自由模式胶囊:hourly/daily 模式显示手动时薪
+ *   - 使用 effectiveHourlyRate(加班倍率生效)
+ */
 import { useMemo, useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useItemsStore } from '../store/itemsStore';
 import { HOLIDAYS } from '../lib/constants';
-import { hourlyRate } from '../lib/compute';
+import { effectiveHourlyRate, getDayOverride } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
 import { ItemSheet } from '../components/ItemSheet';
+import { formatDateKey } from '../lib/time';
 import type { Item } from '../lib/types';
 import styles from './ConvertPage.module.css';
 
-/** 把小时数格式化为人类可读:1.2h / 45min */
+/** 把小时数格式化为人类可读 */
 function formatHours(h: number): string {
   if (!isFinite(h) || h <= 0) return '0h';
   if (h >= 100) return Math.round(h).toLocaleString('en-US') + 'h';
@@ -28,8 +37,14 @@ export function ConvertPage() {
   const updateItem = useItemsStore((s) => s.update);
   const removeItem = useItemsStore((s) => s.remove);
 
+  // v1.3:加班胶囊状态
+  const dateKey = formatDateKey(now);
+  const entry = getDayOverride(overrides, dateKey);
+  const isOvertime = entry?.type === 'paid_overtime';
+
+  // 当日 effective 时薪
   const rate = useMemo(
-    () => hourlyRate(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS),
+    () => effectiveHourlyRate(now, config, overrides, HOLIDAYS),
     [now, config, overrides],
   );
 
@@ -63,19 +78,34 @@ export function ConvertPage() {
     [items],
   );
 
+  // v1.3 胶囊内容
+  const capsuleText = isOvertime
+    ? `加班日 · 按今日时薪 ¥${rate.toFixed(2)}/h 换算`
+    : config.salaryMode === 'hourly'
+    ? `自由模式 · 手动时薪 ¥${config.manualHourlyRate}/h`
+    : config.salaryMode === 'daily'
+    ? `自由模式 · 按日结 ¥${config.manualDailyRate}/天`
+    : null;
+
   return (
     <>
-
-      {/* 匹配 index.html:page-head (eyebrow + h2 衬线斜体) */}
+      {/* page-head */}
       <div className={styles.pageHead}>
         <div className={styles.eyebrow}>What does it cost</div>
         <h2 className={styles.title}>等价换算</h2>
       </div>
 
+      {/* v1.3 加班胶囊 */}
+      {capsuleText && (
+        <div className={styles.capsule}>
+          {isOvertime ? '⚡' : '🎯'} {capsuleText}
+        </div>
+      )}
+
       {/* 列表 */}
       <div className={styles.list}>
         {sortedItems.map((item) => {
-          const hours = item.price / rate;
+          const hours = rate > 0 ? item.price / rate : 0;
           return (
             <div
               key={item.id}
@@ -97,7 +127,7 @@ export function ConvertPage() {
         })}
       </div>
 
-      {/* 添加按钮:虚线边框 + 居中 */}
+      {/* 添加按钮 */}
       <button type="button" className={styles.addBtn} onClick={openAdd}>
         <span className={styles.addPlus}>＋</span>
         <span>添加喜欢的东西</span>

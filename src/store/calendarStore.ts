@@ -10,9 +10,10 @@
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { OVERRIDES_KEY_V2 } from '../lib/constants';
+// ── 持久化 key v3(老 v2 key 保留作备份) ────────────────────
+import { OVERRIDES_KEY_V2, OVERRIDES_KEY_V3 } from '../lib/constants';
 import { loadJSON } from '../lib/storage';
-import type { DayOverrideEntry, DayOverrides } from '../lib/types';
+import type { DayOverrideEntry, DayOverrides, WorkSegment } from '../lib/types';
 
 // ── Store 形状 ──────────────────────────────────────────────
 type RestMode = 0 | 1 | 2;
@@ -69,13 +70,15 @@ function nowYearMonth(): { year: number; month: number } {
 }
 
 const initialCal = (() => {
-  const stored = loadJSON<DayOverrides | null>(OVERRIDES_KEY_V2, null);
+  // 优先 v3 key,fallback v2 key(兼容老数据)
+  const stored = loadJSON<DayOverrides | null>(OVERRIDES_KEY_V3, null)
+    ?? loadJSON<DayOverrides | null>(OVERRIDES_KEY_V2, null);
   return stored ?? {};
 })();
 
-// ── 归一化:兼容旧 v1 字符串 ─────────────────────────────────
-// 旧 storage key 里的数据可能是 'work' | 'rest' 字符串,
-// 读取时统一归一化为 DayOverrideEntry
+// ── 归一化:兼容旧 v1/v2 数据 ─────────────────────────────
+// 旧 storage key 里的数据可能是 'work' | 'rest' 字符串(v1)
+// 或 { type, multiplier } 缺字段(v2);读取时统一归一化为完整 DayOverrideEntry
 function normalizeOverrides(raw: unknown): DayOverrides {
   if (!raw || typeof raw !== 'object') return {};
   const result: DayOverrides = {};
@@ -84,14 +87,25 @@ function normalizeOverrides(raw: unknown): DayOverrides {
     if (!val) continue;
     if (typeof val === 'string') {
       if (val === 'work' || val === 'rest') {
-        result[key] = { type: val, multiplier: val === 'work' ? 1 : 0 };
+        result[key] = { type: val, multiplier: val === 'work' ? 1 : 0, segments: null, nightShift: false };
       }
     } else if (typeof val === 'object' && val !== null) {
       const entry = val as Record<string, unknown>;
       const type = entry.type as string;
       const multiplier = Number(entry.multiplier ?? 1);
-      if (['work', 'paid_overtime', 'leave', 'rest'].includes(type) && Number.isFinite(multiplier)) {
-        result[key] = { type: type as DayOverrideEntry['type'], multiplier };
+      if (['work', 'paid_overtime', 'leave', 'rest', 'freelance'].includes(type) && Number.isFinite(multiplier)) {
+        const segments = Array.isArray(entry.segments)
+          ? (entry.segments as WorkSegment[]).filter(
+              (s) => s && typeof s.start === 'string' && typeof s.end === 'string',
+            )
+          : null;
+        const nightShift = entry.nightShift === true;
+        result[key] = {
+          type: type as DayOverrideEntry['type'],
+          multiplier,
+          segments,
+          nightShift,
+        };
       }
     }
   }
@@ -140,7 +154,12 @@ export const useCalendarStore = create<CalendarStore>()(
         if (make === null) {
           delete overrides[key];
         } else {
-          overrides[key] = { type: make, multiplier: make === 'work' ? 1 : 0 };
+          overrides[key] = {
+            type: make,
+            multiplier: make === 'work' ? 1 : 0,
+            segments: null,
+            nightShift: false,
+          };
         }
         set({ dayOverrides: overrides });
       },
@@ -164,8 +183,12 @@ export const useCalendarStore = create<CalendarStore>()(
       reset: () => set({ ...nowYearMonth(), dayOverrides: {}, monthlyRestModes: {} }),
     }),
     {
-      name: OVERRIDES_KEY_V2,
+      name: OVERRIDES_KEY_V3,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState, _version) => {
+        // 老 v2 / v1 数据通过 normalizeOverrides 归一化,内置已补 segments/nightShift
+        return persistedState as CalendarStore;
+      },
     },
   ),
 );

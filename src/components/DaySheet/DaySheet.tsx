@@ -1,22 +1,29 @@
 /**
- * DaySheet — 日历日详情 + 工作日类型选择
- * 样式参考:¥380.95 + 工作日/加班下拉 + 重置按钮
+ * DaySheet — 日历日详情 + 工作日类型选择 + 自定义工时 + 夜班加权
+ *
+ * v1.3 扩展:
+ *   - 当日工时自定义(SegmentsEditor)
+ *   - 夜班加权开关
+ *   - salaryMode 传入过滤 DAY_TYPE_OPTIONS
  */
 import { useState, useEffect } from 'react';
-import type { DayOverrideEntry, DayType } from '../../lib/types';
+import type { DayOverrideEntry, DayType, WorkSegment } from '../../lib/types';
 import { DEFAULT_MULTIPLIER } from '../../lib/types';
 import { DAY_TYPE_OPTIONS } from '../../lib/constants';
+import { SegmentsEditor } from '../SegmentsEditor';
 import styles from './DaySheet.module.css';
 
 interface DaySheetProps {
   open: boolean;
   date: Date | null;
-  /** 当天实际是否工作日(用于初始状态) */
+  /** 当天实际是否工作日 */
   isWork: boolean;
   /** 当天日均 */
   dailyEarning: number;
   /** 当前已有的 override entry */
   currentEntry: DayOverrideEntry | null;
+  /** 当前薪资模式(用于过滤选项) */
+  salaryMode?: 'monthly' | 'hourly' | 'daily';
   onClose: () => void;
   /** 保存 override entry */
   onSave: (key: string, entry: DayOverrideEntry) => void;
@@ -26,7 +33,6 @@ interface DaySheetProps {
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 
-/** 当前选中类型的默认倍率 */
 function defaultMult(type: DayType): number {
   return DEFAULT_MULTIPLIER[type];
 }
@@ -37,6 +43,7 @@ export function DaySheet({
   isWork,
   dailyEarning,
   currentEntry,
+  salaryMode = 'monthly',
   onClose,
   onSave,
   onReset,
@@ -44,16 +51,35 @@ export function DaySheet({
   const [selectedType, setSelectedType] = useState<DayType>('work');
   const [customMult, setCustomMult] = useState('1.5');
 
-  // 打开时同步状态
+  // v1.3:工时模式
+  const [segmentsMode, setSegmentsMode] = useState<'inherit' | 'custom'>('inherit');
+  const [customSegments, setCustomSegments] = useState<WorkSegment[]>([
+    { start: '09:00', end: '18:00' },
+  ]);
+
+  // v1.3:夜班加权
+  const [nightShift, setNightShift] = useState(false);
+
+  // 过滤 DAY_TYPE_OPTIONS(非 monthly 模式隐藏 work/paid_overtime)
+  const filteredTypeOptions = salaryMode === 'monthly'
+    ? DAY_TYPE_OPTIONS
+    : DAY_TYPE_OPTIONS.filter((o) => o.value !== 'work' && o.value !== 'paid_overtime');
+
+  // 同步状态
   useEffect(() => {
     if (open && date) {
       if (currentEntry) {
         setSelectedType(currentEntry.type);
         setCustomMult(String(currentEntry.multiplier));
+        setSegmentsMode(currentEntry.segments ? 'custom' : 'inherit');
+        setCustomSegments(currentEntry.segments ?? [{ start: '09:00', end: '18:00' }]);
+        setNightShift(currentEntry.nightShift);
       } else {
-        // 默认:按当前 isWork 推断
         setSelectedType(isWork ? 'work' : 'rest');
         setCustomMult(String(defaultMult(isWork ? 'work' : 'rest')));
+        setSegmentsMode('inherit');
+        setCustomSegments([{ start: '09:00', end: '18:00' }]);
+        setNightShift(false);
       }
     }
   }, [open, date, currentEntry, isWork]);
@@ -66,15 +92,19 @@ export function DaySheet({
   const dateLabel = `${mm}月${dd}日 · 周${dow}`;
   const key = `${date.getFullYear()}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
 
-  // 当日薪资 = 日均 × 倍率
   const mult = selectedType === 'paid_overtime' ? parseFloat(customMult) || 1.5 : defaultMult(selectedType);
   const todayEarn = mult > 0 ? dailyEarning * mult : 0;
+
+  const isOvertime = selectedType === 'paid_overtime';
+  const isLeave = selectedType === 'leave';
+  const isRest = selectedType === 'rest';
 
   function handleSave() {
     const multiplier = selectedType === 'paid_overtime'
       ? (parseFloat(customMult) || 1.5)
       : defaultMult(selectedType);
-    onSave(key, { type: selectedType, multiplier });
+    const segments = segmentsMode === 'custom' ? customSegments : null;
+    onSave(key, { type: selectedType, multiplier, segments, nightShift });
     onClose();
   }
 
@@ -82,10 +112,6 @@ export function DaySheet({
     onReset(key);
     onClose();
   }
-
-  const isOvertime = selectedType === 'paid_overtime';
-  const isLeave = selectedType === 'leave';
-  const isRest = selectedType === 'rest';
 
   return (
     <>
@@ -97,7 +123,7 @@ export function DaySheet({
         <div className={styles.handle} />
         <h3 className={styles.date}>{dateLabel}</h3>
 
-        {/* 类型选择 */}
+        {/* ── 类型选择 ── */}
         <div className={styles.typeRow}>
           <select
             className={styles.typeSelect}
@@ -108,7 +134,7 @@ export function DaySheet({
               setCustomMult(String(defaultMult(t)));
             }}
           >
-            {DAY_TYPE_OPTIONS.map((opt) => (
+            {filteredTypeOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -116,7 +142,7 @@ export function DaySheet({
           </select>
         </div>
 
-        {/* 倍率输入(加班时显示) */}
+        {/* ── 倍率输入(加班时) ── */}
         {isOvertime && (
           <div className={styles.multRow}>
             <span className={styles.multLabel}>倍率</span>
@@ -133,7 +159,51 @@ export function DaySheet({
           </div>
         )}
 
-        {/* 薪资卡片 */}
+        {/* ── v1.3 当日工时 ── */}
+        <div className={styles.sectionLabel}>当日工时</div>
+        <div className={styles.radioGroup}>
+          <div
+            className={`${styles.radioOption} ${segmentsMode === 'inherit' ? styles.selected : ''}`}
+            onClick={() => setSegmentsMode('inherit')}
+          >
+            <div className={styles.radioDot} />
+            <span className={styles.radioLabel}>继承全局</span>
+            <span className={styles.radioHint}>09:00–18:00</span>
+          </div>
+          <div
+            className={`${styles.radioOption} ${segmentsMode === 'custom' ? styles.selected : ''}`}
+            onClick={() => setSegmentsMode('custom')}
+          >
+            <div className={styles.radioDot} />
+            <span className={styles.radioLabel}>自定义</span>
+          </div>
+        </div>
+
+        {segmentsMode === 'custom' && (
+          <div style={{ marginBottom: 10 }}>
+            <SegmentsEditor
+              segments={customSegments}
+              onChange={setCustomSegments}
+              showTotal
+            />
+          </div>
+        )}
+
+        {/* ── v1.3 夜班加权 ── */}
+        <div className={styles.nightShiftRow}>
+          <div className={styles.nightShiftLabel}>
+            <span className={styles.nightShiftTitle}>夜班加权</span>
+            <span className={styles.nightShiftHint}>22:00–06:00 × 0.5 计入净工时</span>
+          </div>
+          <button
+            type="button"
+            className={`${styles.toggle} ${nightShift ? styles.on : ''}`}
+            onClick={() => setNightShift((v) => !v)}
+            aria-label="夜班加权"
+          />
+        </div>
+
+        {/* ── 薪资卡片 ── */}
         <div className={styles.figure}>
           <div className={styles.earn}>
             {todayEarn > 0

@@ -1,0 +1,1 @@
+export { SlackingWidget } from './SlackingWidget';

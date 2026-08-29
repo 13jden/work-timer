@@ -22,6 +22,20 @@
   margin: 0;
 }
 
+/* v1.3 加班胶囊 */
+.capsule {
+  margin: 0 16px 12px;
+  background: var(--accent);
+  color: var(--ink);
+  padding: 4px 14px;
+  border-radius: 999px;
+  font: 600 11px var(--font-sans);
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .list {
   padding: 0 16px;
   display: flex;

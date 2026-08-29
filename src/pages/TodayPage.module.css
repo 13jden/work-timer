@@ -86,6 +86,11 @@
   padding: clamp(8px, 1.5vh, 14px) clamp(12px, 3vw, 18px);
 }
 
+/* v1.3 摸鱼 widget 容器 */
+.slackingWrap {
+  padding: 0 clamp(12px, 3vw, 18px);
+}
+
 /* Stats Row — fixed height, increased spacing */
 .statsRow {
   display: grid;

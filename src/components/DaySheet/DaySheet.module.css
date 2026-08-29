@@ -209,3 +209,152 @@
   color: var(--ink);
   border-color: var(--ink);
 }
+
+/* ── v1.3 扩展 ───────────────────────────────── */
+
+/* 当日工时 radio 区 */
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 16px 0 8px;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.radioOption:hover {
+  border-color: var(--accent);
+}
+
+.radioOption.selected {
+  border-color: var(--accent);
+  background: rgba(200, 255, 0, 0.06);
+}
+
+.radioDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+
+.radioOption.selected .radioDot {
+  border-color: var(--accent);
+}
+
+.radioDot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.radioOption.selected .radioDot::after {
+  opacity: 1;
+}
+
+.radioLabel {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.radioHint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* 夜班加权 */
+.nightShiftRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.nightShiftLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nightShiftTitle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.nightShiftHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.toggle {
+  width: 40px;
+  height: 24px;
+  background: var(--line);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  flex-shrink: 0;
+}
+
+.toggle.on {
+  background: var(--accent);
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: right 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.toggle.on::after {
+  right: calc(100% - 22px);
+}

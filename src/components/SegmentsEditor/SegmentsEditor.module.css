@@ -1,0 +1,98 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--paper);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+}
+
+.num {
+  font: 600 10px var(--font-mono);
+  color: var(--muted);
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.time {
+  font: 500 12px var(--font-mono);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: var(--card);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash {
+  color: var(--muted-2);
+}
+
+.crossBadge {
+  background: var(--tag-new-bg);
+  color: var(--tag-new-fg);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 600 9px var(--font-sans);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.remove {
+  margin-left: auto;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  border: none;
+  background: none;
+  padding: 4px;
+  line-height: 1;
+}
+
+.remove:hover {
+  opacity: 0.6;
+}
+
+.add {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px;
+  text-align: center;
+  color: var(--muted);
+  font: 500 11px var(--font-sans);
+  cursor: pointer;
+  background: transparent;
+  width: 100%;
+  transition: border-color 150ms;
+}
+
+.add:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.total {
+  text-align: right;
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  padding-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
