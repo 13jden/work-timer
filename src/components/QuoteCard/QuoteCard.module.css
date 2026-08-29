@@ -1,12 +1,12 @@
-﻿.card {
+.card {
   width: 100%;
   box-sizing: border-box;
   background: var(--card);
   border-radius: var(--r-md);
-  padding: clamp(14px, 2.5vh, 22px) clamp(16px, 3.5vw, 24px);
+  padding: clamp(10px, 2vh, 16px) clamp(12px, 3vw, 18px);
   display: flex;
   align-items: center;
-  gap: clamp(12px, 2.5vw, 18px);
+  gap: clamp(8px, 2vw, 14px);
   border: 1px solid var(--line-soft);
 }
 

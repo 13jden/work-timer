@@ -16,7 +16,7 @@
 .topbar {
   display: flex;
   flex-direction: column;
-  padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
+  padding: clamp(12px, 2vh, 18px) clamp(16px, 4vw, 22px) clamp(8px, 1.5vh, 14px);
   flex-shrink: 0;
 }
 
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(6px, 1vh, 10px);
+  margin-bottom: clamp(4px, 0.8vh, 8px);
 }
 
 .topbarEyebrow {
@@ -77,21 +77,21 @@
 /* TimerCard wrapper — flex:1 fills remaining, allows content to expand */
 .timerWrap {
   flex: 1 1 auto;
-  padding: 0 clamp(16px, 4vw, 24px);
+  padding: 0 clamp(12px, 3vw, 18px);
 }
 
 /* QuoteCard — fixed height, increased spacing */
 .quoteWrap {
   flex-shrink: 0;
-  padding: clamp(12px, 2vh, 18px) clamp(16px, 4vw, 24px);
+  padding: clamp(8px, 1.5vh, 14px) clamp(12px, 3vw, 18px);
 }
 
 /* Stats Row — fixed height, increased spacing */
 .statsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: clamp(12px, 3vw, 18px);
-  padding: 0 clamp(16px, 4vw, 24px);
+  gap: clamp(8px, 2vw, 14px);
+  padding: 0 clamp(12px, 3vw, 18px);
   flex-shrink: 0;
-  margin-bottom: clamp(12px, 2.5vh, 20px);
+  margin-bottom: clamp(8px, 2vh, 16px);
 }

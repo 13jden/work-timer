@@ -1,4 +1,40 @@
 ## [Unreleased] · 2026-08-29
+### Changed · 主页面各组件内文字间隔收紧
+
+整体缩小 TodayPage 各组件内部的 padding / margin / gap，让布局更紧凑：
+
+- **TodayPage 页面级**：
+  - `.topbar`: `padding` 从 `16/20/12` → `12/16/8`，`.topbarEyebrowRow` `margin-bottom` 从 `6/10` → `4/8`
+  - `.timerWrap`: `padding` 从 `16/24` → `12/18`
+  - `.quoteWrap`: `padding` 从 `12/16` → `8/12`
+  - `.statsRow`: `gap` 从 `12/18` → `8/14`，`padding` 从 `16/24` → `12/18`，`margin-bottom` 从 `12/20` → `8/16`
+- **TimerCard**：
+  - `.card`: `padding` 从 `22/30` → `16/24`
+  - `.status`: `gap` 从 `8` → `6`，`margin-bottom` 从 `12/24` → `8/18`
+  - `.display`: `margin` 从 `8/10` → `6/8`
+  - `.label`: `margin-bottom` 从 `14/28` → `10/22`
+  - `.shift`: `margin-bottom` 从 `8/14` → `6/10`，`.shiftLeft` `gap` 从 `8` → `6`
+  - `.range`: `margin-top` 从 `20/12` → `14/10`
+- **StatCard**：
+  - `.card`: `padding` 从 `10/22` → `8/18`
+  - `.index`: `margin-bottom` 从 `10/16` → `6/12`
+  - `.value`: `margin-bottom` 从 `6/10` → `4/8`
+  - `.extra`: `margin-top` 从 `6/9` → `4/7`
+- **QuoteCard**：
+  - `.card`: `padding` 从 `14/22` → `10/16`，`gap` 从 `12/18` → `8/14`
+
+### Changed · StatCard 数字字体调瘦高，防当日总薪资截断
+
+首页 StatCard（收入卡 / 等价物卡）数字字体调整，解决薪资数字过长时被 `overflow: hidden` + `text-overflow: ellipsis` 截断的问题：
+
+- **`.value`（主数字）**：
+  - `font-size`: `clamp(26px, 4.5vh, 36px)` → **`clamp(22px, 4vh, 32px)`**（整体缩小，上限降低防宽溢）
+  - `line-height`: `1` → **`1.12`**（高度稍增，数字更挺拔）
+  - `letter-spacing`: `-1px` → **`-1.5px`**（字距收紧，横宽更紧凑）
+- **`.flavor`（等价物数字）**：
+  - `font-size`: `clamp(20px, 3.5vh, 28px)` → **`clamp(18px, 3.2vh, 24px)`**（与主数字同比例缩小）
+  - `letter-spacing`: `-0.3px` → **`-0.5px`**
+
 ### Built · SalaryTimer-0.1.0-arm64-v2.apk · 新图标(四周留白防裁剪) · 11.51MB
 
 #### APK 图标防溢出处理

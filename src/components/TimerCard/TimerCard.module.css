@@ -4,7 +4,7 @@
   min-height: 250px;
   background: var(--ink);
   border-radius: var(--r-xl);
-  padding: clamp(22px, 5vh, 30px) clamp(22px, 5vw, 30px);
+  padding: clamp(16px, 4vh, 24px) clamp(16px, 4vw, 24px);
   color: var(--paper);
   position: relative;
   overflow: hidden;
@@ -29,13 +29,13 @@
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: clamp(11px, 1.2vh, 12px);
   letter-spacing: 1.2px;
   color: var(--muted-2);
   text-transform: uppercase;
-  margin-bottom: clamp(12px, 2.5vh, 24px);
+  margin-bottom: clamp(8px, 2vh, 18px);
 }
 
 .dot {
@@ -61,7 +61,7 @@
   color: #FFFFFF;
   letter-spacing: -2px;
   font-variant-numeric: tabular-nums;
-  margin: clamp(8px, 1.5vh, 10px) 0;
+  margin: clamp(6px, 1.2vh, 8px) 0;
 }
 
 .label {
@@ -70,7 +70,7 @@
   letter-spacing: 1.5px;
   color: var(--muted-2);
   text-transform: uppercase;
-  margin-bottom: clamp(14px, 3vh, 28px);
+  margin-bottom: clamp(10px, 2.5vh, 22px);
 }
 
 .shift {
@@ -82,13 +82,13 @@
   letter-spacing: 1.2px;
   color: var(--muted-2);
   text-transform: uppercase;
-  margin-bottom: clamp(8px, 2vh, 14px);
+  margin-bottom: clamp(6px, 1.5vh, 10px);
 }
 
 .shiftLeft {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .shiftLeft strong {
@@ -126,7 +126,7 @@
  font-size: clamp(11px, 1.2vh, 11px);
   font-weight: 300;
   color: var(--muted-2);
-  margin-top: clamp(20px, 1.5vh, 12px);
+  margin-top: clamp(14px, 1.2vh, 10px);
 }
 
 .range span {
