@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SettingsPage — 设置页(Mine)
  *
  * 布局匹配 index.html:
@@ -10,7 +10,7 @@
  *   月度记录 · Salary History → 快照列表
  *   footer → v本地存储
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
@@ -18,6 +18,8 @@ import { useMonthlyStore } from '../store/monthlyStore';
 import { HOLIDAYS } from '../lib/constants';
 import { workdaysInMonth } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
+import type { Config } from '../lib/types';
+import type { ThemeMeta } from '../lib/constants';
 import styles from './SettingsPage.module.css';
 
 const MONTH_NAMES_CN = [
@@ -28,26 +30,74 @@ const MONTH_NAMES_CN = [
 export function SettingsPage() {
   const config = useConfigStore();
   const setConfig = useConfigStore((s) => s.setConfig);
-  const overrides = useCalendarStore((s) => s.dayOverrides);
+  const currentTheme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
+  const overrides = useCalendarStore((s) => s.dayOverrides);
   const getAllSnapshots = useMonthlyStore((s) => s.getAllSnapshots);
   const now = useNow(60_000);
 
+  // 本地草稿:仅在设置页内部持有,不立即写入 store
+  type Draft = {
+    monthlySalary: number;
+    startTime: string;
+    endTime: string;
+    coffeePrice: number;
+    restMode: 0 | 1 | 2;
+    theme: ThemeMeta['id'];
+  };
+  const [draft, setDraft] = useState<Draft>(() => ({
+    monthlySalary: config.monthlySalary,
+    startTime: config.startTime,
+    endTime: config.endTime,
+    coffeePrice: config.coffeePrice,
+    restMode: config.restMode,
+    theme: currentTheme,
+  }));
+
+  const isDirty = useMemo<boolean>(() => (
+    draft.monthlySalary !== config.monthlySalary ||
+    draft.startTime !== config.startTime ||
+    draft.endTime !== config.endTime ||
+    draft.coffeePrice !== config.coffeePrice ||
+    draft.restMode !== config.restMode ||
+    draft.theme !== currentTheme
+  ), [draft, config, currentTheme]);
+
+  // 当月工作日:基于草稿预览(restMode 变化立刻看到效果,但未生效)
   const workdays = useMemo(
-    () => workdaysInMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS),
-    [now, config, overrides],
+    () => workdaysInMonth(now.getFullYear(), now.getMonth(), { ...config, restMode: draft.restMode } as Config, overrides, HOLIDAYS),
+    [now, config, draft.restMode, overrides],
   );
 
   const snapshots = useMemo(() => {
     const list = getAllSnapshots();
-    // newest first (key = YYYY-MM string → localeCompare desc)
     return list.slice().sort((a, b) => b.key.localeCompare(a.key));
   }, [getAllSnapshots]);
 
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+  const handleSave = () => {
+    setConfig({
+      monthlySalary: draft.monthlySalary,
+      startTime: draft.startTime,
+      endTime: draft.endTime,
+      coffeePrice: draft.coffeePrice,
+      restMode: draft.restMode,
+    });
+    if (draft.theme !== currentTheme) {
+      setTheme(draft.theme);
+    }
+    const el = document.querySelector<HTMLElement>('.' + styles.saveBtn);
+    if (el) {
+      el.textContent = '已保存 ✓';
+      window.setTimeout(() => {
+        if (el && el.textContent !== '保存配置') el.textContent = '保存配置';
+      }, 1200);
+    }
+  };
+
   return (
-    <>
+    <div className={styles.wrap}>
 
       {/* ═══ page-head ═══ (匹配 index.html Preferences / 设置) */}
       <div className={styles.pageHead}>
@@ -66,8 +116,8 @@ export function SettingsPage() {
               <input
                 type="number"
                 className={styles.input}
-                value={config.monthlySalary}
-                onChange={(e) => setConfig({ monthlySalary: Number(e.target.value) })}
+                value={draft.monthlySalary}
+                onChange={(e) => setDraft((d) => ({ ...d, monthlySalary: Number(e.target.value) || 0 }))}
                 min={0}
               />
             </span>
@@ -94,8 +144,8 @@ export function SettingsPage() {
               <input
                 type="time"
                 className={styles.input}
-                value={config.startTime}
-                onChange={(e) => setConfig({ startTime: e.target.value })}
+                value={draft.startTime}
+                onChange={(e) => setDraft((d) => ({ ...d, startTime: e.target.value }))}
                 style={{ width: 90, textAlign: 'right' }}
               />
             </span>
@@ -106,8 +156,8 @@ export function SettingsPage() {
               <input
                 type="time"
                 className={styles.input}
-                value={config.endTime}
-                onChange={(e) => setConfig({ endTime: e.target.value })}
+                value={draft.endTime}
+                onChange={(e) => setDraft((d) => ({ ...d, endTime: e.target.value }))}
                 style={{ width: 90, textAlign: 'right' }}
               />
             </span>
@@ -117,8 +167,8 @@ export function SettingsPage() {
             <span className={styles.value}>
               <select
                 className={styles.select}
-                value={config.restMode}
-                onChange={(e) => setConfig({ restMode: Number(e.target.value) as 0 | 1 | 2 })}
+                value={draft.restMode}
+                onChange={(e) => setDraft((d) => ({ ...d, restMode: Number(e.target.value) as 0 | 1 | 2 }))}
               >
                 <option value={0}>无休</option>
                 <option value={1}>单休</option>
@@ -141,8 +191,8 @@ export function SettingsPage() {
               <input
                 type="number"
                 className={styles.input}
-                value={config.coffeePrice}
-                onChange={(e) => setConfig({ coffeePrice: Number(e.target.value) })}
+                value={draft.coffeePrice}
+                onChange={(e) => setDraft((d) => ({ ...d, coffeePrice: Number(e.target.value) || 0 }))}
                 min={0}
               />
             </span>
@@ -162,9 +212,9 @@ export function SettingsPage() {
                   key={t.id}
                   type="button"
                   title={t.label}
-                  className={`${styles.swatch} ${config.theme === t.id ? styles.swatchActive : ''}`}
+                  className={`${styles.swatch} ${draft.theme === t.id ? styles.swatchActive : ''}`}
                   style={{ background: t.accent }}
-                  onClick={() => setTheme(t.id)}
+                  onClick={() => setDraft((d) => ({ ...d, theme: t.id }))}
                 />
               ))}
             </span>
@@ -209,13 +259,17 @@ export function SettingsPage() {
       </div>
 
       {/* ═══ 保存配置按钮 ═══ */}
-      <button type="button" className={styles.saveBtn} onClick={() => {
-        const el = document.querySelector('.' + styles.saveBtn);
-        if (el) { (el as HTMLElement).textContent = '已保存 ✓'; setTimeout(() => { (el as HTMLElement).textContent = '保存配置'; }, 1200); }
-      }}>保存配置</button>
+      <button
+        type="button"
+        className={`${styles.saveBtn} ${isDirty ? styles.saveBtnDirty : ''}`}
+        onClick={handleSave}
+        disabled={!isDirty}
+      >
+        保存配置
+      </button>
 
       <div className={styles.footer}>v1.1 · 本地存储</div>
-    </>
+    </div>
   );
 }
 

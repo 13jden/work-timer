@@ -1,61 +1,85 @@
-﻿.head {
+﻿/* Header:两行结构 */
+.head {
   width: 100%;
-  padding: 20px 20px 12px;
+  padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
+  display: flex;
+  flex-direction: column;
+}
+
+.headEyebrowRow {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  margin-bottom: clamp(6px, 1vh, 10px);
+}
+
+.headEyebrow {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex: 1;
+  text-align: left;
+}
+
+.headEnglish {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex: 2;
+  text-align: center;
+}
+
+.headRight {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex: 1;
+  text-align: right;
+}
+
+.headTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(24px, 4vh, 30px);
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: var(--ink);
   background: transparent;
   border: none;
   cursor: pointer;
-  font-family: inherit;
-  color: inherit;
+  text-align: center;
+  width: 100%;
+  margin: 0;
   transition: opacity 0.2s;
 }
 
-.head:disabled {
+.headTitle:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.head:active:not(:disabled) {
+.headTitle:active:not(:disabled) {
   opacity: 0.6;
 }
 
-.headInner {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  text-align: center;
-}
-
-.month {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 38px;
-  line-height: 1;
-  font-weight: 400;
-  letter-spacing: -1px;
-  margin: 0;
-  color: var(--ink);
-}
-
 /* paper 主题下月份纯黑,深色主题用主题色 */
-[data-theme='paper'] .month {
+[data-theme='paper'] .headTitle {
   color: #000;
 }
 
-[data-theme='obsidian'] .month,
-[data-theme='gold'] .month {
+[data-theme='obsidian'] .headTitle,
+[data-theme='gold'] .headTitle {
   color: var(--accent);
-}
-
-.year {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  margin-top: 4px;
-  text-transform: uppercase;
 }
 
 /* ── Summary ───────────────────────────────────── */
@@ -128,10 +152,10 @@
 }
 
 .summaryNum {
-  font-family: var(--font-display);
+  font-family: var(--font-num);
   font-size: 22px;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
   margin-bottom: 4px;
@@ -234,6 +258,7 @@
   color: var(--ink);
   max-width: 100%;
   min-width: 0;
+  padding: 2px;
 }
 
 .dayEmpty {
@@ -260,36 +285,34 @@
 }
 
 .dayNum {
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  text-align: center;
+  font-weight: 400;
 }
 
+/* 金额显示：使用更小的字体确保完整显示 */
 .earn {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  opacity: 0.6;
-  margin-top: 2px;
-  font-weight: 500;
-  line-height: 1;
+  font-family: var(--font-num);
+  font-size: 8px;
+  font-weight: 300;
+  opacity: 0.7;
+  margin-top: 1px;
+  line-height: 1.1;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-align: center;
+  letter-spacing: -0.3px;
 }
 
 .dayToday .earn {
   color: var(--accent);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .dayWeekend .earn {
-  opacity: 0.3;
+  opacity: 0.35;
 }
 
 .dayOverride::after {

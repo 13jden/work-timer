@@ -1,4 +1,37 @@
 ﻿## [Unreleased] · 2026-08-29
+### Changed · SettingsPage 保存语义重写:修改不立刻生效，必须点保存配置
+
+原行为:设置页所有 input / select / swatch 都是 onChange 即写入 configStore/themeStore，全局立即生效，保存配置按钮仅为 UI 装饰。
+新行为:引入本地 **draft(草稿) 状态**(useState)，所有控件只修改 draft，与全局 store 的差异用 **isDirty** 实时判断。
+点击保存配置按钮才把草稿一次性写入（setConfig + setTheme）并持久化到 localStorage。未保存时，Month/Today/Convert 等页面完全不受影响。
+
+#### 细节
+- 脏态反馈: isDirty 期间按钮增加 **savePulse 脉冲阴影**（accent 色呼吸环），disabled 时不触发。disabled={!isDirty} 无更改时按钮保持半透明禁点。
+- 工作日预览: restMode 修改时，当月工作日计算基于 **draft.restMode** 实时预览，但不写入 store，符合所见即所得但未生效的语义。
+- 主题: swatch 点击仅改 draft.theme（高亮指示器也按 draft 判断），不点保存则不调用 setTheme，真正的全局配色 / meta theme-color 不变。
+- 月薪 / 单价: Number(value) 空值兜底 || 0，避免 NaN 污染全局。
+- 外层: SettingsPage 新增 wrap 节点 + `padding-bottom:120px` 防止底部保存按钮 / Footer 被 BottomNav 遮挡（与 Today 页对齐）。
+- `src/pages/SettingsPage.module.css` : 新增 `.wrap` / `.saveBtn:disabled` / `.saveBtnDirty`（及 savePulse 动画）
+- `src/pages/SettingsPage.tsx` :
+  - 新增 `Draft` 类型 + `useState<Draft>` 草稿
+  - `handleSave()` 批量写入 configStore（除 theme） + themeStore（theme）
+  - 所有控件 value / onChange 从 `config.X + setConfig({X})` 改为 `draft.X + setDraft(d => ({...d, X}))`
+
+### Changed · Today 页 TimerCard 高度 / 计时数字字宽 / 导航图标三件套微调
+
+#### 改动清单
+- **`src/components/TimerCard/TimerCard.module.css`**
+  - `.card` 最小高度: `300px` → **`450px`**（防溢出，视觉更舒展）
+  - `.display` 倒计时数字整体调瘦高：
+    - `font-size`: `clamp(36px, 9vh, 72px)` → **`clamp(30px, 7.5vh, 64px)`**（上限降低防宽溢）
+    - `line-height`: `1` → **`1.08`**（高度稍增，数字更挺拔）
+    - `letter-spacing`: `-1.5px` → **`-2px`**（字距收紧，横宽更紧凑）
+- **`src/components/BottomNav/BottomNav.module.css`**
+  - `.tabIcon` 尺寸: `26px × 26px` → **`30px × 30px`**（点击热区增大，视觉更醒目）
+- **`src/pages/TodayPage.module.css`**
+  - `.page`: `height: 70vh` + `overflow: hidden` → **`min-height: 70vh`** + `overflow-y: auto`，新增 `padding-bottom: 120px`（允许 TimerCard 450px 高度完整撑开，底部不被 BottomNav 遮挡）
+  - `.timerWrap`: `flex: 1 1 0` + `min-height: 0` + `overflow: hidden` → **`flex: 1 1 auto`**（取消高度收缩限制，允许卡片自然撑开）
+
 ### Added · Month 页「工作日」卡片支持点击切换休息模式(双休/单休/无休)
 
 Month 页 summary 三卡中,**绿色"工作日"卡片**现在可点击,弹出 RestModeSheet 底部弹窗:

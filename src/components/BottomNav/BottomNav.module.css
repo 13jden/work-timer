@@ -1,9 +1,11 @@
-.wrap {
+﻿.wrap {
   position: fixed;
-  bottom: 16px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
+  width: 90%;
+  max-width: 420px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -11,10 +13,10 @@
 .dock {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  justify-content: space-around;
+  gap: 0;
   height: 72px;
-  padding: 6px;
+  padding: 8px;
   background: #1a1a1a;
   border-radius: 40px;
   box-shadow:
@@ -28,7 +30,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 64px;
+  flex: 1;
   height: 60px;
   padding: 0;
   border: none;
@@ -75,8 +77,8 @@
 
 .tabIcon {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -88,7 +90,7 @@
 }
 
 .tabLabel {
-  font-size: 11px;
+  font-size: 8px;
   font-family: var(--font-mono);
   letter-spacing: 1.2px;
   line-height: 1;

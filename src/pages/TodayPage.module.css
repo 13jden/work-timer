@@ -1,50 +1,97 @@
-/* ═══════════════════════════════════════════
-   TopBar — 左右眉毛 + 居中衬线斜体标题
-   匹配 index.html 中的 .topbar
-   ═══════════════════════════════════════════ */
+/* ==========================================================
+   TodayPage — flex adaptive layout
+   Page occupies 70vh, TimerCard fills remaining space auto
+   ========================================================== */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 70vh;
+  min-height: 70dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 120px;
+}
+
+/* TopBar — two-row structure */
 .topbar {
   display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
+  flex-shrink: 0;
+}
+
+/* Row 1: today / English text / date */
+.topbarEyebrowRow {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 14px 20px 10px;
+  justify-content: space-between;
+  margin-bottom: clamp(6px, 1vh, 10px);
 }
 
 .topbarEyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: clamp(9px, 1.2vh, 11px);
   font-weight: 600;
   letter-spacing: 1.5px;
   color: var(--muted);
   text-transform: uppercase;
+  flex: 1;
+  text-align: left;
 }
 
-.topbarCenter {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 17px;
-  color: var(--ink);
-  letter-spacing: 0.2px;
+.topbarEnglish {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex: 2;
+  text-align: center;
 }
 
 .topbarRight {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
   color: var(--muted);
+  text-transform: uppercase;
+  flex: 1;
+  text-align: right;
 }
 
-/* ═══════════════════════════════════════════
-   QuoteCard 间距
-   ═══════════════════════════════════════════ */
+/* Row 2: centered title — unified with swap/month */
+.topbarCenter {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(24px, 4vh, 30px);
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  text-align: center;
+  margin: 0;
+}
+
+/* TimerCard wrapper — flex:1 fills remaining, allows content to expand */
+.timerWrap {
+  flex: 1 1 auto;
+  padding: 0 clamp(16px, 4vw, 24px);
+}
+
+/* QuoteCard — fixed height, increased spacing */
 .quoteWrap {
-  display: flex;
+  flex-shrink: 0;
+  padding: clamp(12px, 2vh, 18px) clamp(16px, 4vw, 24px);
 }
 
-/* ═══════════════════════════════════════════
-   Stats Row:两卡片(收入 + 等价)并排
-   ═══════════════════════════════════════════ */
+/* Stats Row — fixed height, increased spacing */
 .statsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 0 16px;
-  margin-bottom: 14px;
+  gap: clamp(12px, 3vw, 18px);
+  padding: 0 clamp(16px, 4vw, 24px);
+  flex-shrink: 0;
+  margin-bottom: clamp(12px, 2.5vh, 20px);
 }

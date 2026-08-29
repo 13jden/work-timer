@@ -16,6 +16,18 @@ import styles from './CalendarPage.module.css';
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
+/**
+ * 智能格式化金额：
+ * - <= 9999.99: 显示两位小数 (如 1000.00)
+ * - > 9999.99: 显示整数 (如 10000)
+ */
+function formatEarnText(value: number): string {
+  if (value > 9999.99) {
+    return `¥${Math.round(value).toLocaleString('en-US')}`;
+  }
+  return `¥${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function CalendarPage() {
   // 页面可见时刷新 now(秒级)
   const [now, setNow] = useState(() => new Date());
@@ -165,20 +177,24 @@ export function CalendarPage() {
   return (
     <>
 
-      {/* Header:月份居中可点击 → 弹出 GenerateSheet(未来月不可点) */}
-      <button
-        type="button"
-        className={styles.head}
-        onClick={() => !isFutureMonth && setGenOpen(true)}
-        disabled={isFutureMonth}
-        title={isFutureMonth ? '未来月份,无法生成' : '点击设置月度薪资'}
-        aria-label="设置当月薪资"
-      >
-        <div className={styles.headInner}>
-          <div className={styles.month}>{monthLabel}</div>
-          <div className={styles.year}>{yearLabel}</div>
+      {/* Header:两行结构 — eyebrow + 月份标题(可点击) */}
+      <div className={styles.head}>
+        <div className={styles.headEyebrowRow}>
+          <span className={styles.headEyebrow}>calendar</span>
+          <span className={styles.headEnglish}>Monthly overview</span>
+          <span className={styles.headRight}>{yearLabel}</span>
         </div>
-      </button>
+        <button
+          type="button"
+          className={styles.headTitle}
+          onClick={() => !isFutureMonth && setGenOpen(true)}
+          disabled={isFutureMonth}
+          title={isFutureMonth ? '未来月份,无法生成' : '点击设置月度薪资'}
+          aria-label="设置当月薪资"
+        >
+          {monthLabel}
+        </button>
+      </div>
 
       {/* Summary:始终三卡;已赚无快照时显示 0 + 右上角小圆点 */}
       <div className={styles.summary}>
@@ -269,10 +285,10 @@ export function CalendarPage() {
             let earnText = '';
             if (hasSnapshot && isWork) {
               if (isToday) {
-                earnText = `¥${todayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                earnText = formatEarnText(todayEarn);
               } else if (isPast && units > 0) {
                 const dayEarn = daily * units;
-                earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                earnText = formatEarnText(dayEarn);
               }
             }
 

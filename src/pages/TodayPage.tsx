@@ -1,17 +1,6 @@
-/**
+﻿/**
  * TodayPage — 今日页(Timer + Stats)
  * 用户打开 App 第一眼看到的内容。
- *
- * 布局(匹配 index.html + 参考图):
- * ┌──────────────────────────────┐
- * │ TopBar  TODAY·日期 / 中心标题 / 后缀 │
- * ├──────────────────────────────┤
- * │ TimerCard (深色大卡)            │
- * ├──────────────────────────────┤
- * │ QuoteCard (白底引用)           │
- * ├──────────────────────────────┤
- * │ Income卡 ｜ Worth卡 (两栏)     │
- * └──────────────────────────────┘
  */
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
@@ -26,6 +15,12 @@ import styles from './TodayPage.module.css';
 interface TodayPageProps {
   /** 点击"查看更多"时跳转(由 App 路由层注入) */
   onOpenConvert?: () => void;
+}
+
+function formatDate(date: Date): string {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
 }
 
 export function TodayPage({ onOpenConvert }: TodayPageProps) {
@@ -46,15 +41,21 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
   })();
 
   return (
-    <>
-
-      {/* ============ TopBar ============ */}
+    <div className={styles.page}>
+      {/* ============ TopBar — 两行结构 ============ */}
       <div className={styles.topbar}>
-        <span className={styles.topbarCenter}>今日出售时间</span>
+        <div className={styles.topbarEyebrowRow}>
+          <span className={styles.topbarEyebrow}>today</span>
+          <span className={styles.topbarEnglish}>What does it cost</span>
+          <span className={styles.topbarRight}>{formatDate(now)}</span>
+        </div>
+        <div className={styles.topbarCenter}>今日出售时间</div>
       </div>
 
       {/* ============ TimerCard ============ */}
-      <TimerCard />
+      <div className={styles.timerWrap}>
+        <TimerCard />
+      </div>
 
       {/* ============ QuoteCard (在 Timer 和 Stats 之间) ============ */}
       <div className={styles.quoteWrap}>
@@ -80,6 +81,6 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
           onClick={onOpenConvert}
         />
       </div>
-    </>
+    </div>
   );
 }

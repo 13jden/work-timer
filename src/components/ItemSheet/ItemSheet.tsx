@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ItemSheet — 添加 / 编辑物品
  * 底部弹窗,受控表单。
  */
@@ -53,7 +53,7 @@ export function ItemSheet({ open, editingItem, onClose, onSave, onDelete }: Item
         className={`${styles.backdrop} ${open ? styles.backdropOpen : ''}`}
         onClick={onClose}
       />
-      <div className={`${styles.sheet}`} style={{ display: open ? 'block' : 'none' }}>
+      <div className={`${styles.sheet} ${open ? styles.sheetOpen : ''}`}>
         <div className={styles.handle} />
         <h3 className={styles.title}>{editingItem ? '编辑物品' : '添加物品'}</h3>
 
