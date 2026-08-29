@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CalendarPage — 月度工作日网格
  */
 import { useMemo, useState, useEffect, useRef } from 'react';
@@ -8,9 +8,9 @@ import { useMonthlyStore } from '../store/monthlyStore';
 import { HOLIDAYS } from '../lib/constants';
 import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, todayEarned } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
-import { StatusBar } from '../components/StatusBar';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
+import { RestModeSheet } from '../components/RestModeSheet';
 import styles from './CalendarPage.module.css';
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
@@ -42,12 +42,19 @@ export function CalendarPage() {
   const setDayOverride = useCalendarStore((s) => s.setDayOverride);
   const clearOverride = useCalendarStore((s) => s.clearOverride);
   const snapshots = useMonthlyStore((s) => s.snapshots);
+  const monthlyRestModes = useCalendarStore((s) => s.monthlyRestModes);
+  const setMonthlyRestMode = useCalendarStore((s) => s.setMonthlyRestMode);
+  const setConfig = useConfigStore((s) => s.setConfig);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
 
   // 当前月的快照
   const currentKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const hasSnapshot = currentKey in snapshots;
   const snapshot = hasSnapshot ? snapshots[currentKey] : null;
+
+  // effectiveConfig:若该月有月度休息模式覆盖,则覆盖 config.restMode
+  const effectiveRestMode: 0 | 1 | 2 = monthlyRestModes[currentKey] ?? config.restMode;
+  const effectiveConfig = { ...config, restMode: effectiveRestMode };
 
   // 是否当前月
   const isCurrentMonth =
@@ -62,38 +69,38 @@ export function CalendarPage() {
   const daily = useMemo(
     () => {
       if (snapshot) return snapshot.dailyRate;
-      return dailySalary(year, month, config, overrides, HOLIDAYS);
+      return dailySalary(year, month, effectiveConfig, overrides, HOLIDAYS);
     },
-    [year, month, config, overrides, snapshot],
+    [year, month, effectiveConfig, overrides, snapshot],
   );
 
   // 快照月薪
   const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
 
-  // 当月已赚(用快照月薪,若快照存在;无快照则固定显示 ¥0)
+  // 当月已赚(用快照月薪,若快照存在;无快照则固定显示 0)
   const monthEarned = hasSnapshot
     ? (() => {
-        const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
-        return monthEarnedSoFar(year, month, now, effectiveConfig, overrides, HOLIDAYS);
+        const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
+        return monthEarnedSoFar(year, month, now, cfg, overrides, HOLIDAYS);
       })()
     : 0;
 
   // 当日已赚(仅当前月 + 有快照时显示)
   const todayEarn = useMemo(() => {
     if (!isCurrentMonth || !hasSnapshot) return 0;
-    const effectiveConfig = { ...config, monthlySalary: effectiveSalary };
-    return todayEarned(now, effectiveConfig, overrides, HOLIDAYS);
-  }, [isCurrentMonth, hasSnapshot, now, config, overrides, effectiveSalary]);
+    const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
+    return todayEarned(now, cfg, overrides, HOLIDAYS);
+  }, [isCurrentMonth, hasSnapshot, now, effectiveConfig, overrides, effectiveSalary]);
 
   // 工作日数
   const workdaysCount = useMemo(() => {
     let count = 0;
     const days = daysInMonthCalc(year, month);
     for (let d = 1; d <= days; d++) {
-      if (isWorkday(new Date(year, month, d), config, overrides, HOLIDAYS)) count++;
+      if (isWorkday(new Date(year, month, d), effectiveConfig, overrides, HOLIDAYS)) count++;
     }
     return count;
-  }, [year, month, config, overrides]);
+  }, [year, month, effectiveConfig, overrides]);
 
   // 网格
   const firstDow = new Date(year, month, 1).getDay();
@@ -106,6 +113,9 @@ export function CalendarPage() {
   // GenerateSheet
   const [genOpen, setGenOpen] = useState(false);
 
+  // RestModeSheet
+  const [restOpen, setRestOpen] = useState(false);
+
   function openDay(d: number) {
     const date = new Date(year, month, d);
     setPickedDate(date);
@@ -115,7 +125,7 @@ export function CalendarPage() {
   const pickedKey = pickedDate ? formatDateKey(pickedDate) : '';
   const pickedEntry = pickedKey ? (overrides[pickedKey] ?? null) : null;
   const isPickedWork = pickedDate
-    ? isWorkday(pickedDate, config, overrides, HOLIDAYS)
+    ? isWorkday(pickedDate, effectiveConfig, overrides, HOLIDAYS)
     : false;
 
   /**
@@ -123,9 +133,29 @@ export function CalendarPage() {
    * 当前月时同步更新 config.monthlySalary,让设置页和其它计算页立刻生效。
    */
   function handleGenerate(salary: number) {
-    createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
+    createSnapshot(year, month, salary, effectiveConfig, overrides, HOLIDAYS);
     if (isCurrentMonth) {
       useConfigStore.setState({ monthlySalary: salary });
+    }
+  }
+
+  /**
+   * RestModeSheet 确认:切换月度休息模式
+   * - 当前月 → 全局 config.restMode 同步 + 清除月度覆盖
+   * - 历史月 → 仅写 monthlyRestModes 覆盖
+   * - null → 清除月度覆盖
+   */
+  function handleRestConfirm(mode: 0 | 1 | 2 | null) {
+    if (mode === null) {
+      // 清除月度覆盖,恢复全局
+      setMonthlyRestMode(currentKey, null);
+    } else if (isCurrentMonth) {
+      // 当前月 → 修改全局配置
+      setConfig({ restMode: mode });
+      setMonthlyRestMode(currentKey, null);
+    } else {
+      // 历史月 → 仅覆盖该月
+      setMonthlyRestMode(currentKey, mode);
     }
   }
 
@@ -134,7 +164,6 @@ export function CalendarPage() {
 
   return (
     <>
-      <StatusBar />
 
       {/* Header:月份居中可点击 → 弹出 GenerateSheet(未来月不可点) */}
       <button
@@ -151,12 +180,17 @@ export function CalendarPage() {
         </div>
       </button>
 
-      {/* Summary:始终三卡;已赚无快照时显示 ¥0 + 右上角小圆点 */}
+      {/* Summary:始终三卡;已赚无快照时显示 0 + 右上角小圆点 */}
       <div className={styles.summary}>
-        <div className={`${styles.summaryCard} ${styles.green}`}>
+        <button
+          type="button"
+          className={`${styles.summaryCard} ${styles.green} ${styles.summaryRest}`}
+          onClick={() => setRestOpen(true)}
+          title="调整休息模式"
+        >
           <div className={styles.summaryNum}>{workdaysCount}</div>
           <div className={styles.summaryLbl}>工作日</div>
-        </div>
+        </button>
         <div className={`${styles.summaryCard} ${styles.white}`}>
           <div className={styles.summaryNum}>
             ¥{Math.round(daily).toLocaleString('en-US')}
@@ -208,8 +242,8 @@ export function CalendarPage() {
           {Array.from({ length: daysInMonth }, (_, i) => {
             const d = i + 1;
             const date = new Date(year, month, d);
-            const isWork = isWorkday(date, config, overrides, HOLIDAYS);
-            const units = dayUnits(date, config, overrides, HOLIDAYS);
+            const isWork = isWorkday(date, effectiveConfig, overrides, HOLIDAYS);
+            const units = dayUnits(date, effectiveConfig, overrides, HOLIDAYS);
             const isToday =
               d === now.getDate() &&
               month === now.getMonth() &&
@@ -228,8 +262,8 @@ export function CalendarPage() {
               hasOv ? styles.dayOverride : '',
             ].filter(Boolean).join(' ');
 
-            // 显示 ¥ 金额规则:
-            // - 已生成快照:过去工作日显示「已结算金额」(daily × units)
+            // 显示 金额规则:
+            // - 已生成快照:过去工作日显示「已结算金额」(daily * units)
             // - 今天 + 当前月 + 已生成快照:实时累积「今日已赚」(每秒刷新)
             // - 今天 + 当前月 + 无快照:不显示(用户没确认数据,不该瞎猜)
             let earnText = '';
@@ -238,7 +272,7 @@ export function CalendarPage() {
                 earnText = `¥${todayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               } else if (isPast && units > 0) {
                 const dayEarn = daily * units;
-                earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+                earnText = `¥${dayEarn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               }
             }
 
@@ -267,6 +301,17 @@ export function CalendarPage() {
         onClose={() => setSheetOpen(false)}
         onSave={(key, entry) => setDayOverride(key, entry)}
         onReset={(key) => clearOverride(key)}
+      />
+
+      {/* RestModeSheet:点击工作日 → 切换休息模式 */}
+      <RestModeSheet
+        open={restOpen}
+        year={year}
+        month={month}
+        currentMode={effectiveRestMode}
+        isCurrentMonth={isCurrentMonth}
+        onClose={() => setRestOpen(false)}
+        onConfirm={handleRestConfirm}
       />
 
       {/* GenerateSheet:点击月份 / 已赚 → 设置 / 调整月薪 */}

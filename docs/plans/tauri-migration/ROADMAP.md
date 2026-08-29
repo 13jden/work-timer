@@ -85,8 +85,8 @@
 
 | TASK ID | 标题 | 估时 | 依赖 |
 |---|---|---|---|
-| TASK-015 | 配置 Tauri Mobile + Android target | 0.3 天 | TASK-014 |
-| TASK-016 | Android APK / AAB 构建 + 测试 | 0.5 天 | TASK-015 |
+| TASK-015 | 配置 Tauri Mobile + Android target | 0.3 天 | TASK-014 | ✅ 用户手动完成 |
+| TASK-016 | Android APK / AAB 构建 + 测试 | 0.5 天 | TASK-015 | ✅ 2026-08-29(universal APK + 签名 + 自定义 logo) |
 | TASK-017 | iOS target 配置(Xcode + 签名) | 0.5 天 | TASK-015 |
 | TASK-018 | iOS .ipa 构建 + 测试 | 0.5 天 | TASK-017 |
 | TASK-019 | 删除 Capacitor 相关代码(`android/`、`capacitor.config.json`、`build-apk.ps1`) | 0.2 天 | TASK-016 |

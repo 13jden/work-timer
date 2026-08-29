@@ -7,6 +7,7 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  min-height: 100px;
 }
 
 .card::before {
@@ -125,12 +126,6 @@
 
 .range span {
   font-variant-numeric: tabular-nums;
-}
-
-/* 休息日:卡片仍保留,但整体调灰一点 */
-.rest {
-  filter: grayscale(0.4);
-  opacity: 0.85;
 }
 
 /* Obsidian 主题:卡片用 paper 底 */

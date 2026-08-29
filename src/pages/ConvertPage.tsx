@@ -5,7 +5,6 @@ import { useItemsStore } from '../store/itemsStore';
 import { HOLIDAYS } from '../lib/constants';
 import { hourlyRate } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
-import { StatusBar } from '../components/StatusBar';
 import { ItemSheet } from '../components/ItemSheet';
 import type { Item } from '../lib/types';
 import styles from './ConvertPage.module.css';
@@ -66,15 +65,14 @@ export function ConvertPage() {
 
   return (
     <>
-      <StatusBar />
+
+      {/* 匹配 index.html:page-head (eyebrow + h2 衬线斜体) */}
       <div className={styles.pageHead}>
-        <div className={styles.eyebrow}>02 / CONVERT</div>
-        <h2 className={styles.title}>你买的每样东西<br/>值多少小时</h2>
+        <div className={styles.eyebrow}>What does it cost</div>
+        <h2 className={styles.title}>等价换算</h2>
       </div>
-      <div className={styles.figure}>
-        <div className={styles.amount}>¥{rate.toFixed(2)}</div>
-        <div className={styles.sub}>你的时薪 · 每小时值这么多</div>
-      </div>
+
+      {/* 列表 */}
       <div className={styles.list}>
         {sortedItems.map((item) => {
           const hours = item.price / rate;
@@ -98,8 +96,11 @@ export function ConvertPage() {
           );
         })}
       </div>
+
+      {/* 添加按钮:虚线边框 + 居中 */}
       <button type="button" className={styles.addBtn} onClick={openAdd}>
-        ＋ 添加物品
+        <span className={styles.addPlus}>＋</span>
+        <span>添加喜欢的东西</span>
       </button>
 
       <ItemSheet

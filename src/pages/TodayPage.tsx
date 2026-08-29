@@ -1,13 +1,23 @@
 /**
  * TodayPage — 今日页(Timer + Stats)
  * 用户打开 App 第一眼看到的内容。
+ *
+ * 布局(匹配 index.html + 参考图):
+ * ┌──────────────────────────────┐
+ * │ TopBar  TODAY·日期 / 中心标题 / 后缀 │
+ * ├──────────────────────────────┤
+ * │ TimerCard (深色大卡)            │
+ * ├──────────────────────────────┤
+ * │ QuoteCard (白底引用)           │
+ * ├──────────────────────────────┤
+ * │ Income卡 ｜ Worth卡 (两栏)     │
+ * └──────────────────────────────┘
  */
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
 import { hourlyRate, perSecond, todayEarned } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
-import { StatusBar } from '../components/StatusBar';
 import { TimerCard } from '../components/TimerCard';
 import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
@@ -37,36 +47,39 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
 
   return (
     <>
-      <StatusBar />
-      <div className={styles.hero}>
-        <div className={styles.heroColLeft}>
-          <TimerCard />
-          <div className={styles.mobileQuote}>
-            <QuoteCard index={dayOfYear} />
-          </div>
-        </div>
-        <div className={styles.heroColRight}>
-          <div className={styles.statsRow}>
-            <StatCard
-              index="01 / INCOME"
-              value={`¥${earned.toFixed(2)}`}
-              variant="income"
-              sub={`¥${hourly.toFixed(2)} / 小时`}
-              extra={`¥${perSec.toFixed(4)} / 秒`}
-            />
-            <StatCard
-              index="02 / WORTH"
-              value={`${Math.floor(coffeeCount)} 杯`}
-              variant="equivalent"
-              flavor
-              sub={`按 ¥${config.coffeePrice} 算`}
-              extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
-              onClick={onOpenConvert}
-            />
-          </div>
-        </div>
+
+      {/* ============ TopBar ============ */}
+      <div className={styles.topbar}>
+        <span className={styles.topbarCenter}>今日出售时间</span>
       </div>
 
+      {/* ============ TimerCard ============ */}
+      <TimerCard />
+
+      {/* ============ QuoteCard (在 Timer 和 Stats 之间) ============ */}
+      <div className={styles.quoteWrap}>
+        <QuoteCard index={dayOfYear} />
+      </div>
+
+      {/* ============ Stats Row (两卡片并排) ============ */}
+      <div className={styles.statsRow}>
+        <StatCard
+          index="01 / INCOME"
+          value={`¥${earned.toFixed(2)}`}
+          variant="income"
+          sub={`¥${hourly.toFixed(2)} / 小时`}
+          extra={`¥${perSec.toFixed(4)} / 秒`}
+        />
+        <StatCard
+          index="02 / WORTH"
+          value={`${Math.floor(coffeeCount)} 杯`}
+          variant="equivalent"
+          flavor
+          sub={`按 ¥${config.coffeePrice} 算`}
+          extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
+          onClick={onOpenConvert}
+        />
+      </div>
     </>
   );
 }

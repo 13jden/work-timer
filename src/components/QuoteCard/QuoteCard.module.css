@@ -1,5 +1,7 @@
-.card {
-  margin: 0 16px 14px;
+﻿.card {
+  margin: 0 0 14px;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--card);
   border-radius: var(--r-md);
   padding: 14px 16px;
@@ -14,6 +16,7 @@
   font-size: 28px;
   line-height: 0.6;
   color: var(--accent-deep);
+  flex-shrink: 0;
 }
 
 .body {
@@ -23,4 +26,5 @@
   color: var(--ink);
   flex: 1;
   line-height: 1.4;
+  width: 100%;
 }

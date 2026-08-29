@@ -1,4 +1,4 @@
-.head {
+﻿.head {
   width: 100%;
   padding: 20px 20px 12px;
   display: flex;
@@ -24,7 +24,7 @@
 .headInner {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   text-align: center;
 }
 
@@ -85,6 +85,15 @@
 }
 
 /* 已赚卡片:button 形态 */
+.summaryRest {
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s;
+}
+.summaryRest:active {
+  transform: scale(0.97);
+}
+
 .summaryEarn {
   border: 1px solid var(--line-soft);
   cursor: pointer;
@@ -159,11 +168,6 @@
   transition: background 0.2s, color 0.2s;
 }
 
-.navBtn:hover {
-  background: var(--ink);
-  color: var(--accent);
-}
-
 .navTitle {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -179,19 +183,19 @@
   transition: background 0.2s;
 }
 
-.navTitle:hover {
-  background: var(--ink);
-}
-
 /* ── 网格 ───────────────────────────────────── */
 .grid {
   padding: 0 16px 24px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   margin-bottom: 6px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .weekdayCell {
@@ -209,6 +213,8 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .day {
@@ -226,6 +232,8 @@
   transition: transform 0.1s;
   font-family: inherit;
   color: var(--ink);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dayEmpty {
@@ -253,6 +261,12 @@
 
 .dayNum {
   font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  text-align: center;
 }
 
 .earn {
@@ -262,6 +276,11 @@
   margin-top: 2px;
   font-weight: 500;
   line-height: 1;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .dayToday .earn {

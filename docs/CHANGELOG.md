@@ -1,8 +1,157 @@
+﻿## [Unreleased] · 2026-08-29
+### Added · Month 页「工作日」卡片支持点击切换休息模式(双休/单休/无休)
+
+Month 页 summary 三卡中,**绿色"工作日"卡片**现在可点击,弹出 RestModeSheet 底部弹窗:
+
+- 三个选项:**双休(2) / 单休(1) / 无休(0)**
+- **当前月** → 修改全局 config.restMode,立即生效到首页、设置页等所有页面
+- **历史月** → 仅写入 calendarStore.monthlyRestModes[key] 覆盖该月,不影响全局
+- 历史月弹窗额外显示「恢复全局设置」按钮,可清除覆盖
+- 弹窗标题格式:YYYY年 M月,副标题说明当前操作模式
+
+#### 改动清单
+
+- **src/store/calendarStore.ts**: 新增 monthlyRestModes: Record<string, RestMode> 持久化字段 + setMonthlyRestMode(key, mode | null) action
+- **src/pages/CalendarPage.tsx**: 构建 effectiveConfig = { ...config, restMode: effectiveRestMode },所有 compute 函数调用均使用 effectiveConfig;工作日 <div> 改为 <button class="summaryRest">;RestModeSheet 渲染
+- **src/pages/CalendarPage.module.css**: 新增 .summaryRest 按钮样式(cursor+active scale)
+- **src/components/RestModeSheet/**: 新增组件(RestModeSheet.tsx + RestModeSheet.module.css + index.ts),复用 GenerateSheet 的 sheet 底弹风格
+- **src/lib/compute.ts**: **未修改函数签名**,通过 effectiveConfig 覆盖 restMode 实现零侵入
+
+### Changed · 移动端布局还原 · Today / Swap / Mine 回归 index.html
+
+用户从历史恢复了 `index.html`(原始 HTML + Capacitor 版)并反馈:React 重构后的移动端布局不及原版美观。
+本次按恢复的 `index.html` 逐项还原 **字体 / 排版 / 间距 / 卡片圆角** 等视觉细节,
+**逻辑层 100% 不变**(Zustand stores、compute.ts 纯函数、sheet 组件均未触碰)。
+
+#### ── Today 页 (主页面,参考用户截图) ──
+- **`src/pages/TodayPage.tsx` + `TodayPage.module.css`**
+  - 新增 **TopBar** 三栏区(匹配 index.html `.topbar`):
+    - 左: `Today · MM.DD` (monospace 大写 eyebrow, muted)
+    - 中: `今日出售时间` (Cormorant Garamond 斜体 17px, ink)
+    - 右: `MM.DD` (11px muted)
+  - 重排移动端顺序:**TimerCard → QuoteCard → StatsRow**(Quote 卡在中间)
+  - 去掉桌面端 hero 双栏(桌面端布局后续再完善,本次专注移动端)
+  - Stats 卡片两栏使用 1fr 1fr grid,与原版 `.stats-row` 一致
+- **`src/components/TimerCard/TimerCard.tsx` + `TimerCard.module.css`**
+  - **REST 模式还原参考图**:显示大字号衬线 **"REST"**(72px Cormorant Garamond,白色),不再是 "—"
+  - 状态栏文本: `今日休息` (原为 休息日)
+  - 标签文本: `享受休息日` (原为 今天不上班)
+  - 休息日仍完整显示 SHIFT 行 / 进度条 / 时间区间 (参考图明确可见)
+  - 去掉 `.rest` 的 `grayscale + opacity` 整体降灰滤镜(保持深色卡底色)
+
+#### ── Swap 页 (Convert) ──
+- **`src/pages/ConvertPage.tsx` + `ConvertPage.module.css`**
+  - page-head 还原为:eyebrow **"What does it cost"** + 衬线斜体标题 **"等价换算"**
+    - (原为 "02 / CONVERT" + "你买的每样东西值多少小时")
+  - 移除顶部时薪大号 figure (¥XX.XX + "你的时薪…" 子标题) —— 原版 HTML 换算页无该区块
+  - 列表行保持原版结构:icon(44×44 圆角 12) / name+price / count+"需要工作"
+  - 添加按钮文字改回 **"＋ 添加喜欢的东西"** (原为 "＋ 添加物品")
+  - 按钮 :active 态改为 `border-color:ink + color:ink + rgba 背景`(与原版一致)
+
+#### ── Mine 页 (Settings) ──
+- **`src/pages/SettingsPage.tsx` + `SettingsPage.module.css`**
+  - 新增 page-head:eyebrow **"Preferences"** + 衬线斜体 **"设置"**
+  - 按原版拆分为 5 个独立 group (眉毛标题 + 白色卡片 + 行分隔):
+    1. **薪资 · Salary**: 月薪 input + 当月工作日(天数,只读)
+    2. **时间 · Hours**: 上班时间 / 下班时间 / **休息模式下拉 + › 角标**(原混在薪资 card)
+    3. **换算 · Convert**: 咖啡默认单价(原混在薪资 card)
+    4. **主题 · Theme**: 三色圆点点(swatch 大小从 28 调回原版 24,active 扩大 1.2 倍 + accent-shadow)
+    5. **月度记录 · Salary History**: 从 monthlyStore.getAllSnapshots() 读取快照列表
+        - 空态:"暂无月度记录 / 到 Month 页点击已赚卡片生成" (多行提示)
+        - 每行:YYYY年 X月 / ¥金额 · N天 / **本月** 或 **已锁定** 角标
+  - Footer 还原原版 **"v1.1 · 本地存储"** (原为 "Salary Timer · 年份")
+  - 所有 row/label/value/prefix 样式与原版像素级对齐(monospace、字号、圆角 16、分隔线 line-soft)
+
+#### ── Month 页 (Calendar) 两项专项修复 ──
+- **`src/pages/CalendarPage.module.css`**
+  - **Fix 1 · 左右月份切换不再加深颜色**:
+    - 删除 `.navBtn:hover { background: var(--ink); color: var(--accent); }`
+    - 删除 `.navTitle:hover { background: var(--ink); }`
+    - 点击时只切换月份,不产生颜色加深(保留 transition,不再注入深底规则)
+  - **Fix 2 · 日历数字限制最大宽度(防屏幕溢出)**:
+    - `.grid` / `.weekdays` / `.days` 新增 `max-width:100% + box-sizing:border-box`
+    - `.day` 新增 `max-width:100% + min-width:0` 强制遵守 grid 边界
+    - `.dayNum` 新增 `max-width:100% + overflow:hidden + ellipsis + nowrap + inline-block` 截断长数字
+    - `.earn` 新增同样 overflow/ellipsis 截断,避免金额溢出单元格
+
+#### ── Critical Fix · index.html 重写为 Vite React 入口 ──
+- **根因**:用户恢复的 `index.html` 是完全自包含的原生 HTML/CSS/JS Demo(有 inline `<style>` 块、完整 DOM 结构、原生 `<script>` 逻辑),不是 Vite React 入口。React SPA 渲染的是 `<div id="root">` 挂载点,但 index.html 里根本没有这个 div,导致浏览器跑的全是原生 Demo,所有 React 代码改动都被忽略。
+- **修复**:将 `index.html` 精简为标准 Vite React 入口:
+  - 保留:所有 `<meta>` 标签(viewport/theme-color/apple-mobile-web-app)+ Google Fonts link
+  - 移除:全部 inline `<style>` 块(已在 `src/styles/tokens.css` 和各 `.module.css` 中)+ 全部 `<body>` DOM(React 会渲染)+ 全部原生 `<script>`(逻辑已迁移到 React/Zustand)
+  - 新增:`<div id="root"></div>` + `<script type="module" src="/src/main.tsx"></script>`
+- **结果**:React SPA 正确渲染,StatusBar 时间/电量/日期彻底消失,字体通过 tokens.css 的 CSS 变量正确加载(Cormorant Garamond / JetBrains Mono / Figtree)
+
+### Verified (browser check + typecheck)
+- ✅ `npm run typecheck` 通过,无 TS 错误
+- ✅ **Today 页**:StatusBar 已移除,TopBar 只显示居中 "今日出售时间"(衬线斜体),字体正确
+- ✅ **Month 页**:navBtn 点击无深底效果(只切换月份),日历数字不溢出屏幕,点击日期弹出 DaySheet,点击月份/已赚弹出 GenerateSheet
+- ✅ 月份切换正常(八月 → 七月,非当前月显示 "now" 按钮)
+
+---
 # Changelog · Salary Timer
 
 All notable changes are documented here.
 
 Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-DD` for releases.
+
+## [Unreleased] · 2026-08-29
+### Added · Month 页「工作日」卡片支持点击切换休息模式(双休/单休/无休)
+
+Month 页 summary 三卡中,**绿色"工作日"卡片**现在可点击,弹出 RestModeSheet 底部弹窗:
+
+- 三个选项:**双休(2) / 单休(1) / 无休(0)**
+- **当前月** → 修改全局 config.restMode,立即生效到首页、设置页等所有页面
+- **历史月** → 仅写入 calendarStore.monthlyRestModes[key] 覆盖该月,不影响全局
+- 历史月弹窗额外显示「恢复全局设置」按钮,可清除覆盖
+- 弹窗标题格式:YYYY年 M月,副标题说明当前操作模式
+
+#### 改动清单
+
+- **src/store/calendarStore.ts**: 新增 monthlyRestModes: Record<string, RestMode> 持久化字段 + setMonthlyRestMode(key, mode | null) action
+- **src/pages/CalendarPage.tsx**: 构建 effectiveConfig = { ...config, restMode: effectiveRestMode },所有 compute 函数调用均使用 effectiveConfig;工作日 <div> 改为 <button class="summaryRest">;RestModeSheet 渲染
+- **src/pages/CalendarPage.module.css**: 新增 .summaryRest 按钮样式(cursor+active scale)
+- **src/components/RestModeSheet/**: 新增组件(RestModeSheet.tsx + RestModeSheet.module.css + index.ts),复用 GenerateSheet 的 sheet 底弹风格
+- **src/lib/compute.ts**: **未修改函数签名**,通过 effectiveConfig 覆盖 restMode 实现零侵入
+
+### Added · TASK-016 完成 · Android APK 打包 + 自定义 Logo
+
+- **自定义 Logo 全图标集**:柠檬绿 ¥ 秒表(`image/LS20260827102934.png`)替换 Tauri 默认图标
+  - `resources/logo-square.png`:方形化源图(原图 1228×1225 → 1225×1225)
+  - `npx tauri icon` 重生 `src-tauri/icons/`(ico / icns / png / Square*)+ Android mipmap 全密度 + 自适应图标 `mipmap-anydpi-v26`
+- **Release universal APK**:四架构(aarch64 / armv7 / i686 / x86_64),`npx tauri android build --apk`
+- **签名链路**:zipalign 4 字节对齐 + apksigner(RSA 2048 keystore,v2/v3 签名方案校验通过)
+- **产物**:`dist-android/SalaryTimer-0.1.0-universal.apk`(37MB,可 `adb install`)
+- **签名资产**:`release.keystore` + `keystore.properties`(均 gitignore,勿提交)
+- **`docs/plans/tauri-migration/TASK-016-android-apk.md`**:任务文档
+
+### Fixed · TASK-016 签名修复 · v2-only 签名 + arm64 精简包
+
+经过多轮排查,确认"安装包异常"的**两个根因**:
+
+1. **apksigner 默认生成的 v1 签名文件无效**:build-tools 35.0.0 的 apksigner 即使 `--v1-signing-enabled true --min-sdk-version 22` 也创建了校验失败的 v1 文件(SF/RSA 存在但 verify 报 false)。国产 ROM 安装器检测到 v1 文件后尝试校验,失败即拒绝安装。
+2. **targetSdk 36 要求 v2**:纯 v1 签名(jarsigner)在 targetSdk 36 下被拒绝(`ERROR: Target SDK version 36 requires a minimum of signature scheme v2`)。
+
+**最终方案**:apksigner `--v1-signing-enabled false` 只签 v2/v3,**完全不生成 v1 文件**,消除安装器对 v1 的误判。
+**签名顺序**:剔除非目标架构 → zipalign 4 字节对齐 → apksigner 签名(apksigner 保留对齐)。
+
+### 产物
+
+| APK | 大小 | 签名 | 架构 |
+|---|---|---|---|
+| `SalaryTimer-0.1.0-arm64-v2.apk` | 11.81MB | v2+v3 (apksigner, 无 v1) | arm64-only |
+| `SalaryTimer-0.1.0-universal-v2.apk` | 35.38MB | v2+v3 (apksigner, 无 v1) | 四架构 |
+
+### Notes
+
+- 本机未开 Developer Mode,Tauri Android 构建的 jniLibs 符号链接**需要管理员权限**,构建须在提权 shell 运行
+- 旧 `jniLibs/*.so` 失效符号链接会导致 clobber 失败(os error 2),重建前需先删除
+- **签名方案**:targetSdk 36 下用 apksigner `--v1-signing-enabled false` 只签 v2/v3,不生成可能干扰安装器的 v1 文件
+- **精简方法**:直接从 APK ZIP 中删除非目标架构的 `lib/` 子目录 → zipalign → 签名,无需重建无需提权
+- **jarsigner 顺序**:若用 jarsigner(v1),必须先签名再 zipalign(签名会破坏对齐);apksigner 则要求先 zipalign 再签名
+- 阶段 3 进度:TASK-015 ✅(用户手动配置)/ TASK-016 ✅
+
+---
 
 ## [Unreleased] · 2026-08-28
 
@@ -470,3 +619,4 @@ Format: `## [Unreleased] · YYYY-MM-DD` for unreleased, `## [v1.x.x] · YYYY-MM-
 - **设置页**: 月薪、上班时间、下班时间、午休时长、咖啡单价
 - **法定节假日**: 内置 2026 年节假日映射
 - ** Capacitor Android 打包**: 完整 Android 工程,支持生成 APK
+

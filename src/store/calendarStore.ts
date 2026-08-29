@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Salary Timer — Calendar Store
  *
  * 管理日历页状态:
  *   - 当前查看的年/月
  *   - 手动调休/加班/请假 override(每天 可选 work / paid_overtime / leave / rest)
+ *   - 月度休息模式覆盖(每月可选 0无休/1单休/2双休,优先级高于全局 config.restMode)
  *
  * 自动持久化到 localStorage(v2 key)。
  */
@@ -14,6 +15,8 @@ import { loadJSON } from '../lib/storage';
 import type { DayOverrideEntry, DayOverrides } from '../lib/types';
 
 // ── Store 形状 ──────────────────────────────────────────────
+type RestMode = 0 | 1 | 2;
+
 interface CalendarStore {
   /** 当前查看的年月 */
   year: number;
@@ -21,6 +24,9 @@ interface CalendarStore {
 
   /** 手动调休覆盖表 key=YYYY-MM-DD value=DayOverrideEntry */
   dayOverrides: DayOverrides;
+
+  /** 月度休息模式覆盖表 key=YYYY-MM value=restMode(0无休/1单休/2双休) */
+  monthlyRestModes: Record<string, RestMode>;
 
   /** 设置当前查看的年月 */
   setMonth: (year: number, month: number) => void;
@@ -48,6 +54,9 @@ interface CalendarStore {
 
   /** 清除某天的 override */
   clearOverride: (key: string) => void;
+
+  /** 设置/清除某月份的休息模式覆盖;null=清除覆盖 */
+  setMonthlyRestMode: (key: string, mode: RestMode | null) => void;
 
   /** 重置 */
   reset: () => void;
@@ -97,6 +106,7 @@ export const useCalendarStore = create<CalendarStore>()(
     (set, get) => ({
       ...nowYearMonth(),
       dayOverrides: normalizedInitial,
+      monthlyRestModes: {},
 
       setMonth: (year, month) => set({ year, month }),
 
@@ -141,7 +151,17 @@ export const useCalendarStore = create<CalendarStore>()(
         set({ dayOverrides: overrides });
       },
 
-      reset: () => set({ ...nowYearMonth(), dayOverrides: {} }),
+      setMonthlyRestMode: (key, mode) => {
+        const all = { ...get().monthlyRestModes };
+        if (mode === null) {
+          delete all[key];
+        } else {
+          all[key] = mode;
+        }
+        set({ monthlyRestModes: all });
+      },
+
+      reset: () => set({ ...nowYearMonth(), dayOverrides: {}, monthlyRestModes: {} }),
     }),
     {
       name: OVERRIDES_KEY_V2,

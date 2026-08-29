@@ -1,4 +1,4 @@
-.pageHead {
+﻿.pageHead {
   padding: 22px 20px 16px;
   text-align: center;
 }
@@ -20,29 +20,6 @@
   letter-spacing: -0.5px;
   line-height: 1.1;
   margin: 0;
-}
-
-.figure {
-  padding: 0 16px 22px;
-  text-align: center;
-}
-
-.amount {
-  font-family: var(--font-display);
-  font-size: 54px;
-  line-height: 1;
-  font-weight: 400;
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
-}
-
-.sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-  text-transform: uppercase;
 }
 
 .list {
@@ -143,7 +120,13 @@
   font-family: inherit;
 }
 
-.addBtn:hover {
+.addBtn:active {
   border-color: var(--ink);
   color: var(--ink);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.addPlus {
+  font-size: 18px;
+  line-height: 1;
 }

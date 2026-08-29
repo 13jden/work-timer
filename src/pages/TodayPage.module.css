@@ -1,48 +1,50 @@
-.hero {
+/* ═══════════════════════════════════════════
+   TopBar — 左右眉毛 + 居中衬线斜体标题
+   匹配 index.html 中的 .topbar
+   ═══════════════════════════════════════════ */
+.topbar {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px 0 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 20px 10px;
 }
 
-.heroColLeft  { flex: 1.6; min-width: 0; }
-.heroColRight { flex: 1;   min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-
-/* Desktop: side-by-side */
-@media (min-width: 680px) {
-  .hero {
-    flex-direction: row;
-    align-items: stretch;
-    padding: 28px 0 20px;
-    gap: 18px;
-  }
-  .heroColLeft  { flex: 1.5; }
-  .heroColRight { flex: 1; }
+.topbarEyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
 }
 
+.topbarCenter {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink);
+  letter-spacing: 0.2px;
+}
+
+.topbarRight {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════
+   QuoteCard 间距
+   ═══════════════════════════════════════════ */
+.quoteWrap {
+  display: flex;
+}
+
+/* ═══════════════════════════════════════════
+   Stats Row:两卡片(收入 + 等价)并排
+   ═══════════════════════════════════════════ */
 .statsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 0 16px;
   margin-bottom: 14px;
-}
-
-/* 桌面端 quote 在 hero 下方 */
-.desktopQuote {
-  display: none;
-}
-@media (min-width: 680px) {
-  .desktopQuote {
-    display: flex;
-  }
-}
-
-.mobileQuote {
-  display: flex;
-}
-@media (min-width: 680px) {
-  .mobileQuote {
-    display: none;
-  }
 }

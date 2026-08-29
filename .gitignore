@@ -7,6 +7,10 @@ yarn-error.log
 dist/
 .vite/
 
+# Android packaging output
+dist-android/
+build-elevated.log
+
 # Test coverage
 coverage/
 *.lcov
@@ -37,6 +41,7 @@ Thumbs.db
 *.keystore
 *.jks
 key.properties
+keystore.properties
 
 # Gradle wrapper jar is fine to commit; local distributions are not
 .gradle/
