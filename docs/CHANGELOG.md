@@ -1,4 +1,33 @@
-﻿## [Unreleased] · 2026-08-29
+## [Unreleased] · 2026-08-29
+### Built · SalaryTimer-0.1.0-arm64-v2.apk · 新图标(四周留白防裁剪) · 11.51MB
+
+#### APK 图标防溢出处理
+- 用户提供竖长方形原图 `image/316c1e2063e73a0dcf1e1a2d61935ef5.jpg`(964×1030)，直接作为 APK 图标被 Android 自适应圆形 mask 裁剪后会切掉边缘的星星、¥元宝袋、白圈描边(溢出效果)
+- **处理方案**:1024×1024 方形黑色画布 + 原图等比缩放到 76%(728×778)居中放置，四周留 **12%~15% 黑色安全边距**，输出 `resources/logo-square.png`
+- 运行 `npx tauri icon resources/logo-square.png` 重刷全部图标资源：
+  - src-tauri/icons/ (ico / icns / png / Square*)
+  - Android mipmap-mdpi / hdpi / xhdpi / xxhdpi / xxxhdpi 五密度 `ic_launcher.png` + `ic_launcher_round.png` + `ic_launcher_foreground.png`
+
+#### Tauri jniLibs 符号链接问题(Windows 非管理员)
+- 本机未开 Developer Mode，Windows `CreateSymbolicLink` 导致 Tauri CLI 的 symlinking 阶段固定报错 `os error 2`(clobber enabled 时悬垂 symlink 无法删除/重建)
+- **绕过方案**:
+  1. `npx tauri android build -t aarch64 --apk` 完整执行 `beforeBuildCommand`(前端 dist 构建嵌入 Rust .so)→ `cargo build`(4 个 android targets 编译好)→ 允许 symlink 阶段失败
+  2. 手动把 `target/<triple>/release/libapp_lib.so` 以 **NTFS HardLink** 方式写入 `jniLibs/<arch>/libapp_lib.so`(HardLink 无需管理员权限、同卷即可)
+  3. 修改 `src-tauri/gen/android/app/build.gradle.kts` 的 `defaultConfig { ndk { abiFilters += listOf("arm64-v8a") } }`，强制只打包 arm64 ABI(其余三架构 .so 为旧版 HardLink 残留，直接丢弃不参与打包)
+  4. `gradlew.bat assembleRelease -x rustBuild<All>Tasks` **跳过 rustBuild 任务**(避免再次调用 `cargo tauri android android-studio-script` 导致 WebSocket Connection refused)，Gradle 直接用现成的 HardLink .so + 已构建资源完成打包
+
+#### 签名方案(沿用 TASK-016 修复)
+- zipalign 4 字节对齐(apksigner 签名前对齐)
+- apksigner(RSA 2048, `release.keystore` / alias `salary-timer`)**只签 v2+v3 方案**:
+  - `--v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true --min-sdk-version 24`
+  - 彻底避免 build-tools 35.0.0 的 v1 SF/RSA 校验失败导致国产 ROM 安装器误判(解析 v1 签名报 false)
+- verify 结果:`v1=false · v2=true · v3=true · signers=1`(targetSdk 36 要求最少 v2，达标)
+
+#### 产物
+| APK | 路径 | 大小 | 签名 | 架构 |
+|---|---|---|---|---|
+| arm64 精简 | `dist-android/SalaryTimer-0.1.0-arm64-v2.apk` | **11.51 MB** | v2+v3 (apksigner, 无 v1) | arm64-v8a only |
+
 ### Changed · SettingsPage 保存语义重写:修改不立刻生效，必须点保存配置
 
 原行为:设置页所有 input / select / swatch 都是 onChange 即写入 configStore/themeStore，全局立即生效，保存配置按钮仅为 UI 装饰。
