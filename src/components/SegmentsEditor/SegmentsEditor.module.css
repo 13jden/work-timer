@@ -30,17 +30,18 @@
 }
 
 /* v1.3.1 修复:time input 固定宽度,不被跨天徽章挤压 */
+/* v1.3.2 调整:96px 给用户更舒适的点击/阅读空间,跨天徽章 padding 略加 */
 .time {
   font: 500 12px var(--font-mono);
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 3px 4px;
   background: var(--card);
   font-variant-numeric: tabular-nums;
-  width: 64px;
-  min-width: 64px;
-  max-width: 64px;
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
   flex-shrink: 0;
 }
 
@@ -55,7 +56,7 @@
   gap: 3px;
   background: var(--tag-new-bg);
   color: var(--tag-new-fg);
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: 999px;
   font: 600 9px var(--font-sans);
   letter-spacing: 0.3px;

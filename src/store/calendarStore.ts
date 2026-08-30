@@ -100,11 +100,18 @@ function normalizeOverrides(raw: unknown): DayOverrides {
             )
           : null;
         const nightShift = entry.nightShift === true;
+        // v1.3.2:freelance 临时费率(缺省时 null)
+        const fd = entry.freelanceDaily;
+        const fh = entry.freelanceHourly;
+        const freelanceDaily = typeof fd === 'number' && Number.isFinite(fd) ? fd : null;
+        const freelanceHourly = typeof fh === 'number' && Number.isFinite(fh) ? fh : null;
         result[key] = {
           type: type as DayOverrideEntry['type'],
           multiplier,
           segments,
           nightShift,
+          freelanceDaily,
+          freelanceHourly,
         };
       }
     }

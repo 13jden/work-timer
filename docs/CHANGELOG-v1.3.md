@@ -1,4 +1,4 @@
-# Changelog · Salary Timer v1.3
+﻿# Changelog · Salary Timer v1.3
 
 > **v1.3 独立 changelog 文件**。从本版本起,每个大版本单独建 `docs/CHANGELOG-vX.X.md`,不再全部堆到 `docs/CHANGELOG.md`。
 >
@@ -248,4 +248,193 @@ netHourly        = todayEarned / (netMinutes / 60)
 
 ---
 
-*最后更新:2026-08-29 · v1.3 发布*
+## [v1.3.2] · 2026-08-30 · SettingsPage 极简化 + DaySheet 自由日配置增强
+
+### 概览
+
+把 SettingsPage 收回到「只配长期不变的东西」,让日常调节(休息模式 / 自由日费率)走到更合适的入口。
+
+4 块改动:
+1. SettingsPage 极简化 — 休息模式独立成行(在薪资卡下方),不再嵌套在薪资卡内
+2. 「默认工时」重构 — 主页面只展示当前默认模板摘要 + 「自定义模板」按钮弹窗编辑模板库
+3. DaySheet freelance 增强 — 切到「自由/兼职」时支持设置当日临时日薪/时薪 + 工时
+4. v1.3.1 残留清理 — 删除失效的 `freelanceStore` 引用;SegmentsEditor time input 略加宽
+
+### Bug 1 · 休息模式独立成行
+
+**问题**:v1.3.1 把「休息模式」嵌套在「薪资」卡最后一行,视觉上像"薪资的子配置",但它其实影响的是"月薪分母",语义上属于"工作日制度"而非"薪资"。
+**期望**:从薪资卡移除,作为独立的「休息模式 · Rest」组放在薪资卡下方。
+
+**改动**:
+- `src/pages/SettingsPage.tsx` — 删除薪资卡内的 `select`,新增独立 `group`(休息模式 · Rest)+ 单行 select
+- 非月薪模式下,该组降级为只读说明"非月薪模式,休息由日历页当日类型决定"
+
+### Bug 2 · 「默认工时」极简卡 + 模板编辑弹窗
+
+**问题**:v1.3.1 把 TemplateEditor 全量内联到 SettingsPage 「高级」抽屉里,用户首次打开设置就能看到一堆「模板 1 / 模板 2」+ 内联 SegmentsEditor,视觉过重,**且**日常根本不需要在这里编辑模板。
+**期望**:
+- 主页面:**只**展示当前默认模板(第一个 template)的摘要(09:00–18:00 + 模板名 + 模板数)
+- 「自定义模板」按钮 → 打开居中弹窗编辑模板库(取代内联版)
+- 「高级」抽屉内删除「工作时间模板」subGroup(整体上移)
+
+**改动**:
+- `src/pages/SettingsPage.tsx`:
+  - 「默认工时」卡:`hoursCard` 显示 `summarizeSegments(firstTemplate.segments)` + 模板数徽章 + 「自定义模板」按钮
+  - 点击按钮 → `setTemplateModalOpen(true)` → 居中弹窗渲染 TemplateEditor 列表
+  - 「高级」抽屉内:删除「工作时间模板」subGroup(改放弹窗中)
+- `src/pages/SettingsPage.module.css`:
+  - 新增 `.hoursCard` / `.hoursLeft` / `.hoursEyebrow` / `.hoursTime` / `.hoursDuration` / `.hoursEditBtn`
+  - 新增 `.modalBackdrop` / `.modalCard` / `.modalHeader` / `.modalTitle` / `.modalHint` / `.modalClose` / `.modalBody` / `.modalFooter` / `.modalDoneBtn`
+  - 居中弹窗用 `scaleIn` 入场动画 + `blur(6px)` 背景
+
+### Bug 3 · DaySheet freelance 临时费率(关键功能)
+
+**问题**:用户在月薪模式下周末想兼职,DaySheet 切到 `freelance` 类型后只能乘 multiplier=1,**没有任何方式**告诉 App"今天按 ¥XXX/天算"。导致 freelance 类型在 monthly 模式下完全无意义。
+**期望**:DaySheet type=`freelance` 时展开「当日薪资」区:
+- Segmented:「按日薪」/「按时薪」
+- 输入数值(¥XX / 天 或 ¥XX / h)
+- 摘要行:按时薪显示当前模板工时(如 `× 9h`)
+- 同时支持「当日工时」inherit/custom + SegmentPicker(模板多选)
+
+**数据模型 v3.2**:
+
+```ts
+interface DayOverrideEntry {
+  type: DayType;
+  multiplier: number;
+  segments: WorkSegment[] | null;
+  nightShift: boolean;
+  // ── v1.3.2 新增(freelance 类型专用) ──
+  freelanceDaily?: number | null;
+  freelanceHourly?: number | null;
+}
+```
+
+**compute 优先级**(`effectiveDailyRate`,type='freelance'):
+1. `entry.freelanceHourly > 0` → `hourly × segmentsHours × multiplier`
+2. `entry.freelanceDaily > 0` → `daily × multiplier`
+3. fallback → `config.manualDailyRate × multiplier`
+
+**改动**:
+- `src/lib/types.ts` — `DayOverrideEntry` 新增 `freelanceDaily` / `freelanceHourly`
+- `src/lib/compute.ts`:
+  - `effectiveDailyRate` 新增 freelance 分支(3 级优先级)
+  - `normalizeEntry` 保留 `freelanceDaily/Hourly`(老数据无字段时补 `null`)
+- `src/store/calendarStore.ts` — `normalizeOverrides` 同步保留新字段
+- `src/components/DaySheet/DaySheet.tsx`:
+  - `selectedType === 'freelance'` 时渲染「当日薪资」区(segmented + input + 摘要)
+  - 新增 `freelanceRateMode` / `freelanceRate` state(回显 + 保存)
+  - `handleSave` 携带 `freelanceDaily/Hourly`
+  - 预览金额 `todayEarn` 在 freelance 时按 user input 计算(否则用 `dailyEarning × mult`)
+- `src/components/DaySheet/DaySheet.module.css`:
+  - 新增 `.freelanceRateRow` / `.freelanceModeRow` / `.freelanceModeChip` / `.freelanceModeChipActive`
+  - 新增 `.freelanceRateInputRow` / `.freelanceRatePrefix` / `.freelanceRateInput` / `.freelanceRateUnit`
+
+### Bug 4 · 清理 v1.3.1 残留
+
+**问题**:`SettingsPage.tsx` 仍 `import { useFreelanceStore } from '../store/freelanceStore'`,但 `freelanceStore.ts` 已不存在(typecheck 应失败,未运行)。
+**期望**:删除引用 + 「兼职记录」subGroup 改为静态说明("到日历页配置")。
+
+**改动**:
+- `src/pages/SettingsPage.tsx` — 删除 `useFreelanceStore` import / state / 渲染分支
+
+### Bug 5 · SegmentsEditor time input 加宽
+
+**问题**:v1.3.1 把 time input 固定到 88px,跨天「次日」徽章 padding 偏紧,主观觉得"再宽一点点更舒服"。
+**期望**:time input → 96px,跨天徽章 padding 略加。
+
+**改动**:
+- `src/components/SegmentsEditor/SegmentsEditor.module.css`:
+  - `.time` width/min-width/max-width: 88px → **96px**,padding 2px → 3px
+  - `.crossBadge` padding 1px 6px → **2px 8px**
+
+### 数据迁移说明
+
+- 老 v3 / v3.1 数据:`DayOverrideEntry` 缺失 `freelanceDaily/Hourly` → 自动补 `null`,读写路径全部走可选链,无破坏
+- `normalizeEntry` / `normalizeOverrides` 双入口均补新字段
+- `migrateToV3` 链保持不变
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **140 passed**(原 135 + 新增 5 freelance 用例)
+- ✅ `npm run build`:**239KB / gzip 75KB**(从 229KB / 73KB,新增 10KB 弹窗样式 + freelance 状态)
+- ✅ 5 个 Bug 各自手动验证通过
+
+### 不在本版本范围
+
+- 模板库的导入/导出(后续版本)
+- 自由日批量配置(连续多日兼职)
+- 桌面端布局优化(沿用移动端布局)
+
+### Notes
+
+- 此次修改不破坏 v3 / v3.1 计算逻辑:`effectiveDailyRate` 仅在 `type='freelance'` 时走新分支
+- 新加的 `freelanceDaily/Hourly` 仅作为「单日临时费率」,用户长期费率仍走 `config.manualDailyRate/Hourly`
+- 桌面端布局未变(共用组件)
+- 详细任务规格见 `docs/plans/tauri-migration/v1.3/TASK-026-v1.3.2-settings-simplify.md`
+
+---
+
+*最后更新:2026-08-30 · v1.3.2 发布*
+
+---
+
+### Bug 6 · CalendarPage today 实时显示
+
+**问题**:已赚区域.today 以前一直不显示,即使today已经配置好薪资且在正常计时。
+**期望**:today 即使没有生成快照,也应实时显示 	odayEarned。
+
+**改动**:
+- src/pages/CalendarPage.tsx:
+  - 	odayEarn 计算:移除 !hasSnapshot 的提前返回
+  - earnText 渲染:改为 if (isWork) { if (isToday) { show todayEarn } else if (hasSnapshot && isPast) { show dayEarn } }
+
+### Bug 7 · TodayPage 时薪按当前工作计算
+
+**问题**:首页时薪没有带今天的 override,如果今天被配置为兼职,时薪不会变。
+**期望**:时薪按今天的 override 计算。
+
+**改动**:
+- src/pages/TodayPage.tsx:
+  - import { hourlyRate ... } → 改为 import { effectiveHourlyRate ... }
+  - 调用改为 effectiveHourlyRate(now, config, overrides, HOLIDAYS)
+
+### Bug 8 · SettingsPage 高级配置样式
+
+**问题**:高级 panel 无 CSS 样式,模板管理结构需要重组。
+**期望**:高级面板结构化,模板管理移到高级面板内。
+
+**改动**:
+- src/pages/SettingsPage.module.css: 新增 .subGroup / .advancedToggle / .templateModalBtn / .templateList* / .timeInput
+- src/pages/SettingsPage.tsx: 主页面「工作时间」卡只显示纯摘要,高级面板内新增「工作时间模板」subGroup 带自定义模板按钮
+
+---
+
+## [v1.3.3] · 2026-08-30 · 图标替换 + 时间记录重设计(方案)
+
+> 以下为计划改动,待确认后实施。详细规格见 docs/plans/tauri-migration/v1.3/TASK-027-v1.3.3-icons-and-slacking.md
+
+### 方案 1 · 图标库替换:lucide-react → Phosphor Icons
+
+**背景**:Phosphor Icons 有 6 种粗细,可以用粗细编码视觉层级。
+
+**package.json 改动**:替换 "lucide-react" → "@phosphor-icons/react": "^2.1.7"
+
+### 方案 2 · 摸鱼计时 → 时间记录
+
+**改名**:
+- SlackingWidget → TimeTrackerWidget("时间记录")
+- SlackingDetailPage → TimeTrackerDetailPage("时间记录")
+- SlackingLabel → TimeRecordLabel(slack/overtime/other)
+- 首页组件只显示状态 + 开始/结束,标签选择器移到详情页
+
+**夜班自动标记**:
+- 22:00–06:00 内开始的记录自动标记 
+ightShift: true
+- computeNetHours 的 
+ightBonus 逻辑已有,无需改动
+
+---
+
+*最后更新:2026-08-30 · v1.3.2 Bug 修复 + v1.3.3 方案*

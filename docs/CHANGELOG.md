@@ -1,9 +1,10 @@
-## [Unreleased] · 2026-08-29
+## [Unreleased] · 2026-08-30
 
 ### 版本索引
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v1.3.2 | 2026-08-30 | SettingsPage 极简化 + DaySheet 自由日配置增强 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.3.1 | 2026-08-30 | Bug 修复 + 图标库 + 弹窗重设计 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.3.0 | 2026-08-29 | 增强版薪资模型(加班/摸鱼/自由/多段) | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.0–v1.2 | 阶段 1 | 见本文档历史记录 | 本文 |

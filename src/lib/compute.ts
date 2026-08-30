@@ -70,7 +70,23 @@ function normalizeEntry(raw: unknown): DayOverrideEntry | null {
         )
       : null;
     const nightShift = obj.nightShift === true;
-    return { type: type as DayOverrideEntry['type'], multiplier: safeMultiplier, segments, nightShift };
+    // v1.3.2:freelance 临时费率,缺省时 null
+    const freelanceDailyRaw = obj.freelanceDaily;
+    const freelanceHourlyRaw = obj.freelanceHourly;
+    const freelanceDaily = typeof freelanceDailyRaw === 'number' && Number.isFinite(freelanceDailyRaw)
+      ? freelanceDailyRaw
+      : null;
+    const freelanceHourly = typeof freelanceHourlyRaw === 'number' && Number.isFinite(freelanceHourlyRaw)
+      ? freelanceHourlyRaw
+      : null;
+    return {
+      type: type as DayOverrideEntry['type'],
+      multiplier: safeMultiplier,
+      segments,
+      nightShift,
+      freelanceDaily,
+      freelanceHourly,
+    };
   }
   return null;
 }
@@ -343,6 +359,11 @@ export function dayUnits(
  * daily 模式:manualDailyRate × multiplier
  *
  * 休息日 / 请假 → 0
+ *
+ * v1.3.2 增强:
+ *   - type='freelance' 且 entry.freelanceHourly 存在 → 覆盖 manualHourlyRate
+ *   - type='freelance' 且 entry.freelanceDaily 存在 → 覆盖 manualDailyRate
+ *   - 优先级:override.freelanceHourly/Daily > config.manualHourlyRate/Daily
  */
 export function effectiveDailyRate(
   date: Date,
@@ -355,6 +376,21 @@ export function effectiveDailyRate(
   const month = date.getMonth();
   const entry = getDayOverride(overrides, formatDateKey(date));
   const multiplier = entry ? entry.multiplier : 1;
+
+  // v1.3.2:freelance 日临时费率覆盖(月薪用户兼职场景)
+  // 优先级:override.freelanceHourly > override.freelanceDaily > config.manualDailyRate(默认兜底)
+  if (entry && entry.type === 'freelance') {
+    if (entry.freelanceHourly != null && entry.freelanceHourly > 0) {
+      const segs = getEffectiveSegments(config, entry);
+      const hours = totalSegmentsMinutes(segs) / 60;
+      return entry.freelanceHourly * hours * multiplier;
+    }
+    if (entry.freelanceDaily != null && entry.freelanceDaily > 0) {
+      return entry.freelanceDaily * multiplier;
+    }
+    // fallback:freelance 用户未填,用 config.manualDailyRate(整额,简单可预测)
+    return config.manualDailyRate * multiplier;
+  }
 
   switch (config.salaryMode) {
     case 'monthly': {

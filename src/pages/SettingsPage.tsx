@@ -1,12 +1,14 @@
 /**
  * SettingsPage — 设置页(Mine)
  *
- * v1.3.1 重构:
- *   - 多段工时改为「模板库」(segmentTemplates)
- *   - 模板在「日历」页点击日期 → 自定义 → 勾选用
- *   - 引入 lucide-react 图标替换 emoji
+ * v1.3.2 重构(frontend-design):
+ *   - 页面极简:只展示 薪资 / 休息模式 / 工作时间
+ *   - 模板库 / 午休 / 换算 / 主题 / 月度记录 → 全部进「高级」抽屉,默认折叠
+ *   - 休息模式独立成行(在薪资卡下方),不再嵌套在薪资卡内
+ *   - 「工作时间」只显示摘要(第一模板名 + 时段),无弹窗;模板管理在高级面板内
+ *   - 删除 v1.3.1 残留的 freelanceStore 引用
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
@@ -18,7 +20,10 @@ import type { Config, WorkSegment, SalaryMode, SegmentTemplate } from '../lib/ty
 import type { ThemeMeta } from '../lib/constants';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SegmentsEditor } from '../components/SegmentsEditor';
-import { Plus, Trash2, ChevronRight, Pencil, Check, X } from 'lucide-react';
+import {
+  Plus, Trash2, ChevronRight, Pencil, Check, X,
+  ChevronDown, Settings2, Coffee, Palette, History, Edit3,
+} from 'lucide-react';
 import styles from './SettingsPage.module.css';
 
 const MONTH_NAMES_CN = [
@@ -28,6 +33,24 @@ const MONTH_NAMES_CN = [
 
 function uuid(): string {
   return 'tpl_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+/** 把 segments 拼成 "HH:MM-HH:MM, ..." 用于摘要行 */
+function summarizeSegments(segs: WorkSegment[]): string {
+  if (segs.length === 0) return '未设置';
+  return segs
+    .map((s) => `${s.start}-${parseEndLabel(s.start, s.end)}`)
+    .join(' · ');
+}
+
+/** 跨天段(end <= start)把 end 加 +1d 角标 */
+function parseEndLabel(start: string, end: string): string {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  if ((eh ?? 0) * 60 + (em ?? 0) <= (sh ?? 0) * 60 + (sm ?? 0)) {
+    return `${end}+1`;
+  }
+  return end;
 }
 
 export function SettingsPage() {
@@ -47,11 +70,9 @@ export function SettingsPage() {
     coffeePrice: number;
     restMode: 0 | 1 | 2;
     theme: ThemeMeta['id'];
-    // v1.3
     salaryMode: SalaryMode;
     manualHourlyRate: number;
     manualDailyRate: number;
-    // v1.3.1
     segmentTemplates: SegmentTemplate[];
     lunchEnabled: boolean;
     lunchStart: string;
@@ -74,6 +95,9 @@ export function SettingsPage() {
     lunchMinutes: config.lunchMinutes,
   }));
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+
   const isDirty = useMemo<boolean>(() => (
     draft.monthlySalary !== config.monthlySalary ||
     draft.startTime !== config.startTime ||
@@ -90,7 +114,7 @@ export function SettingsPage() {
     draft.lunchMinutes !== config.lunchMinutes
   ), [draft, config, currentTheme]);
 
-  // 当月工作日预览(基于第一模板的 segments)
+  // 当月工作日预览
   const firstTemplate = draft.segmentTemplates[0];
   const fallbackSegments: WorkSegment[] = firstTemplate
     ? firstTemplate.segments
@@ -168,6 +192,29 @@ export function SettingsPage() {
     }
   };
 
+  // ── 「高级」抽屉已配置项统计 ──
+  const configuredCount = useMemo(() => {
+    let n = 0;
+    if (draft.segmentTemplates.length > 1) n++;
+    if (draft.lunchEnabled) n++;
+    if (draft.coffeePrice !== 15) n++;
+    if (draft.theme !== 'paper') n++;
+    if (snapshots.length > 0) n++;
+    return n;
+  }, [draft, snapshots]);
+
+  // 模板预览摘要(用于主页面 工作时间 卡)
+  const previewLabel = firstTemplate?.label ?? '默认';
+  const previewTime = summarizeSegments(fallbackSegments);
+
+  // 弹窗打开时锁定背景滚动
+  useEffect(() => {
+    if (templateModalOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [templateModalOpen]);
+
   return (
     <div className={styles.wrap}>
 
@@ -181,7 +228,6 @@ export function SettingsPage() {
       <div className={styles.group}>
         <div className={styles.groupEyebrow}>薪资 · Salary</div>
         <div className={styles.card}>
-          {/* Segmented salary mode */}
           <div style={{ padding: '10px 14px 6px' }}>
             <SegmentedControl
               options={[
@@ -245,63 +291,20 @@ export function SettingsPage() {
           <div className={styles.row}>
             <span className={styles.label}>当月工作日</span>
             <span className={styles.value}>
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)', fontSize: 13 }}>
-                {workdays}
-              </span>
+              <span className={styles.mutedNum}>{workdays}</span>
               <span className={styles.suffix}>天</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* ═══ 时间 · Hours(模板库) ═══ */}
+      {/* ═══ 休息模式 · Rest Mode ═══ */}
       <div className={styles.group}>
-        <div className={styles.groupEyebrow}>
-          时间 · Hours
-          <span style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 10,
-            fontWeight: 400,
-            color: 'var(--muted-2)',
-            textTransform: 'none',
-            letterSpacing: 0,
-            marginLeft: 8,
-          }}>
-            模板用于日历页勾选
-          </span>
-        </div>
+        <div className={styles.groupEyebrow}>休息模式 · Rest</div>
         <div className={styles.card}>
-          {draft.segmentTemplates.length === 0 ? (
-            <div className={styles.historyEmpty}>
-              暂无模板
-              <span>点击下方添加你的第一个工时模板</span>
-            </div>
-          ) : (
-            draft.segmentTemplates.map((tpl, idx) => (
-              <TemplateEditor
-                key={tpl.id}
-                index={idx}
-                template={tpl}
-                onUpdate={(patch) => updateTemplate(tpl.id, patch)}
-                onRemove={() => removeTemplate(tpl.id)}
-                removable={draft.segmentTemplates.length > 1}
-              />
-            ))
-          )}
-          <button
-            type="button"
-            className={styles.templateAddBtn}
-            onClick={addTemplate}
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            新增模板
-          </button>
-        </div>
-
-        <div className={styles.card} style={{ marginTop: 10 }}>
-          <div className={styles.row}>
-            <span className={styles.label}>休息模式</span>
-            {draft.salaryMode === 'monthly' ? (
+          {draft.salaryMode === 'monthly' ? (
+            <div className={styles.row}>
+              <span className={styles.label}>每周休息</span>
               <span className={styles.value}>
                 <select
                   className={styles.select}
@@ -314,141 +317,247 @@ export function SettingsPage() {
                 </select>
                 <ChevronRight size={14} strokeWidth={2} className={styles.chevron} />
               </span>
-            ) : (
-              <span className={styles.value} style={{ color: 'var(--muted-2)', fontSize: 12 }}>
-                disabled · 到日历页勾选当日
+            </div>
+          ) : (
+            <div className={styles.disabledHintRow}>
+              非月薪模式,休息由日历页当日类型决定
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ 工作时间 · Hours(纯摘要,无操作入口) ═══ */}
+      <div className={styles.group}>
+        <div className={styles.groupEyebrow}>工作时间 · Hours</div>
+        <div className={styles.card}>
+          <div className={styles.hoursCard}>
+            <div className={styles.hoursLeft}>
+              <div className={styles.hoursEyebrow}>
+                <span className={styles.hoursDot} />
+                {previewLabel}
+              </div>
+              <div className={styles.hoursTime}>{previewTime}</div>
+            </div>
+            {draft.segmentTemplates.length > 1 && (
+              <span className={styles.hoursTemplateCount}>
+                +{draft.segmentTemplates.length - 1} 个模板
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* ═══ 午休 · Lunch ═══ */}
+      {/* ═══ 高级抽屉入口 ═══ */}
       <div className={styles.group}>
-        <div className={styles.groupEyebrow}>午休 · Lunch Break</div>
-        <div className={styles.card}>
-          <div className={styles.row}>
-            <span className={styles.label}>启用午休</span>
-            <button
-              type="button"
-              className={`${styles.toggle} ${draft.lunchEnabled ? styles.toggleOn : ''}`}
-              onClick={() => setDraft((d) => ({ ...d, lunchEnabled: !d.lunchEnabled }))}
-              aria-label="启用午休"
-            />
-          </div>
-          {draft.lunchEnabled && (
-            <>
-              <div className={styles.row}>
-                <span className={styles.label}>午休开始</span>
-                <span className={styles.value}>
-                  <input
-                    type="time"
-                    className={styles.input}
-                    value={draft.lunchStart}
-                    onChange={(e) => setDraft((d) => ({ ...d, lunchStart: e.target.value }))}
-                    style={{ width: 90, textAlign: 'right', border: '1px solid var(--line)', borderRadius: 4, padding: '2px 4px' }}
-                  />
-                </span>
-              </div>
-              <div className={styles.row}>
-                <span className={styles.label}>午休时长</span>
-                <span className={styles.value}>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    value={draft.lunchMinutes}
-                    onChange={(e) => setDraft((d) => ({ ...d, lunchMinutes: Math.max(15, Math.min(240, Number(e.target.value) || 60)) }))}
-                    min={15}
-                    max={240}
-                    step={15}
-                    style={{ width: 70 }}
-                  />
-                  <span className={styles.suffix}>分钟</span>
-                </span>
-              </div>
-            </>
+        <button
+          type="button"
+          className={styles.advancedToggle}
+          onClick={() => setAdvancedOpen((v) => !v)}
+          aria-expanded={advancedOpen}
+        >
+          <Settings2 size={14} strokeWidth={2.2} />
+          <span className={styles.advancedToggleLabel}>高级</span>
+          {configuredCount > 0 && (
+            <span className={styles.advancedBadge}>已配置 {configuredCount}</span>
           )}
-        </div>
-      </div>
+          <ChevronDown
+            size={14}
+            strokeWidth={2.2}
+            className={`${styles.advancedChevron} ${advancedOpen ? styles.advancedChevronOpen : ''}`}
+          />
+        </button>
 
-      {/* ═══ 换算 · Convert ═══ */}
-      <div className={styles.group}>
-        <div className={styles.groupEyebrow}>换算 · Convert</div>
-        <div className={styles.card}>
-          <div className={styles.row}>
-            <span className={styles.label}>咖啡默认单价</span>
-            <span className={styles.value}>
-              <span className={styles.prefix}>¥</span>
-              <input
-                type="number"
-                className={styles.input}
-                value={draft.coffeePrice}
-                onChange={(e) => setDraft((d) => ({ ...d, coffeePrice: Number(e.target.value) || 0 }))}
-                min={0}
-              />
-            </span>
-          </div>
-        </div>
-      </div>
+        <div className={`${styles.advancedPanel} ${advancedOpen ? styles.advancedPanelOpen : ''}`}>
+          <div className={styles.advancedPanelInner}>
 
-      {/* ═══ 主题 · Theme ═══ */}
-      <div className={styles.group}>
-        <div className={styles.groupEyebrow}>主题 · Theme</div>
-        <div className={styles.card}>
-          <div className={styles.row}>
-            <span className={styles.label}>配色方案</span>
-            <span className={styles.value} style={{ gap: 10 }}>
-              {THEME_LIST.map((t) => (
+            {/* ── 工作时间模板(第一个 subGroup,带自定义模板按钮) ── */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>工作时间模板 · Templates</div>
+              <div className={styles.card}>
+                {/* 自定义模板按钮(独立一行) */}
                 <button
-                  key={t.id}
                   type="button"
-                  title={t.label}
-                  className={`${styles.swatch} ${draft.theme === t.id ? styles.swatchActive : ''}`}
-                  style={{ background: t.accent }}
-                  onClick={() => setDraft((d) => ({ ...d, theme: t.id }))}
-                />
-              ))}
-            </span>
-          </div>
-        </div>
-      </div>
+                  className={styles.templateModalBtn}
+                  onClick={() => setTemplateModalOpen(true)}
+                >
+                  <Edit3 size={13} strokeWidth={2.2} />
+                  自定义模板
+                </button>
 
-      {/* ═══ 月度记录 · Salary History ═══ */}
-      <div className={styles.group}>
-        <div className={styles.groupEyebrow}>月度记录 · Salary History</div>
-        <div className={styles.card}>
-          {snapshots.length === 0 ? (
-            <div className={styles.historyEmpty}>
-              暂无月度记录
-              <span>到「Month」页点击「已赚」卡片生成</span>
+                {/* 模板列表(内联,带时段) */}
+                {draft.segmentTemplates.map((tpl, idx) => (
+                  <div key={tpl.id} className={styles.templateListItem}>
+                    <span className={styles.templateListNum}>{idx + 1}</span>
+                    <div className={styles.templateListInfo}>
+                      <span className={styles.templateListLabel}>{tpl.label}</span>
+                      <span className={styles.templateListTime}>
+                        {summarizeSegments(tpl.segments)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.templateListEdit}
+                      onClick={() => {
+                        setTemplateModalOpen(true);
+                      }}
+                      aria-label="编辑模板"
+                    >
+                      <Pencil size={12} strokeWidth={2.2} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : (
-            snapshots.map((s) => {
-              const parts = s.key.split('-');
-              const y = Number(parts[0] ?? now.getFullYear());
-              const mRaw = Number(parts[1] ?? (now.getMonth() + 1));
-              const m = isNaN(mRaw) ? (now.getMonth() + 1) : mRaw;
-              const isCurrent = s.key === currentMonthKey;
-              return (
-                <div key={s.key} className={styles.row}>
-                  <span className={styles.label}>
-                    {y}年 {MONTH_NAMES_CN[(m - 1 + 12) % 12]}
-                  </span>
+
+            {/* ─ 午休 ─ */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>午休 · Lunch</div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>启用午休</span>
+                  <button
+                    type="button"
+                    className={`${styles.toggle} ${draft.lunchEnabled ? styles.toggleOn : ''}`}
+                    onClick={() => setDraft((d) => ({ ...d, lunchEnabled: !d.lunchEnabled }))}
+                    aria-label="启用午休"
+                  />
+                </div>
+                {draft.lunchEnabled && (
+                  <>
+                    <div className={styles.row}>
+                      <span className={styles.label}>午休开始</span>
+                      <span className={styles.value}>
+                        <input
+                          type="time"
+                          className={styles.timeInput}
+                          value={draft.lunchStart}
+                          onChange={(e) => setDraft((d) => ({ ...d, lunchStart: e.target.value }))}
+                        />
+                      </span>
+                    </div>
+                    <div className={styles.row}>
+                      <span className={styles.label}>午休时长</span>
+                      <span className={styles.value}>
+                        <input
+                          type="number"
+                          className={styles.input}
+                          value={draft.lunchMinutes}
+                          onChange={(e) => setDraft((d) => ({ ...d, lunchMinutes: Math.max(15, Math.min(240, Number(e.target.value) || 60)) }))}
+                          min={15}
+                          max={240}
+                          step={15}
+                          style={{ width: 70 }}
+                        />
+                        <span className={styles.suffix}>分钟</span>
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ─ 兼职入口说明 ── */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>兼职 · Freelance</div>
+              <div className={styles.card}>
+                <div className={styles.historyEmpty} style={{ padding: '14px 16px' }}>
+                  周末/临时兼职在「日历」页配置
+                  <span>点击日期 → 类型选「自由/兼职」→ 填写临时费率与工时</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ─ 换算 · Convert ─ */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <Coffee size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                换算 · Convert
+              </div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>咖啡默认单价</span>
                   <span className={styles.value}>
-                    <span className={styles.historyAmount}>
-                      ¥{Math.round(s.salary / Math.max(s.workDays, 1) * s.workDays).toLocaleString('en-US')}
-                    </span>
-                    <span className={styles.historyDays}>· {s.workDays}天</span>
-                    {isCurrent ? (
-                      <span className={styles.historyBadgeCurrent}>本月</span>
-                    ) : (
-                      <span className={styles.historyBadgeLocked}>已锁定</span>
-                    )}
+                    <span className={styles.prefix}>¥</span>
+                    <input
+                      type="number"
+                      className={styles.input}
+                      value={draft.coffeePrice}
+                      onChange={(e) => setDraft((d) => ({ ...d, coffeePrice: Number(e.target.value) || 0 }))}
+                      min={0}
+                    />
                   </span>
                 </div>
-              );
-            })
-          )}
+              </div>
+            </div>
+
+            {/* ─ 主题 ─ */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <Palette size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                主题 · Theme
+              </div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>配色方案</span>
+                  <span className={styles.value} style={{ gap: 10 }}>
+                    {THEME_LIST.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        title={t.label}
+                        className={`${styles.swatch} ${draft.theme === t.id ? styles.swatchActive : ''}`}
+                        style={{ background: t.accent }}
+                        onClick={() => setDraft((d) => ({ ...d, theme: t.id }))}
+                      />
+                    ))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ─ 月度记录 ─ */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <History size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                月度记录 · History
+              </div>
+              <div className={styles.card}>
+                {snapshots.length === 0 ? (
+                  <div className={styles.historyEmpty}>
+                    暂无月度记录
+                    <span>到「Month」页点击「已赚」卡片生成</span>
+                  </div>
+                ) : (
+                  snapshots.map((s) => {
+                    const parts = s.key.split('-');
+                    const y = Number(parts[0] ?? now.getFullYear());
+                    const mRaw = Number(parts[1] ?? (now.getMonth() + 1));
+                    const m = isNaN(mRaw) ? (now.getMonth() + 1) : mRaw;
+                    const isCurrent = s.key === currentMonthKey;
+                    return (
+                      <div key={s.key} className={styles.row}>
+                        <span className={styles.label}>
+                          {y}年 {MONTH_NAMES_CN[(m - 1 + 12) % 12]}
+                        </span>
+                        <span className={styles.value}>
+                          <span className={styles.historyAmount}>
+                            ¥{Math.round(s.salary / Math.max(s.workDays, 1) * s.workDays).toLocaleString('en-US')}
+                          </span>
+                          <span className={styles.historyDays}>· {s.workDays}天</span>
+                          {isCurrent ? (
+                            <span className={styles.historyBadgeCurrent}>本月</span>
+                          ) : (
+                            <span className={styles.historyBadgeLocked}>已锁定</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -462,16 +571,80 @@ export function SettingsPage() {
         保存配置
       </button>
 
-      <div className={styles.footer}>v1.3.1 · 本地存储</div>
+      <div className={styles.footer}>v1.3.2 · 本地存储</div>
+
+      {/* ═══ 自定义模板弹窗 ═══ */}
+      {templateModalOpen && (
+        <>
+          <div
+            className={styles.modalBackdrop}
+            onClick={() => setTemplateModalOpen(false)}
+          />
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>
+                <Edit3 size={14} strokeWidth={2.2} className={styles.modalTitleIcon} />
+                自定义工时模板
+              </div>
+              <div className={styles.modalHint}>
+                模板在「日历」页点击日期 → 自定义时勾选使用
+              </div>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => setTemplateModalOpen(false)}
+                aria-label="关闭"
+              >
+                <X size={16} strokeWidth={2.4} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              {draft.segmentTemplates.length === 0 ? (
+                <div className={styles.historyEmpty}>
+                  暂无模板
+                  <span>点击下方添加你的第一个工时模板</span>
+                </div>
+              ) : (
+                draft.segmentTemplates.map((tpl, idx) => (
+                  <TemplateEditor
+                    key={tpl.id}
+                    index={idx}
+                    template={tpl}
+                    onUpdate={(patch) => updateTemplate(tpl.id, patch)}
+                    onRemove={() => removeTemplate(tpl.id)}
+                    removable={draft.segmentTemplates.length > 1}
+                  />
+                ))
+              )}
+              <button
+                type="button"
+                className={styles.templateAddBtn}
+                onClick={addTemplate}
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                新增模板
+              </button>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.modalDoneBtn}
+                onClick={() => setTemplateModalOpen(false)}
+              >
+                完成
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// TemplateEditor — 单个模板的内联编辑器(v1.3.1 新增)
-//   - 顶部:序号 + label(可编辑)+ 删除按钮
-//   - 中部:SegmentsEditor(编辑 segments)
-//   - 折叠/展开:整块卡片可折叠
+// TemplateEditor — 单个模板的内联编辑器(在「自定义模板」弹窗中渲染)
 // ─────────────────────────────────────────────────────────────
 
 interface TemplateEditorProps {

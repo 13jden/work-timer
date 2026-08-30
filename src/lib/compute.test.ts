@@ -676,6 +676,60 @@ describe('effectiveDailyRate · 加班倍率生效', () => {
   });
 });
 
+describe('effectiveDailyRate · v1.3.2 freelance 临时费率', () => {
+  // 月薪用户兼职场景:
+  //  baseConfig 是 monthly 模式,manualHourlyRate=100, manualDailyRate=800
+  //  override.freelanceDaily/Hourly 应覆盖 config 默认值
+  const now = date(2026, 7, 29, 12, 0, 0); // 周六(月薪用户休息日,但 freelance 类型视为工作日)
+
+  it('freelance + freelanceDaily:直接使用 override 值', () => {
+    const ovr: DayOverrides = {
+      '2026-08-29': { type: 'freelance', multiplier: 1, segments: null, nightShift: false, freelanceDaily: 1500, freelanceHourly: null },
+    };
+    // 1500 × 1 = 1500(不走月薪分母)
+    expect(effectiveDailyRate(now, baseConfig, ovr, emptyHolidays)).toBe(1500);
+  });
+
+  it('freelance + freelanceHourly:hourly × segmentsHours', () => {
+    const ovr: DayOverrides = {
+      '2026-08-29': { type: 'freelance', multiplier: 1, segments: null, nightShift: false, freelanceDaily: null, freelanceHourly: 200 },
+    };
+    // 200 × (9h) = 1800
+    expect(effectiveDailyRate(now, baseConfig, ovr, emptyHolidays)).toBe(1800);
+  });
+
+  it('freelance + override 含 segments:hourly 按 override segments 计算', () => {
+    const ovr: DayOverrides = {
+      '2026-08-29': {
+        type: 'freelance',
+        multiplier: 1,
+        segments: [{ start: '14:00', end: '22:00' }],
+        nightShift: false,
+        freelanceDaily: null,
+        freelanceHourly: 150,
+      },
+    };
+    // 150 × 8h = 1200
+    expect(effectiveDailyRate(now, baseConfig, ovr, emptyHolidays)).toBe(1200);
+  });
+
+  it('freelance 但未填 override 费率:fallback 到 config.manualDailyRate', () => {
+    const ovr: DayOverrides = {
+      '2026-08-29': { type: 'freelance', multiplier: 1, segments: null, nightShift: false },
+    };
+    // fallback:manualDailyRate=800
+    expect(effectiveDailyRate(now, baseConfig, ovr, emptyHolidays)).toBe(800);
+  });
+
+  it('freelance + multiplier 1.5(加班倍率):hourly × segmentsHours × 1.5', () => {
+    const ovr: DayOverrides = {
+      '2026-08-29': { type: 'freelance', multiplier: 1.5, segments: null, nightShift: false, freelanceDaily: null, freelanceHourly: 100 },
+    };
+    // 100 × 9 × 1.5 = 1350
+    expect(effectiveDailyRate(now, baseConfig, ovr, emptyHolidays)).toBe(1350);
+  });
+});
+
 describe('effectiveHourlyRate · 当日时薪', () => {
   it('加班日 = 基准 × 1.5', () => {
     const now = date(2026, 7, 31, 12, 0, 0);

@@ -23,7 +23,7 @@
 docs/ARCHITECTURE.md         ← 架构+计算公式
 docs/CONVENTIONS.md          ← 代码规范
 docs/CHANGELOG.md            ← 版本索引 + 阶段 1 ~ v1.2 历史变更记录
-docs/CHANGELOG-v1.3.md       ← v1.3 + v1.3.1 变更记录(独立文件)
+docs/CHANGELOG-v1.3.md       ← v1.3 + v1.3.1 + v1.3.2 变更记录(独立文件)
 docs/plans/README.md         ← 项目索引
 docs/plans/tauri-migration/
 ├── ROADMAP.md               ← 重构总路线图
@@ -70,4 +70,4 @@ docs/plans/tauri-migration/
 
 ---
 
-*最后更新:2026-08-30 · v1.3.1 bug 修复发布*
+*最后更新:2026-08-30 · v1.3.2 发布(SettingsPage 极简化 + 自由日配置增强)*

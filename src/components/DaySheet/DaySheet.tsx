@@ -1,19 +1,25 @@
 /**
- * DaySheet — 日历日详情 + 工作日类型选择 + 模板多选 + 夜班加权
+ * DaySheet — 日历日详情 + 工作日类型选择 + 模板多选 + 夜班加权 + 自由日配置
  *
- * v1.3.1 重构:
+ * v1.3.2 增强:
+ *   - freelance 类型:展开「当日薪资」(时薪/日薪 segmented + 输入)+ 当日工时(SegmentPicker)
+ *   - 预览金额 todayEarn:freelance 时按 user input rate 计算
+ *   - 薪资/工时都写入 DayOverrideEntry(freelanceDaily/Hourly + segments)
+ *
+ * v1.3.1 重构保留:
  *   - 删除 .toggle CSS 复用冲突(原保存按钮被覆盖为滑动开关样式)
  *   - 当日工时改为 SegmentPicker chip 多选(Bug 4 整合)
  *   - 夜班加权开关宽度增大到 52px
  *   - 整体重新设计:层级清晰、信息密度合理、操作按钮普通化
  *   - 引入 lucide-react 图标库替换 emoji
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { DayOverrideEntry, DayType, SegmentTemplate, WorkSegment } from '../../lib/types';
 import { DEFAULT_MULTIPLIER } from '../../lib/types';
 import { DAY_TYPE_OPTIONS } from '../../lib/constants';
 import { SegmentPicker } from '../SegmentPicker';
-import { ChevronDown, RefreshCw, Save, Moon } from 'lucide-react';
+import { toMinutes } from '../../lib/time';
+import { ChevronDown, RefreshCw, Save, Moon, Coins } from 'lucide-react';
 import styles from './DaySheet.module.css';
 
 interface DaySheetProps {
@@ -21,7 +27,7 @@ interface DaySheetProps {
   date: Date | null;
   /** 当天实际是否工作日 */
   isWork: boolean;
-  /** 当天日均 */
+  /** 当天日均(非 freelance 类型的预览基准) */
   dailyEarning: number;
   /** 当前已有的 override entry */
   currentEntry: DayOverrideEntry | null;
@@ -42,9 +48,19 @@ function defaultMult(type: DayType): number {
   return DEFAULT_MULTIPLIER[type];
 }
 
+function segmentsTotalMinutes(segs: WorkSegment[]): number {
+  let total = 0;
+  for (const s of segs) {
+    const start = toMinutes(s.start);
+    let end = toMinutes(s.end);
+    if (end <= start) end += 24 * 60;
+    total += end - start;
+  }
+  return total;
+}
+
 /**
  * 把勾选的 template segments 合并为 DayOverrideEntry.segments
- * 重复段自动 union 去重叠
  */
 function mergeTemplateSegments(
   templates: SegmentTemplate[],
@@ -62,7 +78,6 @@ function mergeTemplateSegments(
 
 /**
  * 从已有 segments 反推出对应的 template ids
- * (用于回显 — 当前实现:按 segments 长度粗匹配,精准可后续优化)
  */
 function detectTemplateIds(
   segments: WorkSegment[] | null,
@@ -78,6 +93,23 @@ function detectTemplateIds(
     if (same) ids.add(tpl.id);
   }
   return ids;
+}
+
+/**
+ * 计算有效工时段(优先 override.segments,fallback 用 templates 第一项)
+ */
+function pickEffectiveSegments(
+  entry: DayOverrideEntry | null,
+  templates: SegmentTemplate[],
+  selectedIds: Set<string>,
+  segmentsMode: 'inherit' | 'custom',
+): WorkSegment[] {
+  if (segmentsMode === 'custom' && selectedIds.size > 0) {
+    return mergeTemplateSegments(templates, selectedIds);
+  }
+  if (entry?.segments && entry.segments.length > 0) return entry.segments;
+  if (templates[0]) return templates[0].segments;
+  return [{ start: '09:00', end: '18:00' }];
 }
 
 export function DaySheet({
@@ -103,6 +135,10 @@ export function DaySheet({
   // 夜班加权
   const [nightShift, setNightShift] = useState(false);
 
+  // v1.3.2:freelance 模式临时费率
+  const [freelanceRateMode, setFreelanceRateMode] = useState<'hourly' | 'daily'>('daily');
+  const [freelanceRate, setFreelanceRate] = useState('800');
+
   // 过滤 DAY_TYPE_OPTIONS(非 monthly 模式隐藏 work/paid_overtime)
   const filteredTypeOptions = salaryMode === 'monthly'
     ? DAY_TYPE_OPTIONS
@@ -118,6 +154,16 @@ export function DaySheet({
         setSegmentsMode(hasCustom ? 'custom' : 'inherit');
         setSelectedTemplateIds(detectTemplateIds(currentEntry.segments, segmentTemplates));
         setNightShift(currentEntry.nightShift);
+        // v1.3.2:freelance 费率回显
+        if (currentEntry.type === 'freelance') {
+          if (currentEntry.freelanceHourly != null && currentEntry.freelanceHourly > 0) {
+            setFreelanceRateMode('hourly');
+            setFreelanceRate(String(currentEntry.freelanceHourly));
+          } else if (currentEntry.freelanceDaily != null && currentEntry.freelanceDaily > 0) {
+            setFreelanceRateMode('daily');
+            setFreelanceRate(String(currentEntry.freelanceDaily));
+          }
+        }
       } else {
         setSelectedType(isWork ? 'work' : 'rest');
         setCustomMult(String(defaultMult(isWork ? 'work' : 'rest')));
@@ -128,6 +174,34 @@ export function DaySheet({
     }
   }, [open, date, currentEntry, isWork, segmentTemplates]);
 
+  const isOvertime = selectedType === 'paid_overtime';
+  const isLeave = selectedType === 'leave';
+  const isRest = selectedType === 'rest';
+  const isFreelance = selectedType === 'freelance';
+
+  // 当前显示的工时(用于 freelance 预览 + picker 回退)
+  const previewSegments = useMemo(
+    () => pickEffectiveSegments(currentEntry, segmentTemplates, selectedTemplateIds, segmentsMode),
+    [currentEntry, segmentTemplates, selectedTemplateIds, segmentsMode],
+  );
+
+  const mult = isOvertime ? parseFloat(customMult) || 1.5 : defaultMult(selectedType);
+
+  // 预览金额
+  const todayEarn = useMemo(() => {
+    if (mult === 0) return 0;
+    if (isFreelance) {
+      const r = parseFloat(freelanceRate) || 0;
+      if (r === 0) return 0;
+      if (freelanceRateMode === 'hourly') {
+        const hours = segmentsTotalMinutes(previewSegments) / 60;
+        return r * hours * mult;
+      }
+      return r * mult;
+    }
+    return dailyEarning * mult;
+  }, [mult, isFreelance, freelanceRate, freelanceRateMode, previewSegments, dailyEarning]);
+
   if (!date) return null;
 
   const mm = date.getMonth() + 1;
@@ -136,21 +210,34 @@ export function DaySheet({
   const dateLabel = `${mm}月${dd}日 · 周${dow}`;
   const key = `${date.getFullYear()}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
 
-  const mult = selectedType === 'paid_overtime' ? parseFloat(customMult) || 1.5 : defaultMult(selectedType);
-  const todayEarn = mult > 0 ? dailyEarning * mult : 0;
-
-  const isOvertime = selectedType === 'paid_overtime';
-  const isLeave = selectedType === 'leave';
-  const isRest = selectedType === 'rest';
-
   function handleSave() {
-    const multiplier = selectedType === 'paid_overtime'
+    const multiplier = isOvertime
       ? (parseFloat(customMult) || 1.5)
       : defaultMult(selectedType);
-    const segments = segmentsMode === 'custom'
+    const segments = segmentsMode === 'custom' && selectedTemplateIds.size > 0
       ? mergeTemplateSegments(segmentTemplates, selectedTemplateIds)
       : null;
-    onSave(key, { type: selectedType, multiplier, segments, nightShift });
+
+    const entry: DayOverrideEntry = {
+      type: selectedType,
+      multiplier,
+      segments,
+      nightShift,
+    };
+
+    // v1.3.2:freelance 写入费率
+    if (isFreelance) {
+      const r = parseFloat(freelanceRate) || 0;
+      if (freelanceRateMode === 'hourly') {
+        entry.freelanceHourly = r;
+        entry.freelanceDaily = null;
+      } else {
+        entry.freelanceDaily = r;
+        entry.freelanceHourly = null;
+      }
+    }
+
+    onSave(key, entry);
     onClose();
   }
 
@@ -201,7 +288,7 @@ export function DaySheet({
           </div>
         </div>
 
-        {/* ── 倍率输入(加班时) ── */}
+        {/* ── 加班倍率输入 ── */}
         {isOvertime && (
           <div className={styles.section}>
             <div className={styles.sectionLabel}>加班倍率</div>
@@ -221,7 +308,54 @@ export function DaySheet({
           </div>
         )}
 
-        {/* ── 当日工时(模板多选) ── */}
+        {/* ── v1.3.2:freelance 临时费率(仅 freelance 类型显示) ── */}
+        {isFreelance && (
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>
+              <Coins size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+              当日薪资
+              <span className={styles.sectionHint}>
+                {freelanceRateMode === 'hourly'
+                  ? `× ${segmentsTotalMinutes(previewSegments) / 60} 小时`
+                  : '一次性'}
+              </span>
+            </div>
+            <div className={styles.freelanceRateRow}>
+              <div className={styles.freelanceModeRow}>
+                <button
+                  type="button"
+                  className={`${styles.freelanceModeChip} ${freelanceRateMode === 'daily' ? styles.freelanceModeChipActive : ''}`}
+                  onClick={() => setFreelanceRateMode('daily')}
+                >
+                  按日薪
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.freelanceModeChip} ${freelanceRateMode === 'hourly' ? styles.freelanceModeChipActive : ''}`}
+                  onClick={() => setFreelanceRateMode('hourly')}
+                >
+                  按时薪
+                </button>
+              </div>
+              <div className={styles.freelanceRateInputRow}>
+                <span className={styles.freelanceRatePrefix}>¥</span>
+                <input
+                  type="number"
+                  className={styles.freelanceRateInput}
+                  value={freelanceRate}
+                  min={0}
+                  onChange={(e) => setFreelanceRate(e.target.value)}
+                  aria-label={freelanceRateMode === 'hourly' ? '时薪' : '日薪'}
+                />
+                <span className={styles.freelanceRateUnit}>
+                  / {freelanceRateMode === 'hourly' ? 'h' : '天'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 当日工时(模板多选)— freelance 必填 / 其他类型可选 ── */}
         <div className={styles.section}>
           <div className={styles.sectionLabel}>
             当日工时
@@ -293,11 +427,17 @@ export function DaySheet({
               : '¥0.00'}
           </div>
           <div className={styles.earnLabel}>
-            {isLeave ? '请假,无当日薪资' : isRest ? '休息日,无当日薪资' : '今日值这么多'}
+            {isLeave
+              ? '请假,无当日薪资'
+              : isRest
+                ? '休息日,无当日薪资'
+                : isFreelance
+                  ? '今日兼职值这么多'
+                  : '今日值这么多'}
           </div>
         </div>
 
-        {/* ── 操作按钮(已修复 .toggle 复用冲突) ── */}
+        {/* ── 操作按钮 ── */}
         <div className={styles.actions}>
           {currentEntry && (
             <button type="button" className={styles.resetBtn} onClick={handleReset}>

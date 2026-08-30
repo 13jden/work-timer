@@ -98,12 +98,12 @@ export function CalendarPage() {
       })()
     : 0;
 
-  // 当日已赚(仅当前月 + 有快照时显示)
+  // 当日已赚(当前月时实时计算)
   const todayEarn = useMemo(() => {
-    if (!isCurrentMonth || !hasSnapshot) return 0;
+    if (!isCurrentMonth) return 0;
     const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
     return todayEarned(now, cfg, overrides, HOLIDAYS);
-  }, [isCurrentMonth, hasSnapshot, now, effectiveConfig, overrides, effectiveSalary]);
+  }, [isCurrentMonth, now, effectiveConfig, effectiveSalary, overrides]);
 
   // 工作日数
   const workdaysCount = useMemo(() => {
@@ -282,13 +282,14 @@ export function CalendarPage() {
 
             // 显示 金额规则:
             // - 已生成快照:过去工作日显示「已结算金额」(daily * units)
-            // - 今天 + 当前月 + 已生成快照:实时累积「今日已赚」(每秒刷新)
-            // - 今天 + 当前月 + 无快照:不显示(用户没确认数据,不该瞎猜)
+            // - 今天 + 当前月:始终显示实时累积「今日已赚」(用户已配置好数据,实时有效)
+            // - 今天 + 当前月 + 无快照:不显示秒数(已满足,见 StatCard)
             let earnText = '';
-            if (hasSnapshot && isWork) {
+            if (isWork) {
               if (isToday) {
+                // today 无条件显示(实时数据,即使还没生成快照)
                 earnText = formatEarnText(todayEarn);
-              } else if (isPast && units > 0) {
+              } else if (hasSnapshot && isPast && units > 0) {
                 const dayEarn = daily * units;
                 earnText = formatEarnText(dayEarn);
               }

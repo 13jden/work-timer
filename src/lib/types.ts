@@ -124,6 +124,20 @@ export interface DayOverrideEntry {
   segments: WorkSegment[] | null;
   /** 启用夜班加权(22:00–06:00 段 × 0.5 计入净工时) */
   nightShift: boolean;
+  // ── v1.3.2 新增(freelance 类型专用,其他类型忽略) ──
+  /**
+   * freelance 日临时日薪(¥)。type='freelance' 且 freelancer 选了「按日薪」时使用。
+   * 优先级:override.freelanceDaily > config.manualDailyRate。
+   * 非 freelance 类型:忽略。
+   */
+  freelanceDaily?: number | null;
+  /**
+   * freelance 日临时时薪(¥)。type='freelance' 且 freelancer 选了「按时薪」时使用。
+   * 计算:feeHourly × segmentsHours × multiplier。
+   * 优先级:override.freelanceHourly > config.manualHourlyRate。
+   * 非 freelance 类型:忽略。
+   */
+  freelanceHourly?: number | null;
 }
 
 /**
