@@ -48,3 +48,8 @@ keystore.properties
 
 # OS
 desktop.ini
+
+# Local debug / scratch
+.tmp-*.diff
+.tmp-*.patch
+.trae-html-share-packages/
