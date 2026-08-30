@@ -30,6 +30,8 @@ import styles from './DaySheet.module.css';
 
 interface DaySheetProps {
   open: boolean;
+  /** 桌面端内联模式：渲染 sheet 但不用遮罩、不用 fixed 定位 */
+  inline?: boolean;
   date: Date | null;
   /** 当天实际是否工作日 */
   isWork: boolean;
@@ -120,6 +122,7 @@ function pickEffectiveSegments(
 
 export function DaySheet({
   open,
+  inline = false,
   date,
   isWork,
   dailyEarning,
@@ -254,11 +257,14 @@ export function DaySheet({
 
   return (
     <>
-      <div
-        className={`${styles.backdrop} ${open ? styles.backdropOpen : ''}`}
-        onClick={onClose}
-      />
-      <div className={`${styles.sheet} ${open ? styles.sheetOpen : ''}`}>
+      {/* 桌面端内联模式不渲染遮罩 */}
+      {!inline && (
+        <div
+          className={`${styles.backdrop} ${open ? styles.backdropOpen : ''}`}
+          onClick={onClose}
+        />
+      )}
+      <div className={`${styles.sheet} ${open ? styles.sheetOpen : ''} ${inline ? styles.sheetInline : ''}`}>
         {/* ── 顶部:把手 + 日期 ── */}
         <div className={styles.handle} />
         <div className={styles.headRow}>

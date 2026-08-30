@@ -1,0 +1,16 @@
+/* ==========================================================
+   App — 全局布局样式
+   ========================================================== */
+
+/* 桌面端三栏外壳（≥1024px 显示，<1024px 隐藏） */
+.desktopShell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  min-height: 100vh;
+}
+
+@media (max-width: 1023px) {
+  .desktopShell {
+    display: none;
+  }
+}

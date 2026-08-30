@@ -326,3 +326,51 @@
   border-radius: 50%;
   background: var(--accent-deep);
 }
+
+/* ==========================================================
+   v1.3.4 桌面端日历页分栏布局
+   ========================================================== */
+
+/* 外层容器 */
+.pageWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* 桌面端分栏:左列(内容) + 右列(内联 DaySheet) */
+.pageInline {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0;
+  min-height: 100vh;
+}
+
+/* 左列:原有日历内容(最大宽度限制,防止过宽) */
+.mainCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageInline .mainCol {
+  max-width: 700px;
+}
+
+/* ── 右列:桌面端内联 DaySheet ── */
+.inlineSheet {
+  flex-shrink: 0;
+  width: 320px;
+  min-width: 320px;
+  padding: 20px 16px 20px 8px;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* inlineSheet 内的 DaySheet sheet 去掉手柄(可选) */
+/* .inlineSheet :global([class*="handle"]) { display: none; } */

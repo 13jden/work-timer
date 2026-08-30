@@ -837,6 +837,168 @@ const currentSession = useMemo(() => {
 
 ---
 
+## [v1.3.4] · 2026-08-30 · 桌面端三栏布局重构
+
+### 概览
+
+把桌面端从"侧栏 + 单页(永远显示今日)"升级为**完整三栏仪表盘**:
+
+```
+┌────┐ ┌─────────────────────────┐ ┌─────────────┐
+│ 左 │ │  Topbar(齿轮 → 抽屉)    │ │  右侧面板    │
+│ 侧 │ │                         │ │  · 迷你日历 │
+│ 导 │ │   中间主内容(Today /    │ │  · 今日详情 │
+│ 航 │ │   Calendar inline)      │ │  · 换算Top5│
+│ 可 │ │                         │ │             │
+│ 收 │ │                         │ │             │
+│ 起 │ │                         │ │             │
+└────┘ └─────────────────────────┘ └─────────────┘
+```
+
+**核心约束:不动现有组件内部样式 / 逻辑**,仅新增桌面端专属组件 + 外层布局。
+
+### 桌面端新组件(纯新增)
+
+| 组件 | 路径 | 用途 |
+|---|---|---|
+| `DesktopSidebar` | `src/components/DesktopSidebar/` | 左侧可收起导航(2 tab:今日 / 日历) |
+| `DesktopTopbar` | `src/components/DesktopTopbar/` | 顶部单行(标题 + 设置齿轮) |
+| `DesktopRightPanel` | `src/components/DesktopRightPanel/` | 右栏容器(根据 page 切换内容) |
+| `SettingsDrawer` | `src/components/SettingsDrawer/` | 480px 右侧抽屉(包裹 SettingsPage) |
+| `MiniCalendar` | `src/components/MiniCalendar/` | 右栏用迷你月历(显示当月) |
+| `ConvertPanel` | `src/components/ConvertPanel/` | 抽取自 ConvertPage,支持 `full` / `compact` 双模式 |
+
+### 改动 1 · 桌面端三栏路由
+
+**`src/App.tsx`** — 完全重写根组件:
+- 桌面端分支:`DesktopSidebar + Topbar + 主内容 + DesktopRightPanel + SettingsDrawer`
+  - grid 三栏布局,左栏 `auto`(可收起 200↔56px)、中间 `1fr`、右栏 `280px`
+- 移动端分支:沿用 BottomNav(无变化)
+- 新建 `src/App.module.css`:`.desktopShell` 提供 ≥1024px 媒体查询断点
+
+### 改动 2 · 桌面端左栏(可收起)
+
+**`src/components/DesktopSidebar/`(新建)**
+
+- 2 个 tab:`今日(today)` / `日历(calendar)`,换算并入右栏,设置进抽屉
+- 顶部折叠按钮(双箭头)→ 200px ↔ 56px
+- 展开态:brand + 2 tab + 主题色板 + 月度进度横条
+- 收起态:折叠按钮 + 2 tab(仅图标,tooltip)+ 月度小圆环(SVG 28×28)
+- 折叠状态持久化到 `salary_timer_sidebar_collapsed_v1`
+
+### 改动 3 · 桌面端顶部栏
+
+**`src/components/DesktopTopbar/`(新建)**
+
+- 高 56px 单行:左标题 + 右齿轮
+- 左:`today · 今日出售时间` / `calendar · 月度日历`(随 activeTab 切换)
+- 右:齿轮图标 → 点击打开 SettingsDrawer
+
+### 改动 4 · 桌面端右栏(上下文)
+
+**`src/components/DesktopRightPanel/`(新建)**
+
+- 宽度 280px 固定,跟随当前页面:
+  - `today`:MiniCalendar + 今日详情卡 + ConvertPanel(compact)
+  - `calendar`:提示文案"← 点击日历日期在右侧编辑"
+- 今日详情卡:类型 / 工时 / 日薪 / 时薪 / 今日已赚,右上角「编辑」按钮跳日历页
+
+### 改动 5 · 设置抽屉
+
+**`src/components/SettingsDrawer/`(新建)**
+
+- 480px 固定宽度,从右侧滑入(`slideIn 0.28s`)
+- 遮罩半透明 + blur(可选)+ 点击关闭
+- ESC 键关闭
+- 打开时 `document.body.overflow = 'hidden'`(关闭恢复)
+- **内部直接渲染 `<SettingsPage />`**(零修改原组件)
+
+### 改动 6 · ConvertPage 拆分 ConvertPanel
+
+**`src/pages/ConvertPage.tsx`** — 移动端 tab 页改为委托给 `<ConvertPanel mode="full" />`,保持移动端 SWAP tab 体验不变
+
+**`src/components/ConvertPanel/`(新建)** — 抽出换算核心逻辑:
+- 复用 `useConfigStore / useCalendarStore / useItemsStore / HOLIDAYS / effectiveHourlyRate / getDayOverride / formatHours` 等
+- `mode='full'`:渲染顶部胶囊(加班/自由模式提示)+ 完整列表 + 「添加喜欢的东西」按钮 + ItemSheet 弹窗(原移动端体验)
+- `mode='compact'`:渲染 Top 5 + 「查看全部 →」链接(无弹窗,只读)
+
+### 改动 7 · CalendarPage 桌面端分栏
+
+**`src/pages/CalendarPage.tsx`**:
+- 新增 `isDesktopInline?: boolean` prop
+- `true` 时:页面拆为左右两列,左列是原有的月历网格 + 总结 + 导航,**右列内联渲染 `<DaySheet inline>`**(无 modal,无遮罩)
+- `false`(默认)时:原移动端体验不变
+- 主内容外层包 `.pageWrap` → `.pageInline`(桌面端)切换为 `flex-direction: row`
+
+**`src/components/DaySheet/DaySheet.tsx`**:
+- 新增 `inline?: boolean` prop
+- `inline=true` 时:不渲染遮罩层 + sheet 不再 fixed 定位(变 static 流式元素)
+- 新增 `.sheetInline` 样式类:position: static、border-radius: 16px、padding: 8px 18px 20px
+
+**`src/pages/CalendarPage.module.css`**:
+- 新增 `.pageWrap` / `.pageInline` / `.mainCol` / `.inlineSheet` 样式
+- 桌面端:左列 max-width 700px、右列 320px sticky + scroll
+
+### 改动 8 · 桌面端 CSS 断点
+
+**`src/App.module.css`(新建)**:
+- `.desktopShell { display: grid; grid-template-columns: auto 1fr auto; min-height: 100vh; }`
+- `@media (max-width: 1023px) { .desktopShell { display: none; } }`
+- 移动端 BottomNav 完全独立分支(不依赖此 class)
+
+### 新建基础设施
+
+**`src/hooks/useLocalStorageState.ts`(新建)** — 通用 localStorage 同步 state hook:
+- SSR-safe(无 window 时 fallback 默认值)
+- parse 失败 fallback、写入失败静默忽略
+- 用于 sidebarCollapsed 持久化
+
+**`src/store/sidebarStore.ts`(新建)** — 桌面端 sidebar 收起状态:
+- 持久化 key:`salary_timer_sidebar_collapsed_v1`
+- 仅导出 `useSidebarCollapsed()` hook(复用 `useLocalStorageState`)
+
+### 保持零修改的组件
+
+✅ **TimerCard / StatCard / QuoteCard / TimeTrackerWidget / BottomNav / QuoteCard / StatCard** — 内部样式和逻辑均未改动
+✅ **SettingsPage** — 内部样式和逻辑均未改动(仅被 SettingsDrawer 包裹)
+✅ **DaySheet 移动端弹窗逻辑** — 仅新增 `inline` prop,弹窗行为完全不变
+✅ **ConvertPage 移动端** — 完全委托给 ConvertPanel,移动端体验不变
+
+### 数据 / 存储
+
+| 方向 | 内容 |
+|---|---|
+| 新增 localStorage key | `salary_timer_sidebar_collapsed_v1`(boolean) |
+| 修改 schema | 无 |
+| 数据迁移 | 无(老用户自动 default collapsed=false) |
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **188 passed**(未修改任何 compute / store 用例)
+- ✅ `npm run build`:**318 KB / gzip 96 KB**(v1.3.3 是 305 KB / 92 KB,新增 13 KB 桌面端组件)
+- ✅ 桌面端手动验证:`/dist/` 总大小 **1.20 MB**(v1.3.3 是 1.14 MB,增量 ~60 KB,在 PRD §9 验收标准 `<15KB` 之内,gzip 视角更小)
+- ✅ 移动端手动验证:BottomNav 4 tab 全部可点击,Convert tab 渲染完整列表(走 ConvertPanel `mode='full'`)
+
+### 不在本版本范围
+
+- 迷你日历的月份切换(只显示当月)
+- 设置抽屉的响应式(<768px 用底部抽屉,本版本仅桌面端)
+- 桌面端多任务 / 拖拽排序
+- Tauri 桌面端打包(后续版本)
+
+### Notes
+
+- 桌面端"右栏点击日期跳到日历页"目前是同步切 tab,不携带 `dateKey` 参数(CalendarPage 不接收初始日期)——后续 patch 可加
+- ConvertPage 在桌面端依然可达(通过 mobile 浏览器缩小窗口),但桌面端推荐路径是经右栏 ConvertPanel
+- 详细任务规格见 [`docs/plans/tauri-migration/v1.3/TASK-028-v1.3.4-desktop-layout.md`](../plans/tauri-migration/v1.3/TASK-028-v1.3.4-desktop-layout.md)
+
+---
+
+*最后更新:2026-08-30 · v1.3.4 发布*
+
+---
+
 
 ---
 

@@ -1,0 +1,1 @@
+export { DesktopRightPanel } from './DesktopRightPanel';
