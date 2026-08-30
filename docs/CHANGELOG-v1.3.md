@@ -1,4 +1,4 @@
-﻿# Changelog · Salary Timer v1.3
+# Changelog · Salary Timer v1.3
 
 > **v1.3 独立 changelog 文件**。从本版本起,每个大版本单独建 `docs/CHANGELOG-vX.X.md`,不再全部堆到 `docs/CHANGELOG.md`。
 >
@@ -438,3 +438,733 @@ ightBonus 逻辑已有,无需改动
 ---
 
 *最后更新:2026-08-30 · v1.3.2 Bug 修复 + v1.3.3 方案*
+
+## [v1.3.3] · 2026-08-30 · 图标库替换 + 摸鱼重命名为时间记录
+
+### 概览
+
+两件事:
+
+1. 全站 `lucide-react` 替换为 `@phosphor-icons/react`(6 种粗细,做视觉层级)
+2. 「摸鱼计时」重命名为「时间记录」,模式(摸鱼/加班)迁移到详情页 segmented 选择,**22:00–06:00 自动标记夜班**
+
+### 改动 1 · 图标库替换
+
+#### 包
+
+- `package.json`: `lucide-react` + `@phosphor-icons/react` 双依赖(全部 import 切换后再卸载 lucide)
+- 替换策略:粗细编码视觉层级
+  - **duotone**:主体视觉(TimerCard 时钟、摸鱼 coffee 等)
+  - **bold**:按钮内联、下拉箭头(CaretDown 等)
+  - **regular**:次要标签、辅助信息
+
+#### 替换清单(按组件)
+
+| 位置 | 原 | 替换 |
+|---|---|---|
+| TimerCard | Clock | Clock weight=duotone |
+| TimerCard | Zap | Lightning weight=duotone |
+| DaySheet | Save / RefreshCw / Moon / ChevronDown | FloppyDisk / ArrowsClockwise / Moon / CaretDown weight=bold |
+| SettingsPage | Settings2 / Coffee / Palette / History / Edit3 / ChevronRight / ChevronDown | Gear / Coffee / Palette / ClockCounterClockwise / PencilSimple / CaretRight / CaretDown |
+| TimeTrackerWidget | Coffee / ChevronDown / ArrowRight | Coffee duotone / CaretDown bold / ArrowRight bold |
+| TimeTrackerDetailPage | ArrowRight / ChartLineUp / Moon / Pencil / X / Plus / Check | ArrowRight bold / ChartLineUp bold / Moon regular / Pencil regular / X bold / Plus bold / Check bold |
+| SegmentsEditor / SegmentPicker | Plus / X / Sparkles | Plus bold / X bold / Sparkles duotone |
+| CalendarPage | ChevronLeft / ChevronRight / LocateFixed | CaretLeft / CaretRight / Crosshair regular |
+| ConvertPage | Coffee | Coffee duotone |
+
+### 改动 2 · 时间记录重命名 + 模式 segmented
+
+#### 数据模型 v3.3 升级
+
+```ts
+// src/lib/types.ts
+type TimeRecordLabel = 'slack' | 'overtime' | 'other';
+
+interface TimeRecord {
+  id: string;
+  dateKey: string;
+  label: TimeRecordLabel;
+  customLabel?: string;
+  startTs: number;
+  endTs: number | null;
+  /** v1.3.3 新增:22:00–06:00 自动标记 */
+  nightShift: boolean;
+}
+
+// 向后兼容别名(老代码读旧字段不会立即挂)
+type SlackingLabel = TimeRecordLabel;
+type SlackingSession = TimeRecord;
+type SlackingSessions = TimeSessions;
+```
+
+#### 夜班自动标记规则
+
+```
+isInNightWindow(d):         d.getHours() >= 22 || d.getHours() < 6
+detectNightShift(s, e):      isInNightWindow(s) || isInNightWindow(e)
+```
+
+- `startSession` 时按 startTs 立即标记
+- `updateSession` / `addPastSession` 后会重算(startTs/endTs 任一在窗口内 → true)
+- store / UI / compute 链路全部读 `session.nightShift`,不需额外判断
+
+#### 组件重命名 + 结构变化
+
+| 原 | 新 |
+|---|---|
+| `src/components/SlackingWidget/` | `src/components/TimeTrackerWidget/` |
+| `src/pages/SlackingDetailPage.tsx`(实体) | `src/pages/TimeTrackerDetailPage.tsx`(实体)+ `src/pages/SlackingDetailPage.tsx`(re-export shim) |
+| 首页含 inline 标签选择 | 详情页含 segmented(摸鱼/加班/其他) |
+| 休息日 disabled + 「休息日无需摸鱼」 | 保留 |
+
+#### 旧 label 收敛(toilet/meal → other)
+
+```ts
+function normalizeLabel(raw: string): { label: TimeRecordLabel; fallbackCustom?: string } {
+  if (raw === 'slack' || raw === 'overtime' || raw === 'other') return { label: raw };
+  const map = { toilet: '厕所', meal: '吃饭' };
+  return { label: 'other', fallbackCustom: map[raw] };
+}
+```
+
+老 label 在详情页编辑保存时自动归一为 `other` + `customLabel`,无数据丢失。
+
+#### 夜班 badge
+
+详情页:
+- 标题「今日记录」右侧显示 `🌙 夜班 N` badge(若 N > 0)
+- 单条记录 label 旁显示 🌙 小标记(`session.nightShift = true` 时)
+
+### 改动 3 · CSS 类补充
+
+`src/pages/SlackingDetailPage.module.css` 追加:
+
+- `.sheetSegmented` / `.sheetSegmentedChip` / `.sheetSegmentedChipActive` — segmented 容器
+- `.nightBadge` — 标题旁夜班 badge
+- `.nightDot` — 单条记录夜班小月亮
+
+### 数据迁移说明
+
+- 老 `SlackingLabel` / `SlackingSession` / `SlackingSessions` 类型继续保留(作为 `type X = Y` alias),老代码无需立即改
+- 老 storage `salary_timer_slacking_sessions_v1` 继续使用;若记录缺少 `nightShift` 字段,读取路径在 compute.ts / UI 层都按可选链处理
+- `migrateToV3` 链保持不变
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **154 passed**(原 140 + 新增 14:time.test.ts 7 + compute.test.ts 夜班 7)
+- ✅ `npm run build`:**302 KB / gzip 91 KB**(从 239 / 75 KB,新增 lucide + phosphor 双依赖 + 详情页 segmented / nightShift badge)
+- ✅ 旧类型 `SlackingLabel` / `SlackingSession` / `SlackingSessions` 仍可被 import(类型 alias 兼容)
+- ✅ `import { SlackingDetailPage } from './SlackingDetailPage'` 仍可用(re-export shim)
+
+### 不在本版本范围
+
+- 摸鱼历史周/月汇总(详情页底部灰显占位「下期开放」)
+- 节假日多国家支持
+- 桌面端布局优化(共用组件,沿用移动端布局)
+
+### Notes
+
+- 详细任务规格见 `docs/plans/tauri-migration/v1.3/TASK-027-v1.3.3-icons-and-slacking.md`
+- `lucide-react` 暂未从 package.json 移除(避免破坏 IDE 索引);后续 v1.3.4 全量清理时可一次卸载
+
+
+## [v1.3.3-patch1] · 2026-08-30 · Widget 模式显示 + 摸鱼薪资 + 结束归零
+
+### 概览
+
+3 项 UX 调整,源自用户对 v1.3.3 首页 Widget 的反馈:
+
+1. **首页 Widget 显示当前模式**(摸鱼/加班/其他),不再是泛化的「时间记录」
+2. **首页 + 详情页都显示摸鱼薪资**(按 `effectiveHourlyRate × 摸鱼时长` 计算,负值)
+3. **结束记录后首页时长归 0**(不累积历史,历史在详情页)
+
+### 改动 1 · Widget 顶栏:模式 chip + 实时时长
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- 删除「时间记录」标题 + 「今日合计」统计(后者被理解为"结束不清空")
+- 新增左侧 **模式 chip**:
+  - 默认/未开始时:灰色 chip + 「摸鱼」(`label='slack'`)
+  - 进行中:accent 色 chip + 脉动动画,显示当前 `session.label`
+  - 夜班时右侧附加 🌙 标识
+- 右侧实时时长:**只显示当前正在进行的时长**(`elapsedSec`),未开始 → `00:00`
+- **无下拉符号**(删除 `<CaretDown />`),按钮就是纯文字「开始记录」/「结束记录」
+
+### 改动 2 · Widget 第二行:摸鱼薪资
+
+- 新增 `earnRow` 区块,显示「摸鱼 X 的薪资」(进行中)或「摸鱼薪资」(未开始)
+- 数值 = `hourly × elapsedSec / 3600`
+- 进行中时数值高亮(`accent-deep` 绿色)
+- 未开始时显示 `¥0.00`(灰色)
+
+### 改动 3 · 详情页:摸鱼总薪资块
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+- 新增「摸鱼总薪资」卡片,放在净工时/净时薪 summary bar 与记录列表之间
+- 计算:`slackingEarn(todaySessions, hourly, now.getTime())`
+- 显示 `-¥XX.XX`(红色)— 表示"摸鱼 X 分钟,理论可赚 ¥XX"
+
+**`src/lib/compute.ts`**
+
+- 新增 `slackingEarn(sessions, hourlyRate, nowTs?)` 纯函数:
+  - 仅 `label='slack'` 计入(加班/其他不扣)
+  - 进行中的 session 按 `nowTs - startTs` 实时累加
+  - 返回 `(hourly × totalMin / 60)`
+- 新增 `totalSlackingMinutes(sessions, label='slack')` 工具(为后续 UI 复用预留)
+
+### 改动 4 · CSS 微调
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.module.css`**
+
+- 新增 `.modeRow` / `.modeChip` / `.modeChipActive`(chip 容器 + 脉动动画 `chipPulse`)
+- 新增 `.earnRow` / `.earnLabel` / `.earnValue` / `.earnRunning`(薪资行)
+- `.total` 字号从 13px 升到 18px(主显示元素)
+- 删除 `.status` / `.statusText` / `.pulse` 单独区块(合并到 `modeChipActive` 脉动)
+
+**`src/pages/SlackingDetailPage.module.css`**
+
+- 新增 `.slackingEarn` / `.slackingEarnLeft` / `.slackingEarnLabel` / `.slackingEarnHint` / `.slackingEarnValue` / `.slackingEarnRunning`
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **161 passed**(原 154 + 新增 7 个 `slackingEarn` 单元测试)
+- ✅ `npm run build`:**303 KB / gzip 92 KB**
+- ✅ 手动验证:
+  - 首页 widget:chip 显示「摸鱼」,时长 00:00 → 开始 → 实时 +¥/分钟 → 结束 → 立刻归 0
+  - 详情页:摸鱼总薪资卡片实时跳数,夜班时显示 🌙 标识
+  - 详情页历史记录正常保留(累积显示,不归零)
+
+### 不在本版本范围
+
+- 摸鱼时薪 override(目前用当日 effectiveHourlyRate,不做单价覆盖)
+- 摸鱼总薪资的"正向"显示模式(用户要求展示"摸鱼付出了多少钱"— 仍按扣减显示)
+
+---
+
+## [v1.3.3-patch2] · 2026-08-30 · Widget 收紧 + 详情页摸鱼总薪资改色
+
+### 概览
+
+2 项视觉 / 交互微调:
+
+1. **Widget 收紧** — 里程表数字从 40px 缩到 22px,模式 chip + 实时数字 + 单按钮(开始/结束)合并进同一行;详情入口改成右上角小箭头
+2. **详情页摸鱼总薪资** — 从 `-¥X.XX`(红色)改为 `+¥X.XX`(绿色),语义统一为"已记录摸鱼时长对应的可赚金额"
+
+### 改动 1 · Widget 计时框收紧 + 按钮合一行
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- 里程表层结构由「chip 顶 + 大数字居中 + 副标 + 底部 Row4 buttons」改为 **单行布局**:
+  - 中间:小尺寸模式 chip(顶部)+ `MM:SS` 数字(下方)
+  - 右侧:单按钮 — 「开始」/「结束」二态切换(点一次开始,点一次结束)
+  - 顶部右上角:`<ArrowRight />` 小箭头 → 跳转详情页(替代原 Row4 次要按钮)
+- 删除 `.odoLabel` / `.odoSub` 区块(信息已并入 chip)
+- 删除 `import Coffee`(未使用)
+- 休息日分支:右上角详情箭头保留(用户仍可查看历史)
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.module.css`**
+
+- `.odoNumber` 字号 `40px` → **22px**,letter-spacing `-2px` → `-1px`,margin `4px 0 6px` → `2px 0 4px`
+- `.odoMin/.odoSec` min-width `56px` → `30px`(与缩小的字号匹配)
+- `.odoFrame` padding `14px 16px 12px` → `8px 14px 8px`(整块瘦身)
+- 新增 `.odoRow` / `.odoRowCenter` / `.odoRowChip` / `.odoRowChipActive` / `.odoRowChipDot`(横向一行布局)
+- 新增 `.detailArrowTop`(右上角圆形 24×24 箭头按钮)
+- 新增 `.actionRow` / `.actionBtn` / `.actionBtnStart` / `.actionBtnStop` / `.actionBtnDot`(单按钮样式)
+- 删除 `.buttons` / `.btn*` / `.btnSecondary*`(原 Row4 整套主次按钮容器)
+
+### 改动 2 · 详情页摸鱼总薪资:红色 `-¥` → 绿色 `+¥`
+
+**`src/pages/SlackingDetailPage.module.css`**
+
+- `.slackingEarnRunning` color 由 `var(--danger, #E5484D)` → **`var(--accent-deep, #9FCC00)`**
+- 配合 tsx 已有 `+¥${slackingTotal.toFixed(2)}` 渲染,数字显示为绿色带 `+` 号前缀
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **161 passed**(无新增,纯样式 + 文字微调)
+- ✅ `npm run build`:**305 KB / gzip 92 KB**
+- ✅ 手动验证:
+  - 首页 widget:打开后单行布局紧凑,数字不喧宾夺主
+  - 开始 → 按钮文字变为「结束」+ 红点 → 再点 → 立刻归 0
+  - 详情页摸鱼总薪资卡片:绿色 `+¥X.XX`,与单条记录薪资色一致
+
+### 不在本版本范围
+
+- Widget 模式切换 UI(目前固定 `slack`,模式选择仍在详情页 sheet)
+- 计时数字改用更大字号(已收窄,改回需新讨论)
+
+---
+
+
+---
+
+## [v1.3.3-patch3] · 2026-08-30 · 休息日静态化 + 自动加班模式 + 加班/摸鱼分账 + 夜班特化加班
+
+### 概览
+
+3 项语义 / 行为修正,源自用户对详情页 dashboard 与 widget 的反馈:
+
+1. **休息日完全静态** — 不再渲染详情箭头按钮,"休息日无需摸鱼"为唯一内容
+2. **自动加班模式** — 点 widget「开始」时,根据 `dayState` 判断:工时段内 → 摸鱼;已过下班 / 未到上班 / 夜班时刻 → 加班
+3. **加班 ≠ 摸鱼**:
+   - 加班 session (label='overtime') **不计入**工作时间扣除(slackingMinutes)
+   - 详情页 dashboard 卡片名「加班补偿」→「加班」
+   - 「加班」加成只在夜班场景自动 ×1.5;日间加班日不再自动加成(避免误增工作时间)
+   - 用户手动设 multiplier > 1 仍按 multiplier 算(任何时段)
+4. **widget 时间薪资** — 第三行根据当前模式动态显示「摸鱼薪资 / 加班薪资」
+
+### 改动 1 · 休息日 disabled 区块:无按钮 + 无详情箭头
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- 休息日分支(`!isWork`)删除 `<button className={styles.detailArrowTop}>` 元素
+- 保留 `TIME RECORDS` eyebrow + 黑色里程表内嵌「休息日无需摸鱼」文字
+- 整个休息日 widget 纯静态展示,无任何可交互元素
+
+### 改动 2 · 自动加班模式(Widget handleStart)
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- 引入 `dayState(now, config, overrides, holidays)` 判定当前状态
+- `handleStart` 逻辑改为:
+  - `dayState.mode === 'active'`(在工时段内) → 摸鱼(`'slack'`)
+  - 其他时刻(已过下班 / 未到上班 / 夜班) → 加班(`'overtime'`)
+- 用户不再需要在详情页手动切换模式即可实现"过了下班点开始加班"的语义
+
+### 改动 3 · 加班不计入摸鱼扣除(`sessionsToIntervals`)
+
+**`src/lib/compute.ts`**
+
+- `sessionsToIntervals` 加 `if (s.label !== 'slack') continue;` 过滤
+- 加班 session 的工作时间现在被识别为"工作时间的一部分",不影响净工时
+- 摸鱼总薪资(`slackingEarn`)未变:它原本就只看 `label === 'slack'`,语义天然正确
+
+### 改动 4 · 加班加成只在夜班场景 + 用户手动 multiplier
+
+**`src/lib/compute.ts` · `computeNetHours`**
+
+- 加班加成新规则:
+  ```ts
+  const isOvertimeDay = entry?.type === 'paid_overtime';
+  const multiplier = entry?.multiplier ?? 1;
+  const nowInNight = isInNightWindow(now);
+  const hasNightSegment = nightShiftMinutes(segs) > 0;
+  const nightAutoBonus = isOvertimeDay && (nowInNight || hasNightSegment) ? grossMinutes * 0.5 : 0;
+  const manualBonus = isOvertimeDay && multiplier > 1 ? grossMinutes * (multiplier - 1) : 0;
+  const overtimeBonus = Math.max(nightAutoBonus, manualBonus);
+  ```
+- 夜班场景自动 ×1.5,日间加班日不再自动加成(用户可手动设 multiplier 触发)
+- 引入 `import { isInNightWindow } from './time';`
+
+**`src/lib/constants.ts`**
+
+- `DAY_TYPE_OPTIONS.paid_overtime.defaultMultiplier`:`1.5` → `1`(加班日不再默认 ×1.5,加成走夜班或用户手动)
+
+### 改动 5 · UI 文案「加班补偿」→「加班」
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+- Dashboard 第四卡片 `cardLabel`:`加班补偿` → **`加班`**
+- 含义与算法对齐:"加班" = 加成来源(夜班自动 / 手动 multiplier),不再叫"补偿"
+
+### 改动 6 · Widget 第三行:动态薪资文案
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- `mode === 'overtime'` 时显示「加班薪资」,否则显示「摸鱼薪资」
+- 数值根据 mode 切换:
+  - 摸鱼:`slackingEarn(currentSession, hourly, now)`(仅 slack 计入)
+  - 加班:`hourly × elapsedSec / 3600`(整段计薪)
+- chip 文字同步切换:「摸鱼」/「加班」
+
+### 测试
+
+**`src/lib/compute.test.ts`** 新增 4 个 case:
+
+1. `加班 session(label=overtime)不计入 slackingMinutes` — 验证 sessionsToIntervals 过滤
+2. `加班日 + 夜班段(22-06)→ overtimeBonus 自动 ×0.5` — 验证 nightAutoBonus
+3. `加班日 + 日间段(09-18)+ multiplier=1 → 不自动加成` — 验证日间不触发
+4. `加班日 + 手动 multiplier=2 → 按 manualBonus 算(任何时段)` — 验证手动覆盖
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **165 passed**(原 161 + 新增 4 个 patch3 case)
+- ✅ `npm run build`:**305 KB / gzip 92 KB**
+- ✅ 手动验证(用户场景):
+  - 周末(休息日):widget 无按钮、无详情箭头,只显示「休息日无需摸鱼」
+  - 下班后 19:00 点开始:chip 自动显示「加班」、薪资显示「加班薪资」,详情页对应记录为「加班」类目
+  - 工时段内点开始:chip 「摸鱼」,行为不变
+  - 详情页 dashboard:第四卡「加班」,加班 session 不再误进摸鱼扣除,净工时准确
+
+### 不在本版本范围
+
+- 加班 session 的工资流向(目前仅展示,**未**参与 todayEarned 计算 — 等 v1.3.4 引入"加班计入已赚"流程)
+- 加班模式的细分(法定 / 自愿),目前一律按"加班日 + 夜班"语义
+
+### 改动 7 · Fix · 编辑进行中 session 不刷新 widget
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+- 之前:`useSlackingStore((s) => s.getCurrentSession())` —— 闭包调用方法,store 内部 state 变化时 selector 返回的对象引用判定不稳定,编辑进行中的 session 后 widget chip / 薪资行不刷新
+- 现在:改为直接订阅 `sessions` + `currentSessionId` 两个原始 state,用 `useMemo` 在组件内派生 currentSession — 任一 state 引用变化都会正确触发 re-render
+
+```ts
+const sessions = useSlackingStore((s) => s.sessions);
+const currentSessionId = useSlackingStore((s) => s.currentSessionId);
+const currentSession = useMemo(() => {
+  if (!currentSessionId) return null;
+  for (const list of Object.values(sessions)) {
+    if (!list) continue;
+    const found = list.find((s) => s.id === currentSessionId);
+    if (found) return found;
+  }
+  return null;
+}, [sessions, currentSessionId]);
+```
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **165 passed**(本 patch3 总计新增 4 个 compute case,无新 store case)
+- ✅ `npm run build`:**305 KB / gzip 92 KB**
+- ✅ 手动验证:在详情页编辑进行中 session 的 label,返回主页 widget 时 chip 文字 / 薪资文案实时更新
+
+
+---
+
+
+---
+
+*最后更新:2026-08-30 · v1.3.3 patch3 发布*
+
+---
+
+## [v1.3.3-patch5] · 2026-08-30 · 夜班加成只算夜间段 + 收工 chip 显示加班
+
+### 概览
+
+2 项语义修正,源自用户对加班日净工时 + 主页 widget 的反馈:
+
+1. **加班日「夜班加成」只算 22:00–06:00 那部分**(因为比较累),不再误把整段 gross ×0.5
+2. **收工后(工时段外)主页 widget 的 mode chip 显示「加班」**,不再默认显示「摸鱼」(避免「收工仍显示摸鱼」的违和感)
+
+### Bug 1 · 夜班加成只算夜间段(不再污染日间)
+
+**问题**:v1.3.3 patch3 的夜班自动加成公式 `nightAutoBonus = grossMinutes × 0.5`,在「段含部分日间 + 部分夜班」场景下会把**整段 gross** 都加成,导致日间加班时间被错误加权。
+**期望**:只对夜间段(22:00–06:00)部分 ×0.5,日间段不加成;用户手动设 `multiplier > 1` 时仍按整段 ×(multiplier-1)。
+
+**示例对照**:
+
+| 场景 | 旧行为(错) | 新行为(对) |
+|---|---|---|
+| 段 20:00–06:00(10h 跨天,夜班 8h)+ paid_overtime | 10h × 0.5 = **5h** | 8h × 0.5 = **4h** |
+| 段 09:00–18:00(日间)+ now=22:30 夜班时刻 + paid_overtime | 9h × 0.5 = **4.5h** | nightShiftMinutes=0 → **0** |
+| 段 22:00–06:00(整段都是夜班)+ paid_overtime | 8h × 0.5 = **4h** | 8h × 0.5 = **4h**(同) |
+| 段 09:00–18:00 + multiplier=2 + paid_overtime | 9h × 1 = **9h** | 9h × 1 = **9h**(同,用户显式倍率仍生效) |
+
+**改动**:
+
+**`src/lib/compute.ts` · `computeNetHours`**
+
+```ts
+// v1.3.3 patch5:只对夜间段部分加 ×0.5,日间段不加
+const nightAutoBonus = isOvertimeDay && (nowInNight || hasNightSegment)
+  ? nightShiftMinutes(segsForNight) * 0.5
+  : 0;
+const manualBonus = isOvertimeDay && multiplier > 1 ? grossMinutes * (multiplier - 1) : 0;
+const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
+```
+
+- 关键改动:`nightShiftMinutes(segsForNight) * 0.5` 替换 `grossMinutes * 0.5`
+- `manualBonus` 与 `userOvertimeBonus` 逻辑不变(用户显式倍率优先)
+
+**详情页 popup**:
+
+- `nightMin = nightBonus / 0.5` → 现在等价于 `nightShiftMinutes(segs)`,语义一致(只显示夜间段分钟数)
+
+### Bug 2 · 收工后 widget chip 显示「加班」
+
+**问题**:v1.3.3-patch1/patch3 给 widget 加了 mode chip,但 chip 默认 `currentSession?.label ?? 'slack'` —— 没有 session 时永远显示「摸鱼」。用户已过下班点(例如 19:00)打开主页,看到 chip 还写着「摸鱼」,但实际下一步点击会进入加班 session,文字与行为不一致。
+
+**期望**:空闲态 chip 与 `handleStart` 的 `autoLabel` 用同一套派生逻辑:
+- 工时段内(`dayState.mode === 'active'`) → 「摸鱼」
+- 已过下班 / 未到上班 / 夜班 → 「加班」
+
+**改动**:
+
+**`src/components/TimeTrackerWidget/TimeTrackerWidget.tsx`**
+
+```ts
+// v1.3.3 patch5:空闲态模式按 dayState 派生
+const state = dayState(now, config, overrides, HOLIDAYS);
+const idleLabel: TimeRecordLabel =
+  state.mode === 'active' ? 'slack' : 'overtime';
+
+// 模式优先级:进行中 → session.label;空闲 → idleLabel
+const mode: TimeRecordLabel = currentSession?.label ?? idleLabel;
+```
+
+- `handleStart` 直接复用 `idleLabel`,避免「chip 显示加班 / 点开始却是摸鱼」的 bug
+- 删除 `import { isInNightWindow }` —— 不再直接调用,逻辑收敛到 `dayState`
+- 薪资文案微调:进行中且 mode='overtime' 时显示「加班薪资」;空闲态固定「摸鱼薪资」(展示潜在时薪,与当前是否真在摸鱼解耦)
+
+### 测试
+
+**`src/lib/compute.test.ts`** 新增 2 个 case:
+
+1. `加班日 + 段含夜间部分(20-06 跨天 10h,夜班仅 8h)→ 夜班加成 = 8h×0.5 = 4h` — 验证夜间段加成
+2. `加班日 + 日间段 + now 落在夜间(22:30)→ 不应触发自动加成` — 验证日间段不被污染
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **167 passed**(原 165 + 新增 2 个 patch5 case)
+- ✅ `npm run build`:**305 KB / gzip 92 KB**(零增量,纯逻辑微调)
+- ✅ 手动验证(用户场景):
+  - 下班 19:00 打开主页:chip 显示「加班」,点开始 → 创建 `label='overtime'` session(语义对齐)
+  - 工时内(09:00–18:00)打开主页:chip 显示「摸鱼」,行为不变
+  - 加班日 + 段含日间 + 夜班:详情页「加班」卡片不再被错误加成,popup「夜班 N min」只显示夜间段分钟数
+
+### 不在本版本范围
+
+- Widget 在夜班时刻的视觉强调(🌙 图标 / 配色) —— 见 patch1 已加,但仅在 session.nightShift 时
+- 加班 session 的「已赚」计入 todayEarned(目前仅展示,等下版本)
+- 用户对夜间段加成的自定义倍率(目前固定 0.5)
+
+### Notes
+
+- 净工时公式中 `nightBonus`(`entry.nightShift=true` 触发的 ×0.5)语义未变,本次仅修正 `overtimeBonus` 中的 `nightAutoBonus` 路径
+- 详情页 popup「加班」行的 `nightMin` 计算从 `nightBonus / 0.5` 推出 —— 修正后等价于 `nightShiftMinutes(segs)`,保持显示正确
+- `dayState` 已有跨天段凌晨 02:00 active 识别,本次复用,无新增 dayState 分支
+
+---
+
+## [v1.3.3-patch6] · 2026-08-30 · 加班 session 按日间/夜班拆分计入净工时
+
+### 概览
+
+`userOvertimeBonus` 之前把整段加班 session 简单乘以 `multiplier`,导致 20:00–23:30 这种跨夜班边界的 session 被当作全日间处理。修正后按**实际 session 时间**拆分为日间 / 夜班两部分分别计入:
+
+- 日间部分: `dayMin × multiplier`
+- 夜班部分: `nightMin × multiplier × 1.5`
+
+### Bug · 加班 session 不分日夜,夜间部分漏 ×1.5
+
+**问题**:用户场景:加班 session 20:00–23:30(3.5h)。预期应拆分为 **2h(日间)×1 + 1.5h(夜班)×1.5**。但 `userOvertimeBonus` 把整个 session 视为均匀时段,只用 `multiplier × totalMin`,夜班 22:00–23:30 那 1.5h 没有被额外加权。
+**期望**:
+- 加班 session 的内部时间按夜班窗口 22:00–06:00 拆分为 dayMin / nightMin
+- 日间 × multiplier,夜班 × multiplier × 1.5
+- popup 显示拆分明细
+
+### 改动 1 · 新增 `overtimeSessionSplit` 纯函数
+
+**`src/lib/compute.ts`**
+
+```ts
+export function overtimeSessionSplit(
+  sessions: SlackingSession[],
+  nowTs: number = Date.now(),
+): { dayMin: number; nightMin: number; totalMin: number };
+
+// 内部 helper
+function splitSessionDayNight(startTs: number, endTs: number): { day: number; night: number };
+function nightOverlap(startMin: number, endMin: number): number;
+```
+
+- 跨 00:00 的 session 按日界线切两段分别统计
+- 进行中 session 按 `nowTs` 实时计算
+- 仅 `label='overtime'` 计入
+- 夜班窗口: `[1320, 1440) ∪ [0, 360)`(本地时间)
+
+### 改动 2 · `userOvertimeBonus` 用拆分结果
+
+**`src/lib/compute.ts` · `computeNetHours`**
+
+```ts
+// patch6:按拆分结果加权
+const split = overtimeSessionSplit(slackingSessions, now.getTime());
+const userOvertimeBonus =
+  split.dayMin * (isOvertimeDay ? multiplier : 1) +
+  split.nightMin * (isOvertimeDay ? multiplier : 1) * 1.5;
+const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
+```
+
+### 改动 3 · 详情页 popup 拆分明细
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+- 替换单一「加班 N min × multiplier」行为三行明细:
+  - 加班(日) `dayMin × multiplier`
+  - 加班(夜) `nightMin × multiplier × 1.5`
+  - 夜班 `nightMin × 0.5`(保留旧的 entry.nightShift 加成)
+- 移除已 unused 的 `overtimeMinutes` import
+
+### 验收对照
+
+| 场景 | patch5 旧行为 | patch6 新行为 |
+|---|---|---|
+| session 20:00–23:30 普通日 multiplier=1 | 210×1 = 210 min | 120×1 + 90×1×1.5 = **255 min** |
+| session 20:00–23:30 加班日 multiplier=2 | 210×2 = 420 min | 120×2 + 90×2×1.5 = **510 min** |
+| session 19:00–20:00 普通日 multiplier=1 | 60×1 = 60 min | 60×1 + 0 = **60 min**(同) |
+| session 22:00–23:00 普通日 multiplier=1 | 60×1 = 60 min | 0×1 + 60×1×1.5 = **90 min** |
+| session 23:00–01:00(跨00:00)普通日 multiplier=1 | 120×1 = 120 min | 0×1 + 120×1×1.5 = **180 min** |
+
+### 测试
+
+**`src/lib/compute.test.ts`**
+
+- 新增 `overtimeSessionSplit` describe 块(7 case):完全日间 / 完全夜班 / 跨夜班边界 / 跨 00:00 / 跨清晨 / 非加班跳过 / 进行中实时
+- 更新 `computeNetHours · 加班 session 影响净工时`(原 patch4 测试用 `startTs=0` 恰好全在夜班,实际验证的是日间 = 0):
+  - 普通工作日 30min 日间加班 → +30 min(不变)
+  - 加班日 (multiplier=2) 30min 日间加班 → +60 min(不变)
+  - 新增:session 20:00–23:30 普通日 → userOvertimeBonus = 255
+  - 新增:session 20:00–23:30 加班日 multiplier=2 → userOvertimeBonus = 510,overtimeBonus = 1050
+  - 新增:session 19:00–20:00 → 60 min(全日间)
+  - 新增:session 22:00–23:00 → 90 min(全夜班)
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **185 passed**(原 177 + 新增 8 个 patch6 case)
+- ✅ `npm run build`:**305 KB / gzip 92 KB**(零增量,纯逻辑微调)
+- ✅ 手动验证(用户场景):session 20:00–23:30 + 普通日 → 详情页「加班」卡显示 +4h15m(= 120+135),popup 三行拆分展示
+
+### 不在本版本范围
+
+- 夜班加权 `entry.nightShift=true`(旧逻辑 ×0.5)— 与 patch6 拆分独立,保留兼容
+- 「加班」session 的「已赚」参与 todayEarned 计算 — 仍仅展示
+- 用户自定义「夜班起始分钟」(目前固定 22:00)— 后续版本开放
+
+### Notes
+
+- `nightAutoBonus`(系统级,基于 day segments 的夜班 ×0.5)与 `userOvertimeBonus`(用户级,基于 session 的日/夜拆分)是**两条独立路径**,都会进 `overtimeBonus`
+- 老 `overtimeMinutes`(只算总分钟数)仍保留导出,供其他场景复用,本页只切到 `overtimeSessionSplit`
+- popup「加班(日)/加班(夜)」与「夜班 ×0.5 身体补偿」三行并存,前者是 session 加成,后者是 day 加权(若用户在 DaySheet 勾选了夜班加权)
+
+---
+
+## [v1.3.3-patch7] · 2026-08-30 · 午休卡片配色:红色 → 绿色
+
+### 概览
+
+详情页 dashboard「午休扣除」卡片原本使用红色(`styles.negative`,`var(--danger, #E5484D)`)。用户反馈:**午休是带薪的**,与「摸鱼」一样属于"白拿的钱"—— 应和摸鱼扣卡一致显示绿色(`styles.positive`,`var(--accent-deep, #9FCC00)`)。
+
+### 改动
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+```diff
+- <div className={`${styles.card} ${net.lunchMinutes > 0 ? styles.negative : ''}`}>
++ <div className={`${styles.card} ${net.lunchMinutes > 0 ? styles.positive : ''}`}>
+    <div className={styles.cardLabel}>午休扣除</div>
+```
+
+- 仅改 className,文案与数值不变
+- 语义对齐:午休 / 摸鱼都是"不工作但仍按工作时薪计薪" → 都用绿色
+- 「加班」加成(`styles.negative`,红色)保留——加班是"额外付出时间"的语义,红色表示"亏/累"
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors(预存在的 `isOvertime` / `now` 未用变量未触及)
+- ✅ `npm run test` **188 passed**(无新 case,纯样式微调)
+- ✅ `npm run build`:**306 KB / gzip 93 KB**
+- ✅ 手动验证:详情页 dashboard 2×2 现在四卡配色为
+  - 总工时(灰)/ 午休扣除(绿)/ 摸鱼扣除(绿)/ 加班加成(红,>0 时)
+
+### 不在本版本范围
+
+- 「午休」与「摸鱼」合并显示(目前分两卡,后续如要合并可重构 2×2 → 1×3 横排)
+- 配色主题扩展(目前只跟 `danger` / `accent-deep` 两枚 CSS 变量)
+
+---
+
+## [v1.3.3-patch8] · 2026-08-30 · 加班 popup 视觉化「2 + 1.5 × 1.5」聚合等式
+
+### 概览
+
+用户在 patch6 之后再次核对加班 20:00–23:30 场景:确认 popup 拆分正确,但希望**视觉上直观看到聚合形态**。本次把 popup 文案从 `120 min × 1.5` 升级为 **`2h + 1.5h × 1.5`**,并加一行汇总等式突出语义:
+
+- 加班(日) `2h × 1.5`
+- 加班(夜) `1.5h × 1.5 × 1.5`
+- = `2h + 1.5h × 1.5`(虚线分组)
+
+### 改动 1 · `popup` 文案「min → hXXm」
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+```diff
+-{userOvertimeDayMin} min × {overtimeMul}
++{fmtHoursMin(userOvertimeDayMin)} × {overtimeMul}
+```
+
+例:120 min → `2h`,90 min → `1h30m`,让用户一眼对应"2 + 1.5 × 1.5"。
+
+### 改动 2 · 新增「聚合等式」行
+
+**`src/pages/TimeTrackerDetailPage.tsx`**
+
+```jsx
+{userOvertimeDayMin > 0 && userOvertimeNightMin > 0 && (
+  <div className={`${styles.popupRow} ${styles.popupRowTotal}`}>
+    <span>= {fmtHoursMin(userOvertimeDayMin)} + {fmtHoursMin(userOvertimeNightMin)} × 1.5</span>
+  </div>
+)}
+```
+
+仅当同时存在日间、夜班部分时才显示,避免空行。
+
+### 改动 3 · 汇总行视觉分组
+
+**`src/pages/SlackingDetailPage.module.css`**
+
+```css
+.popupRowTotal {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(245, 242, 234, 0.25);
+  opacity: 0.85;
+  font: 500 10px var(--font-mono);
+}
+```
+
+虚线分割 + 半透明,让"算式汇总"与"明细条目"在视觉上分层。
+
+### 改动 4 · 清理 pre-existing TS6133
+
+**`src/pages/TimeTrackerDetailPage.tsx`** — 第 89 行
+
+```diff
+- const isOvertime = entry?.type === 'paid_overtime';
+  const overtimeMul = entry?.multiplier ?? 1;
+```
+
+- `isOvertime` 自 v1.3.3 起就一直存在但未使用(本次 patch8 的 popup 改造范围触及此行附近,顺手清理)
+- `slackingStore.test.ts` 第 22 行的 `now` 未用警告非本次修改路径,**未动**
+
+### 验证
+
+- ✅ `npm run typecheck`:本文件 0 errors(剩余 1 个是 `slackingStore.test.ts:22` 的预存在 `now`,不动)
+- ✅ `npm run test`:**188 passed**(无新 case,纯展示微调)
+- ✅ `npm run build`:**306 KB / gzip 93 KB**
+- ✅ 手动验证场景:session 20:00–23:30 + 普通日 multiplier=1,详情页「加班」卡 popup:
+  ```
+  加班(日)2h × 1
+  加班(夜)1h30m × 1 × 1.5
+  ─────────────────────────
+  = 2h + 1h30m × 1.5
+  ```
+
+### 不在本版本范围
+
+- popup 折叠为「单行汇总 + click 展开明细」交互(本次仍保持三行平铺)
+- 多行 session 聚合(scenario 同 session 多段跨日,当前按各 session 独立算)
+- 复用 `fmtHoursMin` 兼容 `0h` 输出(若 day=0 night=0,聚合等式行已隐藏,不会出现 `0h + 0h × 1.5`)
+
+---
+
+*最后更新:2026-08-30 · v1.3.3 patch8 发布(加班 popup 聚合等式)*

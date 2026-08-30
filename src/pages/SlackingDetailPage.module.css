@@ -123,6 +123,59 @@
   gap: 6px;
 }
 
+.popupRowTotal {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(245, 242, 234, 0.25);
+  opacity: 0.85;
+  font: 500 10px var(--font-mono);
+}
+
+/* ── v1.3.3 · 摸鱼总薪资 ── */
+.slackingEarn {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.slackingEarnLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.slackingEarnLabel {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.slackingEarnHint {
+  font: 400 10px var(--font-mono);
+  color: var(--muted-2, var(--muted));
+}
+
+.slackingEarnValue {
+  font: 600 22px var(--font-num, var(--font-sans));
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.slackingEarnRunning {
+  /* v1.3.3 patch2:摸鱼总薪资用绿色 + 号显示,不带 - 不红 */
+  color: var(--accent-deep, #9FCC00);
+}
+
 /* ── Summary ── */
 .summary {
   background: var(--ink);
@@ -209,10 +262,25 @@
   color: var(--muted);
 }
 
+.recRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
 .recDuration {
   font: 500 13px var(--font-num, var(--font-sans));
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.recEarn {
+  font: 600 11px var(--font-num, var(--font-sans));
+  color: var(--accent-deep, #9FCC00);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
 }
 
 .recActions {
@@ -434,4 +502,63 @@
   border-radius: var(--r-sm);
   font: 500 13px var(--font-sans);
   cursor: pointer;
+}
+/* v1.3.3 segmented control for time record label */
+.sheetSegmented {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  background: var(--paper-2);
+  border-radius: var(--r-sm);
+  padding: 4px;
+}
+
+.sheetSegmentedChip {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--r-sm) - 2px);
+  font: 500 12px var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.sheetSegmentedChip:hover {
+  color: var(--ink);
+}
+
+.sheetSegmentedChipActive {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+/* v1.3.3 night shift badges */
+.nightBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(124, 111, 247, 0.12);
+  color: var(--accent-deep, #9FCC00);
+  font: 600 10px var(--font-mono);
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+}
+
+.nightDot {
+  margin-left: 4px;
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.8;
 }
