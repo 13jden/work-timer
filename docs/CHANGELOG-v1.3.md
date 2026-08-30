@@ -1188,10 +1188,11 @@ const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 - **顺手修复**: `src/store/slackingStore.test.ts:22` 的 `now` 未使用变量(typecheck 警告阻塞 build)
 
 ### 打包
-- `npx tauri android build --apk` → universal 37.1MB
+- `npx tauri android build --apk --target aarch64 --ci` → **arm64-only 12.2MB**(单架构,适配 99% 现代 Android 手机)
 - `zipalign -p 4` 对齐
-- `apksigner sign` v2 + v3 签名 → `SalaryTimer-2.0.0-universal.apk` 37.2MB
+- `apksigner sign` v2 + v3 签名 → `SalaryTimer-2.0.0-arm64.apk` 12.2MB
 - `apksigner verify -v` 通过 v2/v3 scheme
+- ⚠️ **不要用 universal**:`tauri android build --apk`(默认)出 4 架构 universal ~37MB,因含 arm64/armeabi-v7a/x86/x86_64 四份 libapp_lib.so 各 6-10MB
 
 ### 验证
 - mipmap-xxxhdpi/ic_launcher_foreground.png 视觉确认:时钟 + ¥ 居中清晰,四周充足留白
@@ -1199,8 +1200,8 @@ const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 - typecheck 通过,188 测试通过
 
 ### 产物
-- `dist-android/SalaryTimer-2.0.0-universal.apk` (37.2 MB)
-- 旧版 `SalaryTimer-0.1.0-universal.apk` (37.1 MB) 保留以便对照
+- `dist-android/SalaryTimer-2.0.0-arm64.apk` (12.2 MB,arm64-only,日常安装用)
+- 旧版对照: `SalaryTimer-0.1.0-arm64.apk` (12.3 MB) / `SalaryTimer-0.1.0-universal.apk` (37.1 MB)
 
 ---
 
