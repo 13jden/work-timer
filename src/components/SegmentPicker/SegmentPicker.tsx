@@ -13,7 +13,7 @@
 import { useMemo } from 'react';
 import type { SegmentTemplate, WorkSegment } from '../../lib/types';
 import { toMinutes } from '../../lib/time';
-import { Sparkles } from 'lucide-react';
+import { Confetti } from '@phosphor-icons/react';
 import styles from './SegmentPicker.module.css';
 
 interface Props {
@@ -95,7 +95,7 @@ export function SegmentPicker({ templates, selectedIds, onChange, emptyText }: P
             <span className={styles.duration}>{dur}</span>
             {cross && (
               <span className={styles.crossBadge}>
-                <Sparkles size={10} strokeWidth={2.5} />
+                <Confetti size={10} weight="duotone" />
                 次日
               </span>
             )}

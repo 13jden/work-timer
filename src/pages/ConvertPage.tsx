@@ -16,7 +16,7 @@ import { useNow } from '../hooks/useNow';
 import { ItemSheet } from '../components/ItemSheet';
 import { formatDateKey } from '../lib/time';
 import type { Item } from '../lib/types';
-import { Zap, Target, Plus } from 'lucide-react';
+import { Lightning, Target, Plus } from '@phosphor-icons/react';
 import styles from './ConvertPage.module.css';
 
 /** 把小时数格式化为人类可读 */
@@ -100,8 +100,8 @@ export function ConvertPage() {
       {capsuleText && (
         <div className={styles.capsule}>
           {isOvertime
-            ? <Zap size={12} strokeWidth={2.5} fill="currentColor" />
-            : <Target size={12} strokeWidth={2.5} />}
+            ? <Lightning size={12} weight="duotone" />
+            : <Target size={12} weight="bold" />}
           {capsuleText}
         </div>
       )}
@@ -133,7 +133,7 @@ export function ConvertPage() {
 
       {/* 添加按钮 */}
       <button type="button" className={styles.addBtn} onClick={openAdd}>
-        <Plus size={14} strokeWidth={2.5} />
+        <Plus size={14} weight="bold" />
         <span>添加喜欢的东西</span>
       </button>
 

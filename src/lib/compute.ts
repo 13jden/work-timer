@@ -22,9 +22,11 @@ import type {
   HolidayMap,
   NetHoursBreakdown,
   SlackingSession,
+  TimeRecordLabel,
   WorkSegment,
 } from './types';
 import { DEFAULT_MULTIPLIER } from './types';
+import { isInNightWindow } from './time';
 import {
   formatDateKey,
   formatHMS,
@@ -774,6 +776,10 @@ function sessionsToIntervals(
 ): Array<{ startMin: number; endMin: number }> {
   const out: Array<{ startMin: number; endMin: number }> = [];
   for (const s of sessions) {
+    // v1.3.3 patch3:仅摸鱼计入工作时间扣除
+    //   - overtime(加班):是工作时间的一部分,不扣
+    //   - other(其他):中性,不扣
+    if (s.label !== 'slack') continue;
     if (s.endTs === null) continue; // 进行中跳过
     const startDate = new Date(s.startTs);
     const endDate = new Date(s.endTs);
@@ -823,6 +829,7 @@ export function computeNetHours(input: {
   slackingSessions: SlackingSession[];
 }): NetHoursBreakdown {
   const { date, config, overrides, slackingSessions } = input;
+  const now = date;
   void input.holidays; // 保留参数以备扩展,当前算法不需要
 
   const dateKey = formatDateKey(date);
@@ -848,10 +855,32 @@ export function computeNetHours(input: {
   }
   const slackUnionLunch = intervalsUnionTotal(unionIntervals);
 
-  // 加班加成
+  // 加班加成(v1.3.3 patch3 + patch5):
+  //   - 夜班场景(夜班时刻或夜班段覆盖)→ 自动 ×0.5,**只算夜间段部分**(22:00-06:00),不污染日间
+  //   - 用户手动设置 multiplier > 1 → 按 multiplier 算(任何时段,适用于整段 ×倍率)
+  //   - 取两者较大值(用户手动倍率优先,但不压制夜班加成)
+  //   - 用户手动添加的「加班」session 也计入加班加成(按 multiplier 倍率,见下)
   const isOvertimeDay = entry?.type === 'paid_overtime';
   const multiplier = entry?.multiplier ?? 1;
-  const overtimeBonus = isOvertimeDay && multiplier > 1 ? grossMinutes * (multiplier - 1) : 0;
+  const nowInNight = isInNightWindow(now);
+  const segsForNight = getEffectiveSegments(config, entry);
+  const hasNightSegment = nightShiftMinutes(segsForNight) > 0;
+  // v1.3.3 patch5:只对夜间段部分加 ×0.5,日间段不加(避免日间加班日被错误加成整段 gross)
+  const nightAutoBonus = isOvertimeDay && (nowInNight || hasNightSegment)
+    ? nightShiftMinutes(segsForNight) * 0.5
+    : 0;
+  const manualBonus = isOvertimeDay && multiplier > 1 ? grossMinutes * (multiplier - 1) : 0;
+  // v1.3.3 patch4 + patch6:用户手动添加的「加班」session 也计入加班加成
+  //   - 按 multiplier × 1(日间部分)+ multiplier × 1.5(夜班 22:00–06:00 部分)
+  //   - 加班日(paid_overtime):按 entry.multiplier
+  //   - 普通工作日:按 multiplier = 1
+  // 例如 session 20:00–23:30(2h 日间 + 1.5h 夜班),multiplier=1.5:
+  //   = 120×1.5 + 90×1.5×1.5 = 180 + 202.5 = 382.5 min
+  const split = overtimeSessionSplit(slackingSessions, now.getTime());
+  const userOvertimeBonus =
+    split.dayMin * (isOvertimeDay ? multiplier : 1) +
+    split.nightMin * (isOvertimeDay ? multiplier : 1) * 1.5;
+  const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 
   // 夜班加权
   const nightShiftFlag = entry?.nightShift === true;
@@ -893,6 +922,153 @@ export function netHourlyRate(
   const earned = todayEarned(now, config, overrides, holidays);
   if (netMinutes <= 0) return 0;
   return earned / (netMinutes / 60);
+}
+
+// ════════════════════════════════════════════════════════════
+// v1.3.3 · 摸鱼薪资(按 effectiveHourlyRate × 摸鱼时长)
+// ════════════════════════════════════════════════════════════
+
+/**
+ * 单个 session 的摸鱼分钟数(进行中按 now - startTs 计算)
+ */
+function sessionMinutes(session: SlackingSession, nowTs: number): number {
+  const end = session.endTs ?? nowTs;
+  const dur = Math.max(0, end - session.startTs);
+  return dur / 60000;
+}
+
+/**
+ * 摸鱼总薪资 = 时薪 × 总摸鱼分钟数 / 60
+ *
+ * - 仅 label='slack' 计入(加班是收入,其他是中性)
+ * - 进行中的 session 按 now 实时累加
+ * - 时薪由调用方提供(避免循环依赖)
+ */
+export function slackingEarn(
+  sessions: SlackingSession[],
+  hourlyRate: number,
+  nowTs: number = Date.now(),
+): number {
+  if (hourlyRate <= 0) return 0;
+  let totalMin = 0;
+  for (const s of sessions) {
+    if (s.label !== 'slack') continue;
+    totalMin += sessionMinutes(s, nowTs);
+  }
+  return (hourlyRate * totalMin) / 60;
+}
+
+/**
+ * v1.3.3 patch4:用户手动添加的「加班」记录总分钟数
+ *
+ * - 仅 label='overtime' 计入
+ * - 进行中的 session 按 now 实时累加
+ * - 用于详情页「加班」卡片显示,与系统级 overtimeBonus(paid_overtime 类型)区分
+ */
+export function overtimeMinutes(
+  sessions: SlackingSession[],
+  nowTs: number = Date.now(),
+): number {
+  let total = 0;
+  for (const s of sessions) {
+    if (s.label !== 'overtime') continue;
+    total += sessionMinutes(s, nowTs);
+  }
+  return total;
+}
+
+/**
+ * v1.3.3 patch6:加班 session 的「日间 / 夜班」分钟拆分
+ *
+ *  - 日间部分(dayMin):按 multiplier 计入(任何时段)
+ *  - 夜班部分(nightMin):按 multiplier × 1.5 计入(夜班 22:00–06:00 自动加成)
+ *
+ * 例如 session 20:00–23:30(3.5h):
+ *   - dayMin = 120(20:00–22:00)
+ *   - nightMin = 90(22:00–23:30)
+ *   - overtime 贡献 = dayMin × multiplier + nightMin × multiplier × 1.5
+ *
+ * 跨 00:00 的 session 会按"日界线"拆分(前半段在昨日,后半段在今日)。
+ *
+ * 进行中 session 按 now 实时计算。
+ */
+export function overtimeSessionSplit(
+  sessions: SlackingSession[],
+  nowTs: number = Date.now(),
+): { dayMin: number; nightMin: number; totalMin: number } {
+  let dayMin = 0;
+  let nightMin = 0;
+  for (const s of sessions) {
+    if (s.label !== 'overtime') continue;
+    const end = s.endTs ?? nowTs;
+    if (end <= s.startTs) continue;
+    const split = splitSessionDayNight(s.startTs, end);
+    dayMin += split.day;
+    nightMin += split.night;
+  }
+  return { dayMin, nightMin, totalMin: dayMin + nightMin };
+}
+
+/**
+ * 计算单个 [startTs, endTs) 区间内的日间 / 夜班分钟拆分
+ *
+ * 夜班窗口:22:00–06:00(每日 local time)
+ * 跨 00:00 时按日界线切两段分别统计。
+ */
+function splitSessionDayNight(
+  startTs: number,
+  endTs: number,
+): { day: number; night: number } {
+  let day = 0;
+  let night = 0;
+  let cur = startTs;
+  while (cur < endTs) {
+    const curDate = new Date(cur);
+    const dayStart = new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate()).getTime();
+    const dayEnd = dayStart + 24 * 3600 * 1000;
+    const segEnd = Math.min(endTs, dayEnd);
+    const startMin = (cur - dayStart) / 60000;
+    const endMin = (segEnd - dayStart) / 60000;
+    const overlap = nightOverlap(startMin, endMin);
+    night += overlap;
+    day += endMin - startMin - overlap;
+    cur = segEnd;
+  }
+  return { day, night };
+}
+
+/** [startMin, endMin) 在夜班窗口 [1320, 1440) ∪ [0, 360) 内的分钟数 */
+function nightOverlap(startMin: number, endMin: number): number {
+  const a = Math.max(startMin, NIGHT_SHIFT_START_MIN);
+  const b = Math.min(endMin, 24 * 60);
+  const c = Math.max(startMin, 0);
+  const d = Math.min(endMin, NIGHT_SHIFT_END_MIN);
+  let total = 0;
+  if (b > a) total += b - a;
+  if (d > c) total += d - c;
+  return total;
+}
+
+/**
+ * 今日已结束的摸鱼时长(分钟,不含进行中),与已有 getTodaySlackingMinutes 一致
+ */
+export function totalSlackingMinutes(
+  sessions: SlackingSession[],
+  label: TimeRecordLabel = 'slack',
+): number {
+  let total = 0;
+  for (const s of sessions) {
+    if (s.endTs === null) continue;
+    if (s.label !== label) continue;
+    const startDate = new Date(s.startTs);
+    const endDate = new Date(s.endTs);
+    const dayStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+    const startMin = (Math.max(startDate.getTime(), dayStart.getTime()) - dayStart.getTime()) / 60000;
+    const endMin = (Math.min(endDate.getTime(), dayEnd.getTime()) - dayStart.getTime()) / 60000;
+    if (endMin > startMin) total += endMin - startMin;
+  }
+  return Math.round(total);
 }
 
 // ════════════════════════════════════════════════════════════

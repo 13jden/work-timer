@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SLACKING_KEY } from '../lib/constants';
 import { loadJSON } from '../lib/storage';
+import { detectNightShift, isInNightWindow } from '../lib/time';
 import type { SlackingSession, SlackingSessions, SlackingLabel } from '../lib/types';
 
 // ── Store 形状 ──────────────────────────────────────────────
@@ -57,13 +58,16 @@ export const useSlackingStore = create<SlackingState>()(
 
       startSession: (dateKey, label, customLabel) => {
         const id = uuid();
+        const startTs = Date.now();
         const session: SlackingSession = {
           id,
           dateKey,
           label,
           customLabel,
-          startTs: Date.now(),
+          startTs,
           endTs: null,
+          // v1.3.3:开始时按 startTs 预标记夜班(结束时不更新——避免边界场景)
+          nightShift: isInNightWindow(new Date(startTs)),
         };
         const dayList = get().sessions[dateKey] ?? [];
         set({
@@ -79,18 +83,33 @@ export const useSlackingStore = create<SlackingState>()(
       stopCurrentSession: () => {
         const id = get().currentSessionId;
         if (!id) return;
+        const now = Date.now();
         const sessions = { ...get().sessions };
+        let shouldDrop = false;
         for (const k of Object.keys(sessions)) {
           const list = sessions[k];
           if (!list) continue;
-          sessions[k] = list.map((s) =>
-            s.id === id && s.endTs === null ? { ...s, endTs: Date.now() } : s,
-          );
+          // 找到当前进行中的 session
+          const target = list.find((s) => s.id === id && s.endTs === null);
+          if (!target) continue;
+          // v1.3.3:< 1 分钟不记录(避免误触)
+          const durMs = now - target.startTs;
+          if (durMs < 60_000) {
+            shouldDrop = true;
+            sessions[k] = list.filter((s) => s.id !== id);
+          } else {
+            sessions[k] = list.map((s) =>
+              s.id === id ? { ...s, endTs: now } : s,
+            );
+          }
         }
         set({ sessions, currentSessionId: null });
+        void shouldDrop; // dropped session 已经从 list 中移除
       },
 
       addPastSession: (dateKey, label, startTs, endTs, customLabel) => {
+        // v1.3.3:< 1 分钟不记录(避免误触)
+        if (endTs - startTs < 60_000) return '';
         const id = uuid();
         const session: SlackingSession = {
           id,
@@ -99,6 +118,7 @@ export const useSlackingStore = create<SlackingState>()(
           customLabel,
           startTs,
           endTs,
+          nightShift: detectNightShift(startTs, endTs),
         };
         const dayList = get().sessions[dateKey] ?? [];
         set({
@@ -115,7 +135,17 @@ export const useSlackingStore = create<SlackingState>()(
         for (const k of Object.keys(sessions)) {
           const list = sessions[k];
           if (!list) continue;
-          sessions[k] = list.map((s) => (s.id === id ? { ...s, ...patch } : s));
+          sessions[k] = list.map((s) => {
+            if (s.id !== id) return s;
+            const merged = { ...s, ...patch };
+            // v1.3.3:若 patch 含 startTs/endTs,重算夜班标记
+            if (patch.startTs !== undefined || patch.endTs !== undefined) {
+              const start = patch.startTs ?? s.startTs;
+              const end = patch.endTs ?? s.endTs ?? s.startTs;
+              merged.nightShift = detectNightShift(start, end);
+            }
+            return merged;
+          });
         }
         set({ sessions });
       },

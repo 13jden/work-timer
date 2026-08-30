@@ -11,7 +11,7 @@
  *   - 当日工时改为 SegmentPicker chip 多选(Bug 4 整合)
  *   - 夜班加权开关宽度增大到 52px
  *   - 整体重新设计:层级清晰、信息密度合理、操作按钮普通化
- *   - 引入 lucide-react 图标库替换 emoji
+ *   - 引入 @phosphor-icons/react 图标库替换 emoji(lucide 已迁移,v1.3.3)
  */
 import { useState, useEffect, useMemo } from 'react';
 import type { DayOverrideEntry, DayType, SegmentTemplate, WorkSegment } from '../../lib/types';
@@ -19,7 +19,13 @@ import { DEFAULT_MULTIPLIER } from '../../lib/types';
 import { DAY_TYPE_OPTIONS } from '../../lib/constants';
 import { SegmentPicker } from '../SegmentPicker';
 import { toMinutes } from '../../lib/time';
-import { ChevronDown, RefreshCw, Save, Moon, Coins } from 'lucide-react';
+import {
+  CaretDown,
+  ArrowsClockwise,
+  FloppyDisk,
+  Moon,
+  Coins,
+} from '@phosphor-icons/react';
 import styles from './DaySheet.module.css';
 
 interface DaySheetProps {
@@ -284,7 +290,7 @@ export function DaySheet({
                 </option>
               ))}
             </select>
-            <ChevronDown size={16} strokeWidth={2.2} className={styles.typeChevron} />
+            <CaretDown size={16} weight="bold" className={styles.typeChevron} />
           </div>
         </div>
 
@@ -297,7 +303,7 @@ export function DaySheet({
                 type="number"
                 className={styles.multInput}
                 value={customMult}
-                min={0.1}
+                min={0}
                 max={10}
                 step={0.1}
                 onChange={(e) => setCustomMult(e.target.value)}
@@ -312,7 +318,7 @@ export function DaySheet({
         {isFreelance && (
           <div className={styles.section}>
             <div className={styles.sectionLabel}>
-              <Coins size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+              <Coins size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
               当日薪资
               <span className={styles.sectionHint}>
                 {freelanceRateMode === 'hourly'
@@ -399,7 +405,7 @@ export function DaySheet({
           <div className={styles.nightShiftRow}>
             <div className={styles.nightShiftLabel}>
               <span className={styles.nightShiftTitle}>
-                <Moon size={14} strokeWidth={2} />
+                <Moon size={14} weight="regular" />
                 夜班加权
               </span>
               <span className={styles.nightShiftHint}>
@@ -441,12 +447,12 @@ export function DaySheet({
         <div className={styles.actions}>
           {currentEntry && (
             <button type="button" className={styles.resetBtn} onClick={handleReset}>
-              <RefreshCw size={14} strokeWidth={2.2} />
+              <ArrowsClockwise size={14} weight="regular" />
               重置
             </button>
           )}
           <button type="button" className={styles.saveBtn} onClick={handleSave}>
-            <Save size={14} strokeWidth={2.2} />
+            <FloppyDisk size={14} weight="regular" />
             保存
           </button>
         </div>

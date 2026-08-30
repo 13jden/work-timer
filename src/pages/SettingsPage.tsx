@@ -21,9 +21,19 @@ import type { ThemeMeta } from '../lib/constants';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { SegmentsEditor } from '../components/SegmentsEditor';
 import {
-  Plus, Trash2, ChevronRight, Pencil, Check, X,
-  ChevronDown, Settings2, Coffee, Palette, History, Edit3,
-} from 'lucide-react';
+  Plus,
+  Trash,
+  CaretRight,
+  Pencil,
+  Check,
+  X,
+  CaretDown,
+  Gear,
+  Coffee,
+  Palette,
+  ClockCounterClockwise,
+  PencilSimple,
+} from '@phosphor-icons/react';
 import styles from './SettingsPage.module.css';
 
 const MONTH_NAMES_CN = [
@@ -315,7 +325,7 @@ export function SettingsPage() {
                   <option value={1}>单休</option>
                   <option value={2}>双休</option>
                 </select>
-                <ChevronRight size={14} strokeWidth={2} className={styles.chevron} />
+                <CaretRight size={14} weight="bold" className={styles.chevron} />
               </span>
             </div>
           ) : (
@@ -355,14 +365,14 @@ export function SettingsPage() {
           onClick={() => setAdvancedOpen((v) => !v)}
           aria-expanded={advancedOpen}
         >
-          <Settings2 size={14} strokeWidth={2.2} />
+          <Gear size={14} weight="regular" />
           <span className={styles.advancedToggleLabel}>高级</span>
           {configuredCount > 0 && (
             <span className={styles.advancedBadge}>已配置 {configuredCount}</span>
           )}
-          <ChevronDown
+          <CaretDown
             size={14}
-            strokeWidth={2.2}
+            weight="bold"
             className={`${styles.advancedChevron} ${advancedOpen ? styles.advancedChevronOpen : ''}`}
           />
         </button>
@@ -380,7 +390,7 @@ export function SettingsPage() {
                   className={styles.templateModalBtn}
                   onClick={() => setTemplateModalOpen(true)}
                 >
-                  <Edit3 size={13} strokeWidth={2.2} />
+                  <PencilSimple size={13} weight="regular" />
                   自定义模板
                 </button>
 
@@ -402,7 +412,7 @@ export function SettingsPage() {
                       }}
                       aria-label="编辑模板"
                     >
-                      <Pencil size={12} strokeWidth={2.2} />
+                      <Pencil size={12} weight="regular" />
                     </button>
                   </div>
                 ))}
@@ -470,7 +480,7 @@ export function SettingsPage() {
             {/* ─ 换算 · Convert ─ */}
             <div className={styles.subGroup}>
               <div className={styles.subGroupEyebrow}>
-                <Coffee size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                <Coffee size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
                 换算 · Convert
               </div>
               <div className={styles.card}>
@@ -493,7 +503,7 @@ export function SettingsPage() {
             {/* ─ 主题 ─ */}
             <div className={styles.subGroup}>
               <div className={styles.subGroupEyebrow}>
-                <Palette size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                <Palette size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
                 主题 · Theme
               </div>
               <div className={styles.card}>
@@ -518,7 +528,7 @@ export function SettingsPage() {
             {/* ─ 月度记录 ─ */}
             <div className={styles.subGroup}>
               <div className={styles.subGroupEyebrow}>
-                <History size={11} strokeWidth={2.2} style={{ verticalAlign: -1, marginRight: 4 }} />
+                <ClockCounterClockwise size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
                 月度记录 · History
               </div>
               <div className={styles.card}>
@@ -583,7 +593,7 @@ export function SettingsPage() {
           <div className={styles.modalCard}>
             <div className={styles.modalHeader}>
               <div className={styles.modalTitle}>
-                <Edit3 size={14} strokeWidth={2.2} className={styles.modalTitleIcon} />
+                <PencilSimple size={14} weight="regular" className={styles.modalTitleIcon} />
                 自定义工时模板
               </div>
               <div className={styles.modalHint}>
@@ -595,7 +605,7 @@ export function SettingsPage() {
                 onClick={() => setTemplateModalOpen(false)}
                 aria-label="关闭"
               >
-                <X size={16} strokeWidth={2.4} />
+                <X size={16} weight="bold" />
               </button>
             </div>
 
@@ -622,7 +632,7 @@ export function SettingsPage() {
                 className={styles.templateAddBtn}
                 onClick={addTemplate}
               >
-                <Plus size={14} strokeWidth={2.5} />
+                <Plus size={14} weight="bold" />
                 新增模板
               </button>
             </div>
@@ -696,7 +706,7 @@ function TemplateEditor({ index, template, onUpdate, onRemove, removable }: Temp
               onClick={commitLabel}
               aria-label="确认"
             >
-              <Check size={14} strokeWidth={2.5} />
+              <Check size={14} weight="bold" />
             </button>
             <button
               type="button"
@@ -707,7 +717,7 @@ function TemplateEditor({ index, template, onUpdate, onRemove, removable }: Temp
               }}
               aria-label="取消"
             >
-              <X size={14} strokeWidth={2.5} />
+              <X size={14} weight="bold" />
             </button>
           </>
         ) : (
@@ -726,7 +736,7 @@ function TemplateEditor({ index, template, onUpdate, onRemove, removable }: Temp
                 onClick={() => setEditing(true)}
                 aria-label="重命名"
               >
-                <Pencil size={12} strokeWidth={2.2} />
+                <Pencil size={12} weight="regular" />
               </button>
               {removable && (
                 <button
@@ -735,7 +745,7 @@ function TemplateEditor({ index, template, onUpdate, onRemove, removable }: Temp
                   onClick={onRemove}
                   aria-label="删除模板"
                 >
-                  <Trash2 size={12} strokeWidth={2.2} />
+                  <Trash size={12} weight="regular" />
                 </button>
               )}
             </div>

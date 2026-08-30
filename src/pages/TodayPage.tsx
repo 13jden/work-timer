@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TodayPage — 今日页(Timer + Stats + 摸鱼 Widget)
  *
  * v1.3 扩展:
@@ -14,8 +14,8 @@ import { useNow } from '../hooks/useNow';
 import { TimerCard } from '../components/TimerCard';
 import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
-import { SlackingWidget } from '../components/SlackingWidget';
-import { SlackingDetailPage } from './SlackingDetailPage';
+import { TimeTrackerWidget } from '../components/TimeTrackerWidget';
+import { TimeTrackerDetailPage } from './TimeTrackerDetailPage';
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
@@ -54,7 +54,7 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
   // ── 详情页路由 ──
   if (showSlackingDetail) {
     return (
-      <SlackingDetailPage
+      <TimeTrackerDetailPage
         onBack={() => setShowSlackingDetail(false)}
       />
     );
@@ -102,9 +102,9 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
         />
       </div>
 
-      {/* ============ SlackingWidget(v1.3.1 移到最下面) ============ */}
+      {/* ============ TimeTrackerWidget(v1.3.3 重命名自 SlackingWidget) ============ */}
       <div className={styles.slackingWrap}>
-        <SlackingWidget onOpenDetail={() => setShowSlackingDetail(true)} />
+        <TimeTrackerWidget onOpenDetail={() => setShowSlackingDetail(true)} />
       </div>
     </div>
   );

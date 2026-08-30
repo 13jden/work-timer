@@ -502,6 +502,9 @@ import {
   effectiveHourlyRate,
   computeNetHours,
   netHourlyRate,
+  slackingEarn,
+  overtimeSessionSplit,
+  overtimeMinutes,
 } from './compute';
 
 describe('splitSegment · 跨天识别', () => {
@@ -768,6 +771,7 @@ function makeSession(
     label: 'slack',
     startTs: start,
     endTs: end,
+    nightShift: false,
   };
 }
 
@@ -869,6 +873,123 @@ describe('computeNetHours · 净工时推导', () => {
     expect(r.slackUnionLunch).toBe(82);
     expect(r.netMinutes).toBe(278);
   });
+
+  // v1.3.3 夜班自动标记(session.nightShift)
+  it('夜间开始的摸鱼 session 自动标记 nightShift=true', () => {
+    const now = date(2026, 7, 31, 12, 0, 0);
+    const sessions = [makeSession('2026-08-31', 22, 30, 23, 0)];
+    sessions[0]!.nightShift = true;
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingMinutes).toBe(30);
+    expect(r.netMinutes).toBe(510);
+  });
+
+  it('日间摸鱼 session 不标记 nightShift', () => {
+    const now = date(2026, 7, 31, 12, 0, 0);
+    const sessions = [makeSession('2026-08-31', 10, 0, 10, 30)];
+    sessions[0]!.nightShift = false;
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingMinutes).toBe(30);
+    expect(r.netMinutes).toBe(510);
+  });
+
+  // v1.3.3 patch3·加班 session 不计入摸鱼扣除
+  // v1.3.3 patch4:加班 session 计入净工时(加成项),不计入 slackingMinutes
+  it('加班 session(label=overtime):不计入 slackingMinutes,作为加成计入 netMinutes', () => {
+    const now = date(2026, 7, 31, 12, 0, 0);
+    const [y, m, d] = ['2026-08-31', '2026-08-31', '2026-08-31'].map(() => 0);
+    void y; void m; void d;
+    const start = new Date(2026, 7, 31, 19, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const overtimeSession: SlackingSession = {
+      id: 's-ov', dateKey: '2026-08-31', label: 'overtime',
+      startTs: start, endTs: end, nightShift: false,
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays,
+      slackingSessions: [overtimeSession],
+    });
+    expect(r.slackingMinutes).toBe(0); // 加班不算摸鱼
+    expect(r.overtimeBonus).toBe(60);  // patch4:加班 session × multiplier=1 → 计入 60 min
+    expect(r.netMinutes).toBe(600);    // 540 (gross-lunch) + 60 (加班加成)
+  });
+
+  // v1.3.3 patch3·加班日:夜班场景自动 ×1.5,日间不自动加成
+  it('加班日 + 夜班段(22-06)→ overtimeBonus 自动 ×0.5', () => {
+    const now = date(2026, 7, 31, 23, 30, 0); // 夜班时刻
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 1, segments: [{ start: '22:00', end: '06:00' }], nightShift: true },
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    // gross = 480, hasNightSegment=true → nightAutoBonus = 480 × 0.5 = 240
+    expect(r.grossMinutes).toBe(480);
+    expect(r.overtimeBonus).toBeCloseTo(240, 1);
+  });
+
+  it('加班日 + 日间段(09-18)+ multiplier=1 → 不自动加成', () => {
+    const now = date(2026, 7, 31, 12, 0, 0);
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 1, segments: null, nightShift: false },
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    // multiplier=1 不触发 manualBonus,日间段不触发 nightAutoBonus
+    expect(r.overtimeBonus).toBe(0);
+  });
+
+  it('加班日 + 手动 multiplier=2 → 按 manualBonus 算(任何时段)', () => {
+    const now = date(2026, 7, 31, 12, 0, 0);
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 2, segments: null, nightShift: false },
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    // manualBonus = 540 × (2-1) = 540
+    expect(r.overtimeBonus).toBeCloseTo(540, 1);
+  });
+
+  // v1.3.3 patch5·夜班自动加成只算夜间段部分,不再污染整段 gross
+  it('加班日 + 段含夜间部分(20-06 跨天 10h,夜班仅 8h)→ 夜班加成 = 8h×0.5 = 4h,不是 10h×0.5', () => {
+    // 段 20:00-06:00 跨天 → split → [20:00-24:00)+[00:00-06:00),total=10h
+    // 夜班窗口 22:00-06:00 = 8h
+    const now = date(2026, 7, 31, 23, 30, 0); // 夜班时刻
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 1, segments: [{ start: '20:00', end: '06:00' }], nightShift: true },
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    // gross = 600, nightShiftMinutes = 480(8h)
+    // OLD(错):nightAutoBonus = 600 × 0.5 = 300
+    // NEW(对):nightAutoBonus = 480 × 0.5 = 240
+    expect(r.grossMinutes).toBe(600);
+    expect(r.overtimeBonus).toBeCloseTo(240, 1);
+  });
+
+  it('加班日 + 日间段 + now 落在夜间(22:30)→ 不应触发自动加成(段无夜班)', () => {
+    // 段 09:00-18:00 日间,now=22:30 是夜班时刻,但 hasNightSegment=false
+    // 期望:不自动加成(段本身不含夜间,即使当前在夜班时刻也不加)
+    const now = date(2026, 7, 31, 22, 30, 0);
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 1, segments: [{ start: '09:00', end: '18:00' }], nightShift: true },
+    };
+    const r = computeNetHours({
+      date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    // gross=540,nightShiftMinutes=0,nightAutoBonus=0
+    // OLD(错):nowInNight=true 触发,gross×0.5=270
+    // NEW(对):nightShiftMinutes(segs)=0,不触发
+    expect(r.grossMinutes).toBe(540);
+    expect(r.overtimeBonus).toBe(0);
+  });
 });
 
 describe('netHourlyRate · 净时薪', () => {
@@ -968,5 +1089,358 @@ describe('segmentTemplates (v1.3.1)', () => {
     };
     // 跨天段不在此处测试,只验证 segments 数组能通过类型
     expect(ov['2026-08-28']!.segments).toEqual(tpl.segments);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.3 · slackingEarn 摸鱼总薪资(按 effectiveHourlyRate)
+// ══════════════════════════════════════════════════════════════
+describe('slackingEarn · 摸鱼总薪资', () => {
+  const hourly = 80; // ¥80/h
+
+  it('空 sessions → 0', () => {
+    expect(slackingEarn([], hourly)).toBe(0);
+  });
+
+  it('hourly = 0 → 0', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'slack', startTs: 0, endTs: 60_000, nightShift: false },
+    ];
+    expect(slackingEarn(sessions, 0)).toBe(0);
+  });
+
+  it('单条 30 分钟摸鱼 → hourly/2', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'slack', startTs: 0, endTs: 30 * 60_000, nightShift: false },
+    ];
+    // 80 × 0.5 = 40
+    expect(slackingEarn(sessions, hourly)).toBeCloseTo(40, 4);
+  });
+
+  it('加班 session(label=overtime)不计入', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'overtime', startTs: 0, endTs: 60 * 60_000, nightShift: false },
+      { id: '2', dateKey: '2026-08-31', label: 'slack', startTs: 0, endTs: 30 * 60_000, nightShift: false },
+    ];
+    // 只有 30 分钟摸鱼计入:80 × 0.5 = 40
+    expect(slackingEarn(sessions, hourly)).toBeCloseTo(40, 4);
+  });
+
+  it('other label 也不计入', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'other', startTs: 0, endTs: 60 * 60_000, nightShift: false, customLabel: '厕所' },
+    ];
+    expect(slackingEarn(sessions, hourly)).toBe(0);
+  });
+
+  it('进行中 session 按 now 实时计算', () => {
+    const now = 30 * 60_000;
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'slack', startTs: 0, endTs: null, nightShift: false },
+    ];
+    // 进行中 30 分钟:80 × 0.5 = 40
+    expect(slackingEarn(sessions, hourly, now)).toBeCloseTo(40, 4);
+  });
+
+  it('多段累加:10m + 20m + 30m = 60m → hourly', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-31', label: 'slack', startTs: 0, endTs: 10 * 60_000, nightShift: false },
+      { id: '2', dateKey: '2026-08-31', label: 'slack', startTs: 20 * 60_000, endTs: 40 * 60_000, nightShift: false },
+      { id: '3', dateKey: '2026-08-31', label: 'slack', startTs: 60 * 60_000, endTs: 90 * 60_000, nightShift: false },
+    ];
+    // 总 60 分钟 = 1h,80 × 1 = 80
+    expect(slackingEarn(sessions, hourly)).toBeCloseTo(80, 4);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.3 patch4 · overtimeMinutes 用户加班记录总分钟数
+// ══════════════════════════════════════════════════════════════
+describe('overtimeMinutes · 用户加班记录总分钟数', () => {
+  it('空数组返回 0', () => {
+    expect(overtimeMinutes([])).toBe(0);
+  });
+
+  it('非加班标签不计入', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-30', label: 'slack', startTs: 0, endTs: 30 * 60_000, nightShift: false },
+      { id: '2', dateKey: '2026-08-30', label: 'other', startTs: 0, endTs: 20 * 60_000, nightShift: false },
+    ];
+    expect(overtimeMinutes(sessions)).toBe(0);
+  });
+
+  it('累计多个已结束的加班 session', () => {
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-30', label: 'overtime', startTs: 0, endTs: 30 * 60_000, nightShift: false },
+      { id: '2', dateKey: '2026-08-30', label: 'overtime', startTs: 60 * 60_000, endTs: 90 * 60_000, nightShift: false },
+    ];
+    expect(overtimeMinutes(sessions)).toBe(60);
+  });
+
+  it('进行中的加班 session 按 now 实时计算', () => {
+    const now = 60 * 60_000;
+    const sessions: SlackingSession[] = [
+      { id: '1', dateKey: '2026-08-30', label: 'overtime', startTs: 0, endTs: null, nightShift: false },
+    ];
+    expect(overtimeMinutes(sessions, now)).toBe(60);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.3 patch6 · overtimeSessionSplit 加班 session 日/夜拆分
+// ══════════════════════════════════════════════════════════════
+describe('overtimeSessionSplit · 加班 session 日间 / 夜班分钟拆分', () => {
+  function makeOt(startH: number, startM: number, endH: number, endM: number, day = 30): SlackingSession {
+    const start = new Date(2026, 7, day, startH, startM, 0).getTime();
+    const end = new Date(2026, 7, day, endH, endM, 0).getTime();
+    return {
+      id: `ot-${start}`,
+      dateKey: '2026-08-30',
+      label: 'overtime',
+      startTs: start,
+      endTs: end,
+      nightShift: false,
+    };
+  }
+
+  it('完全日间:19:00-20:00 → day=60, night=0', () => {
+    const r = overtimeSessionSplit([makeOt(19, 0, 20, 0)]);
+    expect(r.dayMin).toBe(60);
+    expect(r.nightMin).toBe(0);
+    expect(r.totalMin).toBe(60);
+  });
+
+  it('完全夜班:22:00-23:00 → day=0, night=60', () => {
+    const r = overtimeSessionSplit([makeOt(22, 0, 23, 0)]);
+    expect(r.dayMin).toBe(0);
+    expect(r.nightMin).toBe(60);
+    expect(r.totalMin).toBe(60);
+  });
+
+  it('跨夜班边界:20:00-23:30 → day=120, night=90 (用户场景)', () => {
+    // 用户主诉:20:00-23:30 应拆为 2h + 1.5h*1.5
+    const r = overtimeSessionSplit([makeOt(20, 0, 23, 30)]);
+    expect(r.dayMin).toBe(120);
+    expect(r.nightMin).toBe(90);
+    expect(r.totalMin).toBe(210);
+  });
+
+  it('跨 00:00 夜班:23:00-01:00 → day=60(05-06 部分),night=120', () => {
+    // 23:00-24:00 = 60min 夜班
+    // 00:00-01:00 = 60min 夜班(00:00-01:00 全部在 0-360 窗口)
+    // 总 night=120,day=0
+    const start = new Date(2026, 7, 30, 23, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 1, 0, 0).getTime();
+    const session: SlackingSession = {
+      id: 'cross', dateKey: '2026-08-30', label: 'overtime',
+      startTs: start, endTs: end, nightShift: true,
+    };
+    const r = overtimeSessionSplit([session]);
+    expect(r.dayMin).toBe(0);
+    expect(r.nightMin).toBe(120);
+  });
+
+  it('跨日界清晨:05:00-08:00 → day=120(06-08), night=60(05-06)', () => {
+    const r = overtimeSessionSplit([makeOt(5, 0, 8, 0)]);
+    expect(r.dayMin).toBe(120);
+    expect(r.nightMin).toBe(60);
+  });
+
+  it('非加班 session 跳过,只算加班', () => {
+    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const slack: SlackingSession = {
+      id: 'slack', dateKey: '2026-08-30', label: 'slack',
+      startTs: start, endTs: end, nightShift: false,
+    };
+    const ot = { ...makeOt(20, 0, 23, 30), nightShift: true };
+    const r = overtimeSessionSplit([slack, ot]);
+    expect(r.dayMin).toBe(120);
+    expect(r.nightMin).toBe(90);
+  });
+
+  it('进行中 session 按 nowTs 实时计算', () => {
+    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const session: SlackingSession = {
+      id: 'running', dateKey: '2026-08-30', label: 'overtime',
+      startTs: start, endTs: null, nightShift: false,
+    };
+    // nowTs = 21:00 → 1h 全日间
+    const nowTs = new Date(2026, 7, 30, 21, 0, 0).getTime();
+    const r = overtimeSessionSplit([session], nowTs);
+    expect(r.dayMin).toBe(60);
+    expect(r.nightMin).toBe(0);
+
+    // nowTs = 22:30 → 2h 日间 + 30min 夜班
+    const nowTs2 = new Date(2026, 7, 30, 22, 30, 0).getTime();
+    const r2 = overtimeSessionSplit([session], nowTs2);
+    expect(r2.dayMin).toBe(120);
+    expect(r2.nightMin).toBe(30);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.3 patch4 · 用户加班 session → 净工时同步
+// ══════════════════════════════════════════════════════════════
+describe('computeNetHours · 加班 session 影响净工时', () => {
+  const baseConfig: Config = {
+    monthlySalary: 15000,
+    startTime: '09:00',
+    endTime: '18:00',
+    coffeePrice: 15,
+    restMode: 2,
+    theme: 'paper',
+    recordedFromDate: '2026-08-28',
+    salaryMode: 'monthly',
+    manualHourlyRate: 100,
+    manualDailyRate: 800,
+    segments: null,
+    segmentTemplates: [],
+    lunchStart: '12:00',
+    lunchMinutes: 60,
+    lunchEnabled: true,
+  };
+  const dateKey = '2026-08-30';
+  const now = new Date('2026-08-30T10:00:00');
+
+  it('普通工作日:添加 30 min 加班 → netMinutes 同步增加', () => {
+    // 基线:无加班记录
+    const baseline = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {},
+      holidays: {},
+      slackingSessions: [],
+    });
+    // 加上 30 min 加班 session(下午 14:00-14:30,日间)
+    const withOvertime = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {},
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 30, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 30, 14, 30, 0).getTime(), nightShift: false },
+      ],
+    });
+    // patch6:日间加班 = dayMin × multiplier = 30 × 1 = 30
+    expect(withOvertime.netMinutes - baseline.netMinutes).toBe(30);
+    expect(withOvertime.overtimeBonus - baseline.overtimeBonus).toBe(30);
+  });
+
+  it('加班日 (multiplier=2):加班 session 按倍率计入', () => {
+    // baseline 加班日 multiplier=2,无加班 session → 只有 manualBonus
+    const baseline = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {
+        [dateKey]: { type: 'paid_overtime', multiplier: 2, segments: null, nightShift: false },
+      },
+      holidays: {},
+      slackingSessions: [],
+    });
+    // manualBonus = 540(gross) × (2-1) = 540
+    expect(baseline.overtimeBonus).toBe(540);
+
+    // 添加 30 min 加班 session(下午 14:00-14:30,日间)
+    const withOvertime = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {
+        [dateKey]: { type: 'paid_overtime', multiplier: 2, segments: null, nightShift: false },
+      },
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 30, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 30, 14, 30, 0).getTime(), nightShift: false },
+      ],
+    });
+    // patch6:日间加班 = dayMin × multiplier = 30 × 2 = 60
+    // overtimeBonus = manualBonus(540) + userOvertimeBonus(60) = 600
+    expect(withOvertime.overtimeBonus).toBe(600);
+    // 增加的净工时 = dayMin × multiplier = 30 × 2 = 60
+    expect(withOvertime.netMinutes - baseline.netMinutes).toBe(60);
+  });
+
+  // v1.3.3 patch6·加班 session 日间 / 夜班拆分
+  it('加班 session 跨夜班边界:日间 × 1 + 夜班 × 1.5(multiplier=1)', () => {
+    // session 20:00–23:30 → dayMin=120(20-22),nightMin=90(22-23:30)
+    // 普通工作日 multiplier=1:
+    //   userOvertimeBonus = 120×1 + 90×1×1.5 = 120 + 135 = 255 min
+    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {},
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: start, endTs: end, nightShift: true },
+      ],
+    });
+    // baseline 净工时 = gross(540) - lunch(60) = 480(假设;此处关 lunchEnabled=false)
+    // 这里 baseConfig 启用了 lunchEnabled,且 segs 是 09-18,lunch=12-13=60
+    // baseline netMinutes = 540 - 60 = 480
+    // 加 session 后 userOvertimeBonus = 255
+    // netMinutes = 480 + 255 = 735
+    expect(r.overtimeBonus).toBeCloseTo(255, 1);
+    expect(r.netMinutes - 480).toBeCloseTo(255, 1);
+  });
+
+  it('加班 session 跨夜班边界:日间 × multiplier + 夜班 × multiplier × 1.5(multiplier=2)', () => {
+    // session 20:00–23:30 → dayMin=120,nightMin=90
+    // 加班日 multiplier=2:
+    //   userOvertimeBonus = 120×2 + 90×2×1.5 = 240 + 270 = 510 min
+    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {
+        [dateKey]: { type: 'paid_overtime', multiplier: 2, segments: null, nightShift: false },
+      },
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: start, endTs: end, nightShift: true },
+      ],
+    });
+    // manualBonus = 540×1 = 540
+    // userOvertimeBonus = 510
+    // overtimeBonus = max(0, 540) + 510 = 1050
+    expect(r.overtimeBonus).toBeCloseTo(1050, 1);
+  });
+
+  it('加班 session 完全日间 → 仅 × multiplier(无夜班加成)', () => {
+    // session 19:00–20:00 → 全日间(dayMin=60,nightMin=0)
+    // 普通工作日 multiplier=1:
+    //   userOvertimeBonus = 60×1 + 0×1×1.5 = 60 min
+    const start = new Date(2026, 7, 30, 19, 0, 0).getTime();
+    const end = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {},
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: start, endTs: end, nightShift: false },
+      ],
+    });
+    expect(r.overtimeBonus).toBeCloseTo(60, 1);
+  });
+
+  it('加班 session 完全夜班 → × multiplier × 1.5', () => {
+    // session 22:00–23:00 → 全夜班(dayMin=0,nightMin=60)
+    // 普通工作日 multiplier=1:
+    //   userOvertimeBonus = 0×1 + 60×1×1.5 = 90 min
+    const start = new Date(2026, 7, 30, 22, 0, 0).getTime();
+    const end = new Date(2026, 7, 30, 23, 0, 0).getTime();
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: {},
+      holidays: {},
+      slackingSessions: [
+        { id: '1', dateKey, label: 'overtime', startTs: start, endTs: end, nightShift: true },
+      ],
+    });
+    expect(r.overtimeBonus).toBeCloseTo(90, 1);
   });
 });

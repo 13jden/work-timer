@@ -76,6 +76,12 @@ export const REST_MODE_LABELS: Record<0 | 1 | 2, string> = {
 
 /**
  * 工作日类型下拉选项
+ *
+ * v1.3.3:
+ *  - 「加班(有偿)」→「加班」(去掉"有偿"二字,允许倍率 = 0 表示无偿加班)
+ *  - freelance 类型:hourly/daily 模式专用;monthly 模式下用作"周末临时兼职"
+ *  - 「工作日」在 monthly 模式下作为基础选项;hourly/daily 模式隐藏
+ *  - 「休息日」强制倍率 0(见 DEFAULT_MULTIPLIER)
  * 显示顺序就是 select 里的顺序
  */
 export const DAY_TYPE_OPTIONS: Array<{
@@ -83,11 +89,11 @@ export const DAY_TYPE_OPTIONS: Array<{
   label: string;
   defaultMultiplier: number;
 }> = [
-  { value: 'work',           label: '工作日',     defaultMultiplier: 1   },
-  { value: 'paid_overtime',  label: '加班(有偿)', defaultMultiplier: 1.5 },
-  { value: 'freelance',      label: '自由/兼职',  defaultMultiplier: 1   },
-  { value: 'leave',          label: '请假(无薪)', defaultMultiplier: 0   },
-  { value: 'rest',           label: '休息日',     defaultMultiplier: 0   },
+  { value: 'work',           label: '工作日',    defaultMultiplier: 1   },
+  { value: 'paid_overtime',  label: '加班',      defaultMultiplier: 1   }, // v1.3.3 patch3:加班加成默认关闭,仅夜班场景自动 ×1.5
+  { value: 'freelance',      label: '自由/兼职', defaultMultiplier: 1   },
+  { value: 'leave',          label: '请假',      defaultMultiplier: 0   },
+  { value: 'rest',           label: '休息日',    defaultMultiplier: 0   },
 ];
 
 /** 主题定义 */
@@ -153,19 +159,25 @@ export const HOLIDAYS: Record<string, string> = {
 export const NIGHT_SHIFT_START_MIN = 22 * 60;
 export const NIGHT_SHIFT_END_MIN = 6 * 60;
 
-/** 摸鱼标签文案 */
-export const SLACKING_LABEL_TEXT: Record<'toilet' | 'slack' | 'meal' | 'other', string> = {
-  toilet: '厕所',
+/**
+ * 时间记录标签文案(v1.3.3 重命名)
+ * - slack:摸鱼(开小差)
+ * - overtime:加班
+ * - other:其他(customLabel)
+ *
+ * 注意:旧 toilet/meal 已合并到 other,通过 customLabel 区分
+ * (常量中保留 keys 字面量,运行时旧数据由 store 端做迁移)
+ */
+export const SLACKING_LABEL_TEXT: Record<'slack' | 'overtime' | 'other', string> = {
   slack: '摸鱼',
-  meal: '吃饭',
+  overtime: '加班',
   other: '其他',
 };
 
-/** 摸鱼标签 emoji */
-export const SLACKING_LABEL_ICON: Record<'toilet' | 'slack' | 'meal' | 'other', string> = {
-  toilet: '🚻',
+/** 时间记录标签 emoji(v1.3.3 重命名) */
+export const SLACKING_LABEL_ICON: Record<'slack' | 'overtime' | 'other', string> = {
   slack: '🐟',
-  meal: '🍚',
+  overtime: '⚡',
   other: '✨',
 };
 

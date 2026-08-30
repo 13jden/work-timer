@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 import type { WorkSegment } from '../../lib/types';
 import { toMinutes } from '../../lib/time';
 import { SEGMENTS_MAX } from '../../lib/constants';
-import { Plus, X, Sparkles } from 'lucide-react';
+import { Plus, X, Confetti } from '@phosphor-icons/react';
 import styles from './SegmentsEditor.module.css';
 
 interface Props {
@@ -99,7 +99,7 @@ export function SegmentsEditor({
               />
               {cross && (
                 <span className={styles.crossBadge}>
-                  <Sparkles size={9} strokeWidth={2.5} />
+                  <Confetti size={9} weight="duotone" />
                   次日
                 </span>
               )}
@@ -110,7 +110,7 @@ export function SegmentsEditor({
                   onClick={() => remove(idx)}
                   aria-label="移除"
                 >
-                  <X size={14} strokeWidth={2.2} />
+                  <X size={14} weight="bold" />
                 </button>
               )}
             </div>
@@ -124,7 +124,7 @@ export function SegmentsEditor({
           onClick={add}
           disabled={segments.length >= maxSegments}
         >
-          <Plus size={12} strokeWidth={2.5} />
+          <Plus size={12} weight="bold" />
           添加一段工时
         </button>
       )}

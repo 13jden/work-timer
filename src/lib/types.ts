@@ -216,33 +216,50 @@ export interface DayStateRest {
 
 export type DayState = DayStateActive | DayStateDone | DayStateRest;
 
-// ── Slacking Sessions(摸鱼记录,v1.3 新增) ──────────────────
+// ── Time Records(时间记录,v1.3.3 重命名自 SlackingSessions) ────────────
 
 /**
- * 摸鱼标签
- * - toilet:厕所
+ * 时间记录标签(v1.3.3 重命名自 SlackingLabel)
  * - slack:摸鱼(开小差)
- * - meal:吃饭
+ * - overtime:加班
  * - other:其他(customLabel 必填)
+ *
+ * 设计变化:v1.3.0-1.3.2 的 toilet/meal 已合并到 other(customLabel 区分)
+ *   保留 SlackingLabel 别名兼容旧数据。
  */
-export type SlackingLabel = 'toilet' | 'slack' | 'meal' | 'other';
+export type TimeRecordLabel = 'slack' | 'overtime' | 'other';
 
-export interface SlackingSession {
+/** @deprecated 自 v1.3.3 起改用 TimeRecordLabel(toilet/meal 已合并到 other) */
+export type SlackingLabel = TimeRecordLabel;
+
+export interface TimeRecord {
   id: string;
   /** 归属日 YYYY-MM-DD(用于聚合到日) */
   dateKey: string;
-  /** 摸鱼标签 */
-  label: SlackingLabel;
+  /** 时间记录标签 */
+  label: TimeRecordLabel;
   /** label='other' 时的自定义名称 */
   customLabel?: string;
   /** 开始时间戳(毫秒) */
   startTs: number;
   /** 结束时间戳(毫秒);null = 进行中 */
   endTs: number | null;
+  /**
+   * 夜班自动标记(v1.3.3 新增)
+   * true 表示该时段跨入 22:00–06:00 窗口,后续可计入 nightBonus。
+   * 规则:startTs 或 endTs 落在 [22:00, 06:00) 窗口即标 true。
+   */
+  nightShift: boolean;
 }
 
-/** 摸鱼记录表:key=YYYY-MM-DD, value=SlackingSession[] */
-export type SlackingSessions = Record<string /* YYYY-MM-DD */, SlackingSession[]>;
+/** @deprecated 自 v1.3.3 起改用 TimeRecord */
+export type SlackingSession = TimeRecord;
+
+/** 时间记录表:key=YYYY-MM-DD, value=TimeRecord[] */
+export type TimeSessions = Record<string /* YYYY-MM-DD */, TimeRecord[]>;
+
+/** @deprecated 自 v1.3.3 起改用 TimeSessions */
+export type SlackingSessions = TimeSessions;
 
 // ── Net Hours Breakdown(v1.3 新增) ─────────────────────────
 

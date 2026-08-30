@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TimerCard — 主计时卡(签名元素)
  * v1.3 扩展:加班胶囊(paid_overtime 时显示 ⚡×N)
  * v1.3.1:加班胶囊用 lucide Zap 图标
@@ -9,7 +9,7 @@ import { HOLIDAYS } from '../../lib/constants';
 import { dayState, progressPct, getDayOverride } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
 import { formatDateKey } from '../../lib/time';
-import { Clock, Zap } from 'lucide-react';
+import { Clock, Lightning } from '@phosphor-icons/react';
 import styles from './TimerCard.module.css';
 
 export function TimerCard() {
@@ -35,7 +35,7 @@ export function TimerCard() {
           <span>今日休息</span>
           {isOvertime && (
             <span className={styles.overtimeBadge}>
-              <Zap size={11} strokeWidth={2.5} fill="currentColor" />
+              <Lightning size={11} weight="duotone" />
               ×{mult}
             </span>
           )}
@@ -44,7 +44,7 @@ export function TimerCard() {
         <div className={styles.label}>享受休息日</div>
         <div className={styles.shift}>
           <div className={styles.shiftLeft}>
-            <Clock size={11} strokeWidth={2.2} />
+            <Clock size={11} weight="duotone" />
             <strong>SHIFT</strong>
           </div>
           <span className={styles.pct}>{pct.toFixed(0)}%</span>
@@ -70,7 +70,7 @@ export function TimerCard() {
         <span>{isDone ? ds.status : ds.status}</span>
         {isOvertime && (
           <span className={styles.overtimeBadge}>
-            <Zap size={11} strokeWidth={2.5} fill="currentColor" />
+            <Lightning size={11} weight="duotone" />
             ×{mult}
           </span>
         )}
@@ -79,7 +79,7 @@ export function TimerCard() {
       <div className={styles.label}>{ds.label}</div>
       <div className={styles.shift}>
         <div className={styles.shiftLeft}>
-          <Clock size={11} strokeWidth={2.2} />
+          <Clock size={11} weight="duotone" />
           <strong>SHIFT</strong>
         </div>
         <span className={styles.pct}>{pct.toFixed(0)}%</span>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Salary Timer — Calendar Store
  *
  * 管理日历页状态:

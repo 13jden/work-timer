@@ -1,4 +1,4 @@
-﻿/* Header:两行结构 */
+/* Header:两行结构 */
 .head {
   width: 100%;
   padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
