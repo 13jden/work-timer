@@ -11,6 +11,7 @@ import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
 import { RestModeSheet } from '../components/RestModeSheet';
+import { ChevronLeft, ChevronRight, LocateFixed } from 'lucide-react';
 import styles from './CalendarPage.module.css';
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
@@ -232,15 +233,16 @@ export function CalendarPage() {
       {/* 月份导航:‹  [now]  › (now 仅非当月显示,颜色用主题 accent) */}
       <div className={styles.nav}>
         <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
-          ‹
+          <ChevronLeft size={16} strokeWidth={2.2} />
         </button>
         {!isCurrentMonth && (
           <button type="button" className={styles.navTitle} onClick={goToToday}>
+            <LocateFixed size={12} strokeWidth={2.5} style={{ marginRight: 4, verticalAlign: '-1px' }} />
             now
           </button>
         )}
         <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
-          ›
+          <ChevronRight size={16} strokeWidth={2.2} />
         </button>
       </div>
 
@@ -315,6 +317,7 @@ export function CalendarPage() {
         dailyEarning={daily}
         currentEntry={pickedEntry}
         salaryMode={config.salaryMode}
+        segmentTemplates={config.segmentTemplates}
         onClose={() => setSheetOpen(false)}
         onSave={(key, entry) => setDayOverride(key, entry)}
         onReset={(key) => clearOverride(key)}

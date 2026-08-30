@@ -86,9 +86,10 @@
   padding: clamp(8px, 1.5vh, 14px) clamp(12px, 3vw, 18px);
 }
 
-/* v1.3 摸鱼 widget 容器 */
+/* v1.3.1 摸鱼 widget 容器 — 移至页面底部 */
 .slackingWrap {
   padding: 0 clamp(12px, 3vw, 18px);
+  margin-top: clamp(8px, 2vh, 14px);
 }
 
 /* Stats Row — fixed height, increased spacing */

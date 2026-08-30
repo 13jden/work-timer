@@ -13,11 +13,13 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 10px;
   background: var(--paper);
   border-radius: var(--r-sm);
   border: 1px solid var(--line-soft);
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .num {
@@ -27,6 +29,7 @@
   flex-shrink: 0;
 }
 
+/* v1.3.1 修复:time input 固定宽度,不被跨天徽章挤压 */
 .time {
   font: 500 12px var(--font-mono);
   color: var(--ink);
@@ -35,13 +38,21 @@
   padding: 2px 4px;
   background: var(--card);
   font-variant-numeric: tabular-nums;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  flex-shrink: 0;
 }
 
 .dash {
   color: var(--muted-2);
+  flex-shrink: 0;
 }
 
 .crossBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   background: var(--tag-new-bg);
   color: var(--tag-new-fg);
   padding: 1px 6px;
@@ -49,6 +60,7 @@
   font: 600 9px var(--font-sans);
   letter-spacing: 0.3px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .remove {
@@ -60,6 +72,9 @@
   background: none;
   padding: 4px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .remove:hover {
@@ -67,6 +82,10 @@
 }
 
 .add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1.5px dashed var(--line);
   border-radius: var(--r-sm);
   padding: 8px;

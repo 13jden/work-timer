@@ -53,6 +53,13 @@ export const DEFAULT_CONFIG: Config = {
   manualHourlyRate: 100,
   manualDailyRate:  800,
   segments:        null,    // null = 使用 startTime/endTime 单段
+  segmentTemplates: [        // v1.3.1 新增:默认 1 个 09:00-18:00 模板
+    {
+      id: 'tpl-default',
+      label: '默认工时',
+      segments: [{ start: '09:00', end: '18:00' }],
+    },
+  ],
   lunchEnabled:    false,
   lunchStart:      '12:00',
   lunchMinutes:    60,

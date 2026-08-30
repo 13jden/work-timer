@@ -1,6 +1,7 @@
 ﻿/**
  * TimerCard — 主计时卡(签名元素)
  * v1.3 扩展:加班胶囊(paid_overtime 时显示 ⚡×N)
+ * v1.3.1:加班胶囊用 lucide Zap 图标
  */
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
@@ -8,6 +9,7 @@ import { HOLIDAYS } from '../../lib/constants';
 import { dayState, progressPct, getDayOverride } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
 import { formatDateKey } from '../../lib/time';
+import { Clock, Zap } from 'lucide-react';
 import styles from './TimerCard.module.css';
 
 export function TimerCard() {
@@ -33,7 +35,8 @@ export function TimerCard() {
           <span>今日休息</span>
           {isOvertime && (
             <span className={styles.overtimeBadge}>
-              ⚡ ×{mult}
+              <Zap size={11} strokeWidth={2.5} fill="currentColor" />
+              ×{mult}
             </span>
           )}
         </div>
@@ -41,10 +44,7 @@ export function TimerCard() {
         <div className={styles.label}>享受休息日</div>
         <div className={styles.shift}>
           <div className={styles.shiftLeft}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-              <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1" />
-              <path d="M5 2v3l2 1" />
-            </svg>
+            <Clock size={11} strokeWidth={2.2} />
             <strong>SHIFT</strong>
           </div>
           <span className={styles.pct}>{pct.toFixed(0)}%</span>
@@ -70,7 +70,8 @@ export function TimerCard() {
         <span>{isDone ? ds.status : ds.status}</span>
         {isOvertime && (
           <span className={styles.overtimeBadge}>
-            ⚡ ×{mult}
+            <Zap size={11} strokeWidth={2.5} fill="currentColor" />
+            ×{mult}
           </span>
         )}
       </div>
@@ -78,10 +79,7 @@ export function TimerCard() {
       <div className={styles.label}>{ds.label}</div>
       <div className={styles.shift}>
         <div className={styles.shiftLeft}>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-            <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1" />
-            <path d="M5 2v3l2 1" />
-          </svg>
+          <Clock size={11} strokeWidth={2.2} />
           <strong>SHIFT</strong>
         </div>
         <span className={styles.pct}>{pct.toFixed(0)}%</span>

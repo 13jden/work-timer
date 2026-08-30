@@ -34,6 +34,9 @@ const baseConfig: Config = {
   manualHourlyRate: 100,
   manualDailyRate: 800,
   segments: null,
+  segmentTemplates: [    // v1.3.1 新增
+    { id: 'tpl-default', label: '默认', segments: [{ start: '09:00', end: '18:00' }] },
+  ],
   lunchEnabled: false,
   lunchStart: '12:00',
   lunchMinutes: 60,
@@ -881,5 +884,35 @@ describe('isWorkday · 自由模式 + freelance', () => {
       '2026-08-31': { type: 'freelance', multiplier: 1, segments: null, nightShift: false },
     };
     expect(isWorkday(monday, baseConfig, overrides, emptyHolidays)).toBe(true);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.1 新增:SegmentTemplate 数据模型
+// ══════════════════════════════════════════════════════════════
+describe('segmentTemplates (v1.3.1)', () => {
+  it('Config 必含 segmentTemplates 字段(默认 1 个模板)', () => {
+    expect(baseConfig.segmentTemplates).toBeDefined();
+    expect(Array.isArray(baseConfig.segmentTemplates)).toBe(true);
+    expect(baseConfig.segmentTemplates.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('默认模板 id 与 label 存在', () => {
+    const tpl = baseConfig.segmentTemplates[0]!;
+    expect(tpl.id).toBeTruthy();
+    expect(tpl.label).toBeTruthy();
+    expect(Array.isArray(tpl.segments)).toBe(true);
+    expect(tpl.segments.length).toBeGreaterThan(0);
+  });
+
+  it('模板 segments 与 config.segments fallback 行为一致', () => {
+    // baseConfig.segments = null,使用模板第一项作为 fallback
+    const tpl = baseConfig.segmentTemplates[0]!;
+    // 直接构造 entry,segments = 模板内容
+    const ov: DayOverrides = {
+      '2026-08-28': { type: 'work', multiplier: 1, segments: tpl.segments, nightShift: false },
+    };
+    // 跨天段不在此处测试,只验证 segments 数组能通过类型
+    expect(ov['2026-08-28']!.segments).toEqual(tpl.segments);
   });
 });

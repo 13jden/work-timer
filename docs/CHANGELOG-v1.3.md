@@ -142,6 +142,109 @@ netHourly        = todayEarned / (netMinutes / 60)
   - `TASK-022-segments-editor-and-freelance-mode.md` — SegmentsEditor + 自由模式
   - `TASK-023-slacking-and-net-hours.md` — 摸鱼 + 净工时
   - `TASK-024-daysheet-and-overtime-badge.md` — DaySheet + 加班胶囊
+  - `TASK-025-v1.3-bug-fixes.md` — v1.3.1 bug 修复(本补丁)
+
+---
+
+## [v1.3.1] · 2026-08-30 · Bug 修复 + 图标库替换 + 弹窗重设计
+
+### 概览
+
+修复 v1.3 上线后发现的 5 类问题,涉及 4 个页面 + 1 个图标体系。
+**核心 CSS bug**:`DaySheet` 中 `.toggle` 类被复用为夜班加权开关 **和** 保存按钮,导致保存按钮变成滑动开关样式(关键视觉 bug)。
+**核心 UX bug**:多段工时语义错位 —— 设置页直接保存到全局,用户期望"模板库 + 日历页勾选"。
+
+### Bug 1 · TodayPage SlackingWidget 位置
+
+- **`src/pages/TodayPage.tsx`** — 摸鱼卡片从 `QuoteCard` 与 `StatsRow` 之间移至 `StatsRow` **之后**,作为页面最下方组件
+- **`src/pages/TodayPage.module.css`** — `.slackingWrap` 增加 `margin-top` 与底部呼吸感
+
+### Bug 2 · 图标统一替换为 lucide-react
+
+- **`package.json`** — 新增 `"lucide-react": "^0.460.0"`(MIT,按需 tree-shaking)
+- **`src/components/TimerCard/TimerCard.tsx`** — `⚡` → `<Zap />`;内联 SVG 时钟 → `<Clock />`
+- **`src/components/DaySheet/DaySheet.tsx`** — 类型下拉 `>` → `<ChevronDown />`;保存/重置按钮 emoji → `<Save />` `<RefreshCw />`;夜班标题 → `<Moon />`
+- **`src/components/SegmentPicker/SegmentPicker.tsx`** (新建) — `✨` → `<Sparkles />`
+- **`src/components/SegmentsEditor/SegmentsEditor.tsx`** — `＋` → `<Plus />`;`✕` → `<X />`;`✨` → `<Sparkles />`
+- **`src/components/SlackingWidget/SlackingWidget.tsx`** — `▾` → `<ChevronDown />`;`→` → `<ArrowRight />`;摸鱼图标 → `<Coffee />`
+- **`src/pages/ConvertPage.tsx`** — `⚡ 🎯 ＋` 全部替换
+- **`src/pages/SlackingDetailPage.tsx`** — `← ✎ ✕ ＋ 📈 🌙` 全部替换
+- **`src/pages/CalendarPage.tsx`** — `‹ › now` → `<ChevronLeft />` `<ChevronRight />` `<LocateFixed />`
+- **`src/pages/SettingsPage.tsx`** — 新增图标 `<Plus />` `<Trash2 />` `<ChevronRight />` `<Pencil />` `<Check />` `<X />`
+
+### Bug 3 · SegmentsEditor 时间宽度
+
+- **`src/components/SegmentsEditor/SegmentsEditor.module.css`**:
+  - `.time` 固定 `width: 64px`(min/max-width 同步)
+  - `.row` 增加 `min-width: 0` + `flex-wrap: nowrap`,防止跨天徽章挤压 input
+  - 移除冗余 `.crossBadge` 定义,合并到单一定义
+
+### Bug 4 · 多段工时 → 模板库语义重设
+
+#### 数据模型 v3.1 升级
+
+- **`src/lib/types.ts`** — 新增 `SegmentTemplate { id, label, segments[] }` 接口
+- **`src/lib/types.ts`** — `Config` 新增 `segmentTemplates: SegmentTemplate[]` 字段
+- **`src/lib/constants.ts`** — `DEFAULT_CONFIG` 新增默认模板 `tpl-default`(09:00-18:00)
+- **`src/store/configStore.ts`** — `migrateToV3` 补默认 `segmentTemplates`(老 v3 数据无该字段时自动注入)
+- **`src/lib/compute.test.ts`** — 补 3 个 segmentTemplates 单元测试
+
+#### 新组件:SegmentPicker
+
+- **`src/components/SegmentPicker/`**(新建) — 通用 chip 多选组件:
+  - 列出 `config.segmentTemplates`,每个 chip 显示 label + 时长摘要
+  - 多选 → 合并 segments 写入 DayOverrideEntry
+  - 选中态:accent 背景 + 边框,圆点指示器
+  - 跨天段自动 `<Sparkles /> 次日` 徽章
+
+#### UI 重构
+
+- **`src/pages/SettingsPage.tsx`** —「时间」组重构为模板库:
+  - 每个模板卡片可独立命名(双击或铅笔图标)+ 编辑 segments + 删除(至少保留 1 个)
+  - 底部"新增模板"按钮,默认 09:00-18:00
+  - 备注"模板用于日历页勾选"
+- **`src/components/DaySheet/DaySheet.tsx`** —「当日工时」区:
+  - **删除** inline SegmentsEditor(在弹窗中编辑多段过于繁琐)
+  - 改为 mode chip(inherit / custom)+ custom 模式下用 SegmentPicker 勾选模板
+  - 自动合并勾选的模板 segments → 写入 `DayOverrideEntry.segments`
+
+### Bug 5 · DaySheet 弹窗重设计(关键 CSS bug 修复)
+
+#### CSS 类冲突修复
+
+- **`src/components/DaySheet/DaySheet.module.css`**:
+  - **删除** `.toggle` 类复用 —— 这是保存按钮变成滑动开关的根本原因
+  - 重命名为 `.nightToggle` + `.nightToggleKnob`(夜班加权开关)
+  - 重命名为 `.saveBtn` + `.resetBtn`(操作按钮,常规按钮样式)
+
+#### 弹窗视觉重设计(frontend-design 原则)
+
+- 5 个 section 清晰分层:把手/日期 → 类型 → 当日工时 → 夜班 → 薪资 → 操作
+- **夜班加权 toggle**:宽度从 40px 增大到 **52px**,knob 从 20px 增大到 24px(易点性 + 视觉重量)
+- **保存按钮**:ink 底 + accent 文字,显著区分,带 `<Save />` 图标
+- **重置按钮**:边框按钮,带 `<RefreshCw />` 图标(次要操作)
+- **当日工时**:mode chip(inherit/custom)+ SegmentPicker 替代 SegmentsEditor
+- 整体 padding 收紧到 18px,内容更紧凑
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **135 passed**(原 132 + 新增 3 segmentTemplates)
+- ✅ `npm run build`:**229KB / gzip 73KB**(从 214KB / 69KB,新增 15KB lucide-react,按需引入)
+- ✅ 5 个 bug 各自手动验证通过
+- ✅ 老 v1/v2/v3 数据迁移测试全过(migrate 链完整)
+
+### 数据迁移说明
+
+- 已有 v3 配置:首次加载时 `segmentTemplates` 字段缺失 → 自动补默认 1 个模板 `tpl-default`(09:00-18:00)
+- 用户已有 `config.segments`(老 v3 设置的全局多段)→ 保留字段,作为 fallback;模板库独立维护
+- 不会有数据丢失或破坏
+
+### Notes
+
+- 此次修改**不破坏** v3 计算逻辑:`getEffectiveSegments` 优先级仍为 `override.segments` > `config.segments` > `config.startTime/endTime`
+- 新加的 `segmentTemplates` 仅作为「可选模板库」,用户最终选用的 segments 通过 `DayOverrideEntry.segments` 落地
+- 桌面端布局未变(共用组件)
 
 ---
 

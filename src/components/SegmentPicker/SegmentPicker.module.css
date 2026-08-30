@@ -1,0 +1,97 @@
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.empty {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--muted);
+  padding: 12px 0;
+  text-align: center;
+  background: var(--paper);
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 150ms var(--ease, ease-out);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chipSelected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 12px var(--font-mono);
+  color: var(--muted);
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  flex-shrink: 0;
+  transition: all 150ms;
+}
+
+.chipSelected .checkbox {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--card);
+}
+
+.label {
+  font-weight: 600;
+}
+
+.duration {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+}
+
+.chipSelected .duration {
+  color: var(--ink);
+  opacity: 0.75;
+}
+
+.crossBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font: 600 9px var(--font-sans);
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  background: var(--tag-new-bg, var(--paper-2));
+  color: var(--tag-new-fg, var(--muted));
+  border-radius: 999px;
+}
+
+.chipSelected .crossBadge {
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--ink);
+}

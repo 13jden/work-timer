@@ -17,6 +17,7 @@ import { isWorkday } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
 import { SLACKING_LABEL_ICON, SLACKING_LABEL_TEXT } from '../../lib/constants';
 import type { SlackingLabel } from '../../lib/types';
+import { Coffee, ChevronDown, ArrowRight } from 'lucide-react';
 import styles from './SlackingWidget.module.css';
 
 interface Props {
@@ -64,10 +65,11 @@ export function SlackingWidget({ onOpenDetail }: Props) {
       <div className={`${styles.widget} ${styles.disabled}`}>
         <div className={styles.header}>
           <span className={styles.title}>
-            {SLACKING_LABEL_ICON.slack} 摸鱼时间
+            <Coffee size={11} strokeWidth={2.2} style={{ marginRight: 4, verticalAlign: '-1px' }} />
+            摸鱼时间
           </span>
         </div>
-        <div className={styles.restStatus}>休息日无需摸鱼 😎</div>
+        <div className={styles.restStatus}>休息日无需摸鱼</div>
       </div>
     );
   }
@@ -88,7 +90,8 @@ export function SlackingWidget({ onOpenDetail }: Props) {
     <div className={styles.widget}>
       <div className={styles.header}>
         <span className={styles.title}>
-          {SLACKING_LABEL_ICON.slack} 摸鱼时间
+          <Coffee size={11} strokeWidth={2.2} style={{ marginRight: 4, verticalAlign: '-1px' }} />
+          摸鱼时间
         </span>
         <span className={styles.total}>
           {isRunning ? fmtMMSS(elapsedSec) : fmtMMSS(todaySec)}
@@ -119,7 +122,8 @@ export function SlackingWidget({ onOpenDetail }: Props) {
             className={`${styles.btn} ${styles.btnPrimary}`}
             onClick={() => stopCurrentSession()}
           >
-            结束摸鱼 ▾
+            结束摸鱼
+            <ChevronDown size={12} strokeWidth={2.2} />
           </button>
         ) : (
           <button
@@ -127,7 +131,8 @@ export function SlackingWidget({ onOpenDetail }: Props) {
             className={`${styles.btn} ${styles.btnPrimary}`}
             onClick={() => setOpenMenu((v) => !v)}
           >
-            开始摸鱼 ▾
+            开始摸鱼
+            <ChevronDown size={12} strokeWidth={2.2} />
           </button>
         )}
         {onOpenDetail && (
@@ -136,7 +141,8 @@ export function SlackingWidget({ onOpenDetail }: Props) {
             className={`${styles.btn} ${styles.btnSecondary}`}
             onClick={onOpenDetail}
           >
-            详情 →
+            详情
+            <ArrowRight size={12} strokeWidth={2.2} />
           </button>
         )}
       </div>

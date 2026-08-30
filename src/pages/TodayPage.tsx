@@ -79,11 +79,6 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
         <QuoteCard index={dayOfYear} />
       </div>
 
-      {/* ============ SlackingWidget (v1.3) ============ */}
-      <div className={styles.slackingWrap}>
-        <SlackingWidget onOpenDetail={() => setShowSlackingDetail(true)} />
-      </div>
-
       {/* ============ Stats Row (两卡片并排) ============ */}
       <div className={styles.statsRow}>
         <StatCard
@@ -102,6 +97,11 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
           extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
           onClick={onOpenConvert}
         />
+      </div>
+
+      {/* ============ SlackingWidget(v1.3.1 移到最下面) ============ */}
+      <div className={styles.slackingWrap}>
+        <SlackingWidget onOpenDetail={() => setShowSlackingDetail(true)} />
       </div>
     </div>
   );

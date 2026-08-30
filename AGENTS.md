@@ -22,20 +22,20 @@
 ```
 docs/ARCHITECTURE.md         ← 架构+计算公式
 docs/CONVENTIONS.md          ← 代码规范
-docs/CHANGELOG.md            ← 阶段 1 ~ v1.2 变更记录
-docs/CHANGELOG-v1.3.md       ← v1.3 增强版变更记录(独立文件)
+docs/CHANGELOG.md            ← 版本索引 + 阶段 1 ~ v1.2 历史变更记录
+docs/CHANGELOG-v1.3.md       ← v1.3 + v1.3.1 变更记录(独立文件)
 docs/plans/README.md         ← 项目索引
 docs/plans/tauri-migration/
 ├── ROADMAP.md               ← 重构总路线图
-└── v1.3/                    ← v1.3 增强版任务
+└── v1.3/                    ← v1.3 任务
     ├── ROADMAP.md
-    └── TASK-021 ~ TASK-024
+    └── TASK-021 ~ TASK-025
 ```
 
 > **版本变更记录分文件**:
 > - v1.0 → v1.2 写 `docs/CHANGELOG.md`
 > - v1.3 起每个独立版本单独建 `docs/CHANGELOG-vX.X.md`,避免主文件膨胀
-> - `docs/CHANGELOG.md` 顶部保留索引表,指向各版本的独立文件
+> - `docs/CHANGELOG.md` 顶部保留**索引表**,指向各版本的独立文件
 
 ## 开发流程(强制)
 
@@ -70,4 +70,4 @@ docs/plans/tauri-migration/
 
 ---
 
-*最后更新:2026-08-29 · v1.3 启动*
+*最后更新:2026-08-30 · v1.3.1 bug 修复发布*

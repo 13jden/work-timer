@@ -5,13 +5,20 @@
 
 .back {
   margin: 12px 0 0;
-  padding: 6px 10px;
+  padding: 6px 12px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   color: var(--ink);
   font: 500 12px var(--font-sans);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.back:hover {
+  border-color: var(--accent);
 }
 
 .head {
@@ -219,7 +226,9 @@
   cursor: pointer;
   color: var(--muted);
   padding: 4px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .recBtn:hover {
@@ -231,6 +240,10 @@
 }
 
 .addBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1.5px dashed var(--line);
   border-radius: var(--r-sm);
   padding: 10px;
@@ -407,6 +420,10 @@
   border-radius: var(--r-sm);
   font: 600 13px var(--font-sans);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .sheetCancel {

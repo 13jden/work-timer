@@ -148,6 +148,10 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+.overtimeBadge svg {
+  flex-shrink: 0;
+}
 :global([data-theme='obsidian']) .card {
   background: var(--paper);
   color: var(--ink);

@@ -28,6 +28,24 @@ export interface WorkSegment {
   end: string;
 }
 
+/**
+ * 多段工时模板(v1.3.1 bug fix 引入)
+ *
+ * 设计:
+ *   - 用户在「设置」页配置 N 个模板(每个模板 = 命名 + 段列表)
+ *   - 在「日历」页点击日期 → 选择「自定义」→ 勾选需要的模板 → 合并写入当日 segments
+ *   - 解耦"全局默认工时"与"日历页可选模板"
+ *
+ * 模板示例:
+ *   { id: 'tpl-1', label: '早班', segments: [{ start: '06:00', end: '14:00' }] }
+ *   { id: 'tpl-2', label: '夜班', segments: [{ start: '22:00', end: '06:00' }] }  // 跨天
+ */
+export interface SegmentTemplate {
+  id: string;
+  label: string;          // 用户命名,如 "早班"/"晚班"/"周末加班"
+  segments: WorkSegment[];
+}
+
 export interface Config {
   /** 月薪总额(monthly 模式使用) */
   monthlySalary: number;
@@ -54,8 +72,18 @@ export interface Config {
   manualHourlyRate: number;
   /** daily 模式手动日薪 */
   manualDailyRate: number;
-  /** 多段工时。null = 使用 startTime/endTime 单段 fallback */
+  /**
+   * 多段工时。null = 使用 startTime/endTime 单段 fallback
+   * (v1.3.1 后:仅作为兜底;用户配置主要走 segmentTemplates)
+   */
   segments: WorkSegment[] | null;
+  /**
+   * 多段工时模板库(v1.3.1 新增)
+   *
+   * 日历页"自定义"模式下,从这里勾选需要的模板。
+   * 默认含 1 个模板(09:00-18:00),用户可自由增删。
+   */
+  segmentTemplates: SegmentTemplate[];
   /** 是否扣除午休 */
   lunchEnabled: boolean;
   /** 午休开始时间 "HH:MM" */

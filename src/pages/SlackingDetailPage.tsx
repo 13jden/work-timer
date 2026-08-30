@@ -21,6 +21,7 @@ import {
 } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
 import type { SlackingLabel, SlackingSession } from '../lib/types';
+import { ArrowLeft, TrendingUp, Moon, Pencil, X as XIcon, Plus, Check } from 'lucide-react';
 import styles from './SlackingDetailPage.module.css';
 
 function fmtHoursMin(min: number): string {
@@ -79,7 +80,8 @@ export function SlackingDetailPage({ onBack }: Props) {
     <div className={styles.page}>
       {onBack && (
         <button type="button" className={styles.back} onClick={onBack}>
-          ← 返回
+          <ArrowLeft size={14} strokeWidth={2.5} />
+          返回
         </button>
       )}
 
@@ -119,13 +121,13 @@ export function SlackingDetailPage({ onBack }: Props) {
             <div className={styles.popup}>
               {overtimeMin > 0 && (
                 <div className={styles.popupRow}>
-                  <span>📈</span>
+                  <TrendingUp size={14} strokeWidth={2.2} />
                   <span>加班 {overtimeMin} min × {overtimeMul}</span>
                 </div>
               )}
               {nightMin > 0 && (
                 <div className={styles.popupRow}>
-                  <span>🌙</span>
+                  <Moon size={14} strokeWidth={2.2} />
                   <span>夜班 {nightMin}min × 0.5 身体补偿</span>
                 </div>
               )}
@@ -181,7 +183,7 @@ export function SlackingDetailPage({ onBack }: Props) {
                     onClick={() => setEditTarget(s)}
                     aria-label="编辑"
                   >
-                    ✎
+                    <Pencil size={12} strokeWidth={2.2} />
                   </button>
                   <button
                     type="button"
@@ -191,7 +193,7 @@ export function SlackingDetailPage({ onBack }: Props) {
                     }}
                     aria-label="删除"
                   >
-                    ✕
+                    <XIcon size={12} strokeWidth={2.2} />
                   </button>
                 </div>
               </div>
@@ -199,7 +201,8 @@ export function SlackingDetailPage({ onBack }: Props) {
           })
         )}
         <button type="button" className={styles.addBtn} onClick={() => setShowAdd(true)}>
-          ＋ 添加记录
+          <Plus size={14} strokeWidth={2.5} />
+          添加记录
         </button>
       </div>
 
@@ -315,6 +318,7 @@ function SlackingRecordSheet({
 
         <div className={styles.sheetButtons}>
           <button type="button" className={styles.sheetSave} onClick={handleSave}>
+            <Check size={14} strokeWidth={2.5} />
             保存
           </button>
           <button type="button" className={styles.sheetCancel} onClick={onClose}>

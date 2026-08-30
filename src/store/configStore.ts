@@ -61,6 +61,8 @@ function migrateToV3(raw: Partial<Config> | undefined): Config {
     manualHourlyRate: raw?.manualHourlyRate ?? DEFAULT_CONFIG.manualHourlyRate,
     manualDailyRate:  raw?.manualDailyRate ?? DEFAULT_CONFIG.manualDailyRate,
     segments:      raw?.segments ?? DEFAULT_CONFIG.segments,
+    // v1.3.1 新增字段:老数据补默认模板
+    segmentTemplates: raw?.segmentTemplates ?? DEFAULT_CONFIG.segmentTemplates,
     lunchEnabled:  raw?.lunchEnabled ?? DEFAULT_CONFIG.lunchEnabled,
     lunchStart:    raw?.lunchStart ?? DEFAULT_CONFIG.lunchStart,
     lunchMinutes:  raw?.lunchMinutes ?? DEFAULT_CONFIG.lunchMinutes,
