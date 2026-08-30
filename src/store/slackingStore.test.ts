@@ -19,7 +19,6 @@ describe('slackingStore — updateSession', () => {
   });
 
   it('updateSession 更新 startTs 后,目标对象是新引用且 nightShift 重算', () => {
-    const now = Date.now();
     const id = useSlackingStore.getState().startSession('2026-08-30', 'slack');
     const before = useSlackingStore.getState().sessions['2026-08-30']!.find((s) => s.id === id)!;
 

@@ -1,1 +1,4 @@
-{"default":"icon-source.png","android_fg_scale":80}
+{
+  "default": "icon-source.png",
+  "android_fg_scale": 65
+}

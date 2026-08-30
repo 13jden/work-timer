@@ -1167,4 +1167,41 @@ const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 
 ---
 
-*最后更新:2026-08-30 · v1.3.3 patch8 发布(加班 popup 聚合等式)*
+## [v1.3.3-patch9] · 2026-08-30 · 图标缩放 + Android APK 重打包
+
+### 问题
+- 用户反馈:打包后 APK 图标内容溢出(被圆形 launcher 裁切时钟边缘、¥ 字符部分切除)
+- 根因诊断:
+  - `src-tauri/icon-source.png` 内容 bbox 占满 99.8% 画布,四周 0px padding
+  - `icon-manifest.json` 的 `android_fg_scale: 80`(adaptive icon 前景又放大 80%,更加超界)
+  - Android adaptive icon 的 inner safe zone 仅 66%,各方 launcher(尤其小米/华为圆形 mask)裁掉外圈
+
+### 修复
+- **缩放源图标**: 用 PIL 把内容裁紧并居中到 62% 内圈,四周留 ~19% 透明 padding
+  - 修改前: 内容占 99.8% (0~431 / 432px)
+  - 修改后: 内容占 61.8% (183~779 / 964px),四周各留 183px 安全边距
+  - 脚本: `scripts/resize-icon.py`(可重跑)
+- **`android_fg_scale` 80 → 65**: Tauri `icon` 命令生成 adaptive foreground 时再缩一圈,双保险
+- **重生成全套图标**: `npx tauri icon src-tauri/icon-source.png`
+  - `src-tauri/icons/` 全套 png/ico/icns 重新生成
+  - `src-tauri/gen/android/app/src/main/res/mipmap-*/` 全部同步(由 Tauri 直接写入)
+- **顺手修复**: `src/store/slackingStore.test.ts:22` 的 `now` 未使用变量(typecheck 警告阻塞 build)
+
+### 打包
+- `npx tauri android build --apk` → universal 37.1MB
+- `zipalign -p 4` 对齐
+- `apksigner sign` v2 + v3 签名 → `SalaryTimer-2.0.0-universal.apk` 37.2MB
+- `apksigner verify -v` 通过 v2/v3 scheme
+
+### 验证
+- mipmap-xxxhdpi/ic_launcher_foreground.png 视觉确认:时钟 + ¥ 居中清晰,四周充足留白
+- mipmap-xxxhdpi/ic_launcher.png(合成预览): 圆形 mask 下无内容裁切
+- typecheck 通过,188 测试通过
+
+### 产物
+- `dist-android/SalaryTimer-2.0.0-universal.apk` (37.2 MB)
+- 旧版 `SalaryTimer-0.1.0-universal.apk` (37.1 MB) 保留以便对照
+
+---
+
+*最后更新:2026-08-30 · v1.3.3 patch9 发布(图标缩放 + APK 重打包)*
