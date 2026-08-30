@@ -149,7 +149,7 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
           <div className={styles.cardValue}>
             +{fmtHoursMin(net.overtimeBonus + net.nightBonus)}
           </div>
-          {showCompPopup && (net.overtimeBonus + net.nightBonus > 0) && (
+          {showCompPopup && (net.overtimeBonus + net.nightBonus > 0) && (userOvertimeDayMin + userOvertimeNightMin > 0) && (
             <div className={styles.popup}>
               {userOvertimeDayMin > 0 && (
                 <div className={styles.popupRow}>

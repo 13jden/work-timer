@@ -1206,3 +1206,24 @@ const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 ---
 
 *最后更新:2026-08-30 · v1.3.3 patch9 发布(图标缩放 + APK 重打包)*
+
+---
+
+## [v1.3.3-patch10] · 2026-08-30 · 加班 popup 空渲染防御性 guard
+
+### 背景
+Bugbot 审阅 [eb6c76f] (patch7+8) 时发现一处遗留边界:
+当 `overtimeSessionSplit` 极端舍入让 `dayMin + nightMin === 0`,但 `net.overtimeBonus + net.nightBonus` 因 multiplier 或 holiday 仍 > 0,popup 容器会渲染但内部三行全空——视觉上出现"白板"。
+
+### 修复
+- `TimeTrackerDetailPage.tsx:152` 加上第三层 guard:`userOvertimeDayMin + userOvertimeNightMin > 0`
+- 与 popup 内部三行的 `> 0` 判断保持一致,确保 popup 至少有一行内容才渲染
+- 单行增量,不影响其他逻辑
+
+### 验证
+- typecheck 通过
+- 188 tests 通过(patch7+8 旧测试不受影响,新 guard 是显示层防御)
+
+---
+
+*最后更新:2026-08-30 · v1.3.3 patch10 发布(popup 空渲染防御)*
