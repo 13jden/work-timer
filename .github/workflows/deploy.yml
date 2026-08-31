@@ -23,6 +23,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script_stop: true
           script: |
+            set -e
             cd ${{ secrets.SERVER_PROJECT_DIR }}
             git fetch origin main
             git checkout main
@@ -31,3 +32,6 @@ jobs:
             docker image prune -f
             echo "=== Deploy done ==="
             docker compose ps
+            sleep 3
+            docker ps --filter name=work-timer --filter status=running | grep -q work-timer || { echo "DEPLOY FAILED: container not running"; exit 1; }
+            echo "CONTAINER RUNNING OK"
