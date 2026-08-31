@@ -1,0 +1,13 @@
+services:
+  work-timer:
+    build: .
+    image: work-timer:latest
+    container_name: work-timer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
