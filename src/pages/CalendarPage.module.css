@@ -344,26 +344,23 @@
   align-items: flex-start;
   gap: 0;
   min-height: 100vh;
+  padding: 0 8px;
 }
 
-/* 左列:原有日历内容(最大宽度限制,防止过宽) */
+/* 左列:原有日历内容 — v1.3.4-patch3:去掉 900px 上限,让它撑满 2/3 */
 .mainCol {
-  flex: 1;
+  flex: 2;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.pageInline .mainCol {
-  max-width: 700px;
-}
-
-/* ── 右列:桌面端内联 DaySheet ── */
+/* ── 右列:桌面端内联 DaySheet — v1.3.4-patch3:对齐 400px 右栏宽度 ── */
 .inlineSheet {
-  flex-shrink: 0;
-  width: 320px;
-  min-width: 320px;
-  padding: 20px 16px 20px 8px;
+  flex: 1;
+  min-width: 400px;
+  max-width: 400px;
+  padding: 20px 18px 20px 14px;
   position: sticky;
   top: 0;
   max-height: 100vh;
