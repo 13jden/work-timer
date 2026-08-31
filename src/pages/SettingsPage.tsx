@@ -530,7 +530,12 @@ export function SettingsPage() {
                           type="number"
                           className={styles.input}
                           value={draft.lunchMinutes}
-                          onChange={(e) => setDraft((d) => ({ ...d, lunchMinutes: Math.max(15, Math.min(240, Number(e.target.value) || 60)) }))}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (!isNaN(val)) {
+                              setDraft((d) => ({ ...d, lunchMinutes: Math.max(15, Math.min(240, val)) }));
+                            }
+                          }}
                           min={15}
                           max={240}
                           step={15}
