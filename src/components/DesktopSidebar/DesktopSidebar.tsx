@@ -7,19 +7,15 @@
  * - 月度进度小圆环（底部）
  * - 折叠按钮在顶部
  */
-import { useConfigStore } from '../../store/configStore';
 import { useThemeStore, THEME_LIST } from '../../store/themeStore';
 import { useSidebarCollapsed } from '../../store/sidebarStore';
-import { useCalendarStore } from '../../store/calendarStore';
-import { HOLIDAYS } from '../../lib/constants';
-import { workdaysInMonth, daysInMonthCalc } from '../../lib/compute';
-import { useNow } from '../../hooks/useNow';
 import {
   ClockCounterClockwise,
   CalendarBlank,
   CaretLeft,
   CaretRight,
 } from '@phosphor-icons/react';
+import { MonthIncomeProgress } from '../MonthIncomeProgress';
 import styles from './DesktopSidebar.module.css';
 
 export type DesktopTabId = 'today' | 'calendar';
@@ -27,6 +23,8 @@ export type DesktopTabId = 'today' | 'calendar';
 interface DesktopSidebarProps {
   activeTab: DesktopTabId;
   onTabChange: (tab: DesktopTabId) => void;
+  /** 点击"设置月度目标"时调用(由 App.tsx 打开 SettingsDrawer) */
+  onOpenSettings?: () => void;
 }
 
 const TABS: Array<{ id: DesktopTabId; label: string; Icon: typeof ClockCounterClockwise }> = [
@@ -34,16 +32,9 @@ const TABS: Array<{ id: DesktopTabId; label: string; Icon: typeof ClockCounterCl
   { id: 'calendar', label: '日历',  Icon: CalendarBlank },
 ];
 
-export function DesktopSidebar({ activeTab, onTabChange }: DesktopSidebarProps) {
+export function DesktopSidebar({ activeTab, onTabChange, onOpenSettings }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useSidebarCollapsed();
-  const config = useConfigStore();
-  const overrides = useCalendarStore((s) => s.dayOverrides);
-  // month progress
-  const now = useNow(60_000);
-  const total = daysInMonthCalc(now.getFullYear(), now.getMonth());
-  const done = workdaysInMonth(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
-  const remaining = total - done;
-  const progressPct = total > 0 ? Math.min(1, done / total) : 0;
+  // v1.3.4-patch1:月度收入进度由 MonthIncomeProgress 组件内部计算,Sidebar 不再订阅额外 state
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
@@ -97,35 +88,9 @@ export function DesktopSidebar({ activeTab, onTabChange }: DesktopSidebarProps) 
         </div>
       )}
 
-      {/* ── 月度进度 ── */}
+      {/* ── 月度收入进度(v1.3.4-patch1) ── */}
       <div className={styles.progress}>
-        {collapsed ? (
-          <div className={styles.progressRingSmall} title={`已完成 ${done}/${total} 工作日`}>
-            <svg viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="14" className={styles.progressRingBg} />
-              <circle
-                cx="18"
-                cy="18"
-                r="14"
-                className={styles.progressRingFg}
-                strokeDasharray={`${progressPct * 87.96} 87.96`}
-                transform="rotate(-90 18 18)"
-              />
-            </svg>
-            <span className={styles.progressNumSmall}>{done}</span>
-          </div>
-        ) : (
-          <div className={styles.progressBlock}>
-            <div className={styles.progressEyebrow}>本月 · {now.getMonth() + 1}月</div>
-            <div className={styles.progressRow}>
-              <div className={styles.progressBar}>
-                <div className={styles.progressFill} style={{ width: `${progressPct * 100}%` }} />
-              </div>
-              <span className={styles.progressNum}>{done}/{total}</span>
-            </div>
-            <div className={styles.progressHint}>剩 {remaining} 工作日</div>
-          </div>
-        )}
+        <MonthIncomeProgress collapsed={collapsed} onOpenSettings={onOpenSettings} />
       </div>
     </aside>
   );

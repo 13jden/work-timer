@@ -65,6 +65,7 @@ export function App() {
             setDesktopTab(tab);
             // 桌面端切 tab 不影响移动端 tab state
           }}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
 
         {/* 中间：Topbar + 主内容 */}
