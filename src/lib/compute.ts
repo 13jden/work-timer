@@ -884,6 +884,42 @@ function clipIntervalsToElapsed(
   return intervalsUnionTotal(clipped);
 }
 
+/**
+ * v1.3.4-patch4:在每个 merged 段内分别 clip 区间,返回总分钟数
+ *
+ * 替代旧的单窗口算法 [mergeStart, mergeStart + effectiveGross]。
+ *
+ * 为什么需要按段 clip?
+ *   多段工时下 `elapsedWorkedMin` 跨越**段间间隙**:
+ *     工时 [{09:00, 12:00}, {14:00, 18:00}],now=16:00
+ *     elapsedWorkedMin = 5h(3h 上午 + 2h 下午)
+ *     旧窗口 = [09:00, 09:00 + 5h] = [09:00, 14:00] → 跨过间隙 [12:00, 14:00]
+ *     间隙里的午餐会被错误 clip 进窗口,误扣
+ *   按每段独立 clip,自然跳过间隙:
+ *     段 1 窗口 [09:00, 12:00],午餐 [12:00, 13:00] 完全在外 → 0
+ *     段 2 窗口 [14:00, 16:00],午餐完全在外 → 0
+ *     总 = 0 ✓
+ *
+ * 单段场景与旧逻辑等价(只有一个段,segEnd = nowMin 或段尾,clip 范围不变)。
+ */
+function clipIntervalsPerSegment(
+  intervals: Array<{ startMin: number; endMin: number }>,
+  merged: WorkSegment[],
+  nowMin: number,
+): number {
+  let total = 0;
+  for (const seg of merged) {
+    const startMin = toMinutes(seg.start);
+    const endMin = seg.end === '24:00' ? 24 * 60 : toMinutes(seg.end);
+    // 每段窗口 = [segStart, min(segEnd, nowMin)](收工后封顶到段尾)
+    const segEnd = Math.min(endMin, nowMin);
+    if (segEnd > startMin) {
+      total += clipIntervalsToElapsed(intervals, startMin, segEnd);
+    }
+  }
+  return total;
+}
+
 // ════════════════════════════════════════════════════════════
 // 净工时(v1.3 新增)
 // ════════════════════════════════════════════════════════════
@@ -1007,17 +1043,13 @@ export function computeNetHours(input: {
   }
   const slackUnionLunch = intervalsUnionTotal(unionIntervals);
 
-  // v1.3.4-patch1:净工时口径改造
-  // effectiveGross = 已工作(封顶到 gross,单位:分钟)
-  // mergeStart = merged segments 的最早起点(分钟,从 00:00 起算;跨天段可能从 0 开始)
-  // 有效时间窗口 = [mergeStart, mergeStart + effectiveGross]
-  // effectiveSlack = 把"全天摸鱼∪午休 union"clip 到该窗口内
-  //   - 工时前(午休还没到):union 在窗口外 → 不预扣 ✓
-  //   - 已过午休:union 与窗口求交 → 正常扣 ✓
+  // v1.3.4-patch4:按每个 merged 段独立 clip,替代旧的单窗口算法
+  //   旧 [mergeStart, mergeStart + effectiveGross] 在多段工时下会跨越段间间隙,
+  //   把间隙里的午餐/摸鱼误算成扣除,见 TASK-031。
+  //   nowMin 直接来自 now(用户当前时间),由每个段的 segEnd = min(segEnd, nowMin) 兜底
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   const effectiveGross = Math.min(elapsedWorkedMin, grossMinutes);
-  const mergeStart = merged.length > 0 ? toMinutes(merged[0]!.start) : 0;
-  const effectiveWindowEnd = mergeStart + effectiveGross;
-  const effectiveSlack = clipIntervalsToElapsed(unionIntervals, mergeStart, effectiveWindowEnd);
+  const effectiveSlack = clipIntervalsPerSegment(unionIntervals, merged, nowMin);
 
   // 加班加成(v1.3.3 patch3 + patch5):
   //   - 夜班场景(夜班时刻或夜班段覆盖)→ 自动 ×0.5,**只算夜间段部分**(22:00-06:00),不污染日间
@@ -1068,31 +1100,26 @@ export function computeNetHours(input: {
   const grossElapsed = effectiveGross;
 
   // lunchElapsed = 已发生午休分钟数
-  // 算法:lunch 段 [ls, le) clip 到 [mergeStart, mergeStart + effectiveGross]
+  // v1.3.4-patch4:按段 clip(参见 effectiveSlack 注释)
+  //   - 单段场景:旧逻辑语义保留(整段内 clip)
+  //   - 多段场景:间隙里的午餐不再误算
   let lunchElapsed = 0;
   if (config.lunchEnabled) {
     const ls = toMinutes(config.lunchStart);
     const le = ls + config.lunchMinutes;
-    const start = Math.max(ls, mergeStart);
-    const end = Math.min(le, mergeStart + effectiveGross);
-    if (end > start) lunchElapsed = end - start;
+    lunchElapsed = clipIntervalsPerSegment(
+      [{ startMin: ls, endMin: le }],
+      merged,
+      nowMin,
+    );
   }
 
   // slackingElapsed = 已发生摸鱼(只算工时段内已落地的摸鱼 session)
-  // 算法:slackingIntervals clip 到 [mergeStart, mergeStart + effectiveGross]
-  //   - 工时前:session 全部在窗口外 → 0
-  //   - 摸鱼 session 进行中:已落地部分计入
-  //   - 收工后:封顶到 session 总长
-  // 注意:`slackingMinutes`(全天总数)用 sessionsToIntervals 不过滤 endTs;
-  //   但 `slackingIntervals` 来自 sessionsToIntervals(只算已结束),
-  //   所以进行中摸鱼此处**不**算 —— 但 liveMinutesByLabel 算的是含进行中的总长,
-  //   两者不一致。dashboard 4 卡都用同一份"已发生"语义 → 这里 clip 后取的是
-  //   "工时段内已落地的摸鱼分钟数",与 effectiveSlack(lunchUnion)对偶。
-  const slackingElapsed = clipIntervalsToElapsed(
-    slackingIntervals,
-    mergeStart,
-    mergeStart + effectiveGross,
-  );
+  // v1.3.4-patch4:按段 clip
+  //   - 多段场景下,跨间隙的摸鱼 session 不会被误算:
+  //     例如 session 11:30-14:30(3h)在 [{09-12, 14-18}] 工时下,实际只在工时段内
+  //     11:30-12:00 (30min) + 14:00-14:30 (30min) = 60min,而不是整段 3h
+  const slackingElapsed = clipIntervalsPerSegment(slackingIntervals, merged, nowMin);
 
   // overtimeElapsed = 用户 overtime session 累计(含进行中 day + night)
   // 直接复用 overtimeSessionSplit(dayMin + nightMin,endTs===null 按 now 算)

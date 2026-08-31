@@ -184,16 +184,35 @@ export function SettingsPage() {
   };
 
   const handleSave = () => {
+    // 默认工时模板与全局默认工时一致:
+    // 1. segments = draft.segmentTemplates[0]?.segments(否则 fallback 到 startTime/endTime)
+    // 2. startTime / endTime = draft.segmentTemplates[0]?.segments[0] 的首段(否则保留 draft 旧值)
+    // 原因:
+    //   - config.segments(全局默认工时)和 config.segmentTemplates[0](默认模板)
+    //     在历史版本里是两个独立字段,保存模板时未同步,
+    //     导致 getEffectiveSegments 读 config.segments 看到的是旧值,与默认模板不一致。
+    //   - TimerCard 直接读 config.startTime / config.endTime(老单段字段),
+    //     若模板首段和 startTime/endTime 不一致,首页显示的还是旧时间。
+    const firstTpl = draft.segmentTemplates[0];
+    const firstSeg = firstTpl?.segments?.[0];
+    const globalSegments: WorkSegment[] =
+      firstTpl && firstTpl.segments.length > 0
+        ? firstTpl.segments
+        : [{ start: draft.startTime, end: draft.endTime }];
+    const nextStartTime = firstSeg?.start ?? draft.startTime;
+    const nextEndTime = firstSeg?.end ?? draft.endTime;
+
     setConfig({
       monthlySalary: draft.monthlySalary,
-      startTime: draft.startTime,
-      endTime: draft.endTime,
+      startTime: nextStartTime,
+      endTime: nextEndTime,
       coffeePrice: draft.coffeePrice,
       restMode: draft.restMode,
       salaryMode: draft.salaryMode,
       manualHourlyRate: draft.manualHourlyRate,
       manualDailyRate: draft.manualDailyRate,
       segmentTemplates: draft.segmentTemplates,
+      segments: globalSegments,
       lunchEnabled: draft.lunchEnabled,
       lunchStart: draft.lunchStart,
       lunchMinutes: draft.lunchMinutes,

@@ -79,12 +79,15 @@ export const useConfigStore = create<ConfigStore>()(
         return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       })(),
       setConfig: (patch) =>
-        set((state) => ({
-          ...state,
-          ...patch,
-          // 始终由 themeStore 决定 theme
-          theme: state.theme,
-        })),
+        set(
+          (state) => ({
+            ...state,
+            ...patch,
+            // 始终由 themeStore 决定 theme
+            theme: state.theme,
+          }),
+          true, // replace = true,强制替换整个 state 触发订阅
+        ),
       reset: () => set(() => ({ ...DEFAULT_CONFIG })),
     }),
     {
