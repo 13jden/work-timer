@@ -18,8 +18,6 @@ import {
   computeNetHours,
   todayEarned,
   effectiveHourlyRate,
-  totalSegmentsMinutes,
-  getEffectiveSegments,
   slackingEarn,
   overtimeSessionSplit,
 } from '../lib/compute';
@@ -29,8 +27,12 @@ import { ArrowLeft, ChartLineUp, Moon, Pencil, X, Plus, Check } from '@phosphor-
 import styles from './SlackingDetailPage.module.css';
 
 function fmtHoursMin(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
+  // v1.3.4-patch1 修复:netMinutes/grossMinutes 等字段是浮点数(由 elapsedWorkedMin × 比例产生),
+  //   直接 Math.floor(min/60) + Math.round(min%60) 在 [239.5, 240) 范围会算出 h=3, m=60,
+  //   显示成 "3h60m" 这种不可能的时间。先 round 到整数再拆,杜绝 m=60 的情况。
+  const totalMin = Math.round(min);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin - h * 60; // 等价 totalMin % 60,但输入已是整数,不会出现 60
   if (m === 0) return `${h}h`;
   return `${h}h${String(m).padStart(2, '0')}m`;
 }
@@ -89,18 +91,14 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
   const overtimeMul = entry?.multiplier ?? 1;
   // v1.3.3 patch4:加班卡片分钟数 = 用户手动添加的「加班」session 总分钟数
   // v1.3.3 patch6:拆分为 dayMin / nightMin,popup 显示「日间 × multiplier + 夜班 × multiplier × 1.5」
+  // v1.3.4-patch2:dashboard 4 卡「加班」显示 net.overtimeElapsed(用户 session 累计,含进行中),
+  //   popup 拆分明细复用 userOvertimeDayMin/NightMin
   const otSplit = useMemo(
     () => overtimeSessionSplit(todaySessions, now.getTime()),
     [todaySessions, now],
   );
   const userOvertimeDayMin = Math.round(otSplit.dayMin);
   const userOvertimeNightMin = Math.round(otSplit.nightMin);
-  const nightMin = net.nightShiftFlag ? (() => {
-    const segs = getEffectiveSegments(config, entry);
-    return totalSegmentsMinutes(segs) === 0
-      ? 0
-      : Math.round(net.nightBonus / 0.5);
-  })() : 0;
 
   // v1.3.3:夜班 session 数(用于 badge)
   const nightSessionCount = todaySessions.filter((s) => s.nightShift).length;
@@ -123,33 +121,37 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
         <h1 className={styles.title}>时间记录</h1>
       </div>
 
-      {/* ── A · 2x2 dashboard ── */}
+      {/* ── A · 2x2 dashboard · v1.3.4-patch2 实时累计 ── */}
       <div className={styles.dashboard}>
         <div className={styles.card}>
+          {/* v1.3.4-patch4:总工时实时累计(grossElapsed),与净工时同节奏
+              用户语义:"10:00 已工作 1h,总工时 1h;净工时=总工时+加班-午休-摸鱼 一样实时"
+              即 4 卡全部实时:已工作 / 已发生午休 / 已发生摸鱼 / 已发生加班,
+              净工时 = grossElapsed - 已发生摸鱼∪午休 + 加班 + 夜班(实时扣除) */}
           <div className={styles.cardLabel}>总工时</div>
-          <div className={styles.cardValue}>{fmtHoursMin(net.grossMinutes)}</div>
+          <div className={styles.cardValue}>{fmtHoursMin(net.grossElapsed)}</div>
         </div>
-        <div className={`${styles.card} ${net.lunchMinutes > 0 ? styles.positive : ''}`}>
+        <div className={`${styles.card} ${net.lunchElapsed > 0 ? styles.positive : ''}`}>
           <div className={styles.cardLabel}>午休扣除</div>
           <div className={styles.cardValue}>
-            {net.lunchMinutes > 0 ? `−${fmtHoursMin(net.lunchMinutes)}` : '0h'}
+            {net.lunchElapsed > 0 ? `−${fmtHoursMin(net.lunchElapsed)}` : '0h'}
           </div>
         </div>
-        <div className={`${styles.card} ${net.slackingMinutes > 0 ? styles.positive : ''}`}>
+        <div className={`${styles.card} ${net.slackingElapsed > 0 ? styles.positive : ''}`}>
           <div className={styles.cardLabel}>摸鱼扣除</div>
           <div className={styles.cardValue}>
-            {net.slackingMinutes > 0 ? `−${fmtHoursMin(net.slackingMinutes)}` : '0h'}
+            {net.slackingElapsed > 0 ? `−${fmtHoursMin(net.slackingElapsed)}` : '0h'}
           </div>
         </div>
         <div
-          className={`${styles.card} ${styles.clickable} ${net.overtimeBonus + net.nightBonus > 0 ? styles.negative : ''}`}
+          className={`${styles.card} ${styles.clickable} ${net.overtimeElapsed > 0 ? styles.negative : ''}`}
           onClick={() => setShowCompPopup((v) => !v)}
         >
           <div className={styles.cardLabel}>加班</div>
           <div className={styles.cardValue}>
-            +{fmtHoursMin(net.overtimeBonus + net.nightBonus)}
+            +{fmtHoursMin(net.overtimeElapsed)}
           </div>
-          {showCompPopup && (net.overtimeBonus + net.nightBonus > 0) && (userOvertimeDayMin + userOvertimeNightMin > 0) && (
+          {showCompPopup && net.overtimeElapsed > 0 && (userOvertimeDayMin + userOvertimeNightMin > 0) && (
             <div className={styles.popup}>
               {userOvertimeDayMin > 0 && (
                 <div className={styles.popupRow}>
@@ -166,12 +168,6 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
               {userOvertimeDayMin > 0 && userOvertimeNightMin > 0 && (
                 <div className={`${styles.popupRow} ${styles.popupRowTotal}`}>
                   <span>= {fmtHoursMin(userOvertimeDayMin)} + {fmtHoursMin(userOvertimeNightMin)} × 1.5</span>
-                </div>
-              )}
-              {nightMin > 0 && (
-                <div className={styles.popupRow}>
-                  <Moon size={14} weight="regular" />
-                  <span>夜班 {nightMin}min × 0.5 身体补偿</span>
                 </div>
               )}
             </div>

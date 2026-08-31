@@ -13,6 +13,7 @@ import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
 import { useMonthlyStore } from '../store/monthlyStore';
+import { useMonthlyGoalStore } from '../store/monthlyGoalStore';
 import { HOLIDAYS } from '../lib/constants';
 import { workdaysInMonth } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
@@ -33,6 +34,7 @@ import {
   Palette,
   ClockCounterClockwise,
   PencilSimple,
+  Target,
 } from '@phosphor-icons/react';
 import styles from './SettingsPage.module.css';
 
@@ -70,6 +72,9 @@ export function SettingsPage() {
   const setTheme = useThemeStore((s) => s.setTheme);
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const getAllSnapshots = useMonthlyStore((s) => s.getAllSnapshots);
+  // v1.3.4-patch2:桌面端侧栏月度收入进度的目标编辑入口
+  const monthlyGoal = useMonthlyGoalStore((s) => s.monthlyGoal);
+  const setMonthlyGoal = useMonthlyGoalStore((s) => s.setGoal);
   const now = useNow(60_000);
 
   // ── 本地草稿 ─────────────────────────────────────────────
@@ -87,6 +92,7 @@ export function SettingsPage() {
     lunchEnabled: boolean;
     lunchStart: string;
     lunchMinutes: number;
+    monthlyGoal: number | null;
   };
 
   const [draft, setDraft] = useState<Draft>(() => ({
@@ -103,6 +109,7 @@ export function SettingsPage() {
     lunchEnabled: config.lunchEnabled,
     lunchStart: config.lunchStart,
     lunchMinutes: config.lunchMinutes,
+    monthlyGoal,
   }));
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -121,8 +128,9 @@ export function SettingsPage() {
     JSON.stringify(draft.segmentTemplates) !== JSON.stringify(config.segmentTemplates) ||
     draft.lunchEnabled !== config.lunchEnabled ||
     draft.lunchStart !== config.lunchStart ||
-    draft.lunchMinutes !== config.lunchMinutes
-  ), [draft, config, currentTheme]);
+    draft.lunchMinutes !== config.lunchMinutes ||
+    draft.monthlyGoal !== monthlyGoal
+  ), [draft, config, currentTheme, monthlyGoal]);
 
   // 当月工作日预览
   const firstTemplate = draft.segmentTemplates[0];
@@ -192,6 +200,10 @@ export function SettingsPage() {
     });
     if (draft.theme !== currentTheme) {
       setTheme(draft.theme);
+    }
+    // v1.3.4-patch2:月度目标独立 store,值 null 也允许(清除目标)
+    if (draft.monthlyGoal !== monthlyGoal) {
+      setMonthlyGoal(draft.monthlyGoal);
     }
     const el = document.querySelector<HTMLElement>('.' + styles.saveBtn);
     if (el) {
@@ -379,6 +391,53 @@ export function SettingsPage() {
 
         <div className={`${styles.advancedPanel} ${advancedOpen ? styles.advancedPanelOpen : ''}`}>
           <div className={styles.advancedPanelInner}>
+
+            {/* ── 月度目标 · Monthly Goal(v1.3.4-patch2:桌面端侧栏底部进度条的目标编辑入口) ── */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <Target size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
+                月度目标 · Monthly Goal
+              </div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>月度目标</span>
+                  <span className={styles.value}>
+                    <span className={styles.prefix}>¥</span>
+                    <input
+                      type="number"
+                      className={styles.input}
+                      value={draft.monthlyGoal ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setDraft((d) => ({ ...d, monthlyGoal: null }));
+                        } else {
+                          const n = Number(raw);
+                          setDraft((d) => ({ ...d, monthlyGoal: Number.isFinite(n) && n >= 0 ? n : d.monthlyGoal }));
+                        }
+                      }}
+                      min={0}
+                      placeholder="未设置"
+                    />
+                    {draft.monthlyGoal !== null && (
+                      <button
+                        type="button"
+                        className={styles.clearBtn}
+                        onClick={() => setDraft((d) => ({ ...d, monthlyGoal: null }))}
+                        aria-label="清除目标"
+                        title="清除目标"
+                      >
+                        <X size={12} weight="bold" />
+                      </button>
+                    )}
+                  </span>
+                </div>
+                <div className={styles.historyEmpty} style={{ padding: '10px 16px' }}>
+                  桌面端侧栏底部显示「已赚 / 目标」进度条
+                  <span>未设置时显示引导 chip,点击即可回到此处设置</span>
+                </div>
+              </div>
+            </div>
 
             {/* ── 工作时间模板(第一个 subGroup,带自定义模板按钮) ── */}
             <div className={styles.subGroup}>

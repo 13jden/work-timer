@@ -88,6 +88,28 @@
   color: var(--muted-2);
 }
 
+/* v1.3.4-patch2:月度目标 input 旁的"清除"小按钮(显示已设值时出现) */
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--paper-3);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+  padding: 0;
+}
+.clearBtn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--paper-2);
+}
+
 .prefix {
   font-family: var(--font-mono);
   color: var(--muted);

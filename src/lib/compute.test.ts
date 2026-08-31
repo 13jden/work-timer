@@ -776,7 +776,12 @@ function makeSession(
 }
 
 describe('computeNetHours · 净工时推导', () => {
-  it('无午休无摸鱼:net = gross', () => {
+  // v1.3.4-patch1:净工时改为实时累计口径
+  //   12:00 时,merged={09:00-18:00} → mergeStart=540,elapsedWorkedMin=180
+  //   effectiveWindowEnd = 540 + 180 = 720
+  //   午休段 [720, 780) clip 到 [540, 720] → 空集,摸鱼 session < 12:00 clip 也为空
+  //   → effectiveSlack = 0,netMinutes 反映已工作 180min(+ 加成/夜班)
+  it('无午休无摸鱼:net = 已工作', () => {
     const now = date(2026, 7, 31, 12, 0, 0);
     const r = computeNetHours({
       date: now,
@@ -786,30 +791,35 @@ describe('computeNetHours · 净工时推导', () => {
       slackingSessions: [],
     });
     expect(r.grossMinutes).toBe(540);
-    expect(r.netMinutes).toBe(540);
+    // 已工作 3h,无加成
+    expect(r.netMinutes).toBe(180);
   });
 
-  it('午休 1h 扣除', () => {
+  it('午休 1h 扣除(clip 到已工作外)', () => {
     const now = date(2026, 7, 31, 12, 0, 0);
     const cfg = { ...baseConfig, lunchEnabled: true };
     const r = computeNetHours({
       date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
     });
-    expect(r.lunchMinutes).toBe(60);
-    expect(r.netMinutes).toBe(480);
+    expect(r.lunchMinutes).toBe(60); // 段×午休窗口 union(不变)
+    // 12:00 时午休 clip 后无交集,不预扣
+    expect(r.netMinutes).toBe(180);
   });
 
-  it('摸鱼 22m 扣除', () => {
+  it('摸鱼 22m(10:30-10:52,clip 后落在窗口内)', () => {
     const now = date(2026, 7, 31, 12, 0, 0);
     const sessions = [makeSession('2026-08-31', 10, 30, 10, 52)];
     const r = computeNetHours({
       date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
     });
-    expect(r.slackingMinutes).toBe(22);
-    expect(r.netMinutes).toBe(540 - 22);
+    expect(r.slackingMinutes).toBe(22); // 摸鱼总时长(不变)
+    // merged {09:00-18:00},mergeStart=540,winEnd=720
+    // 摸鱼段 [630, 652) clip 到 [540, 720] → [630, 652) = 22min
+    // netMinutes = 180 - 22 = 158
+    expect(r.netMinutes).toBe(180 - 22);
   });
 
-  it('摸鱼 + 午休重叠取 union', () => {
+  it('摸鱼 + 午休重叠(clip 后落在窗口外)', () => {
     const now = date(2026, 7, 31, 12, 0, 0);
     const cfg = { ...baseConfig, lunchEnabled: true };
     // 摸鱼 12:00-12:30 + 午休 12:00-13:00 = union 12:00-13:00 = 60
@@ -819,8 +829,9 @@ describe('computeNetHours · 净工时推导', () => {
     });
     expect(r.slackingMinutes).toBe(30);
     expect(r.lunchMinutes).toBe(60);
-    expect(r.slackUnionLunch).toBe(60); // 去重叠
-    expect(r.netMinutes).toBe(540 - 60);
+    expect(r.slackUnionLunch).toBe(60); // 去重叠(不变)
+    // 12:00 时 union [720, 780) clip 到 [540, 720] → 空 → 不预扣
+    expect(r.netMinutes).toBe(180);
   });
 
   it('加班加成 gross × (multiplier-1)', () => {
@@ -832,10 +843,15 @@ describe('computeNetHours · 净工时推导', () => {
       date: now, config: baseConfig, overrides, holidays: emptyHolidays, slackingSessions: [],
     });
     expect(r.overtimeBonus).toBeCloseTo(540 * 0.5, 1);
-    expect(r.netMinutes).toBeCloseTo(540 + 540 * 0.5, 1);
+    // 已工作 180 + 加成 270
+    expect(r.netMinutes).toBeCloseTo(180 + 540 * 0.5, 1);
   });
 
   it('夜班加权:nightShift + 跨天段 22-06 → +240m(8h × 0.5 = 4h)', () => {
+    // v1.3.4-patch1:跨天段 22-06,merged=[{22-24}, {00-06}],mergeStart=0(00:00 后段)
+    // now=12:00 → nowMin=720,merged[0] start=22:00=1320 > 720,跨天处理
+    //   worked=0(没传昨日 override)
+    // effectiveGross=0,netMinutes = 0 + 0 + 0 + nightBonus(240) = 240
     const now = date(2026, 7, 31, 12, 0, 0);
     const overrides: DayOverrides = {
       '2026-08-31': { type: 'work', multiplier: 1, segments: [{ start: '22:00', end: '06:00' }], nightShift: true },
@@ -845,7 +861,7 @@ describe('computeNetHours · 净工时推导', () => {
     });
     expect(r.grossMinutes).toBe(480);
     expect(r.nightBonus).toBe(240);
-    expect(r.netMinutes).toBe(480 + 240);
+    expect(r.netMinutes).toBe(240);
   });
 
   it('加班 + 夜班叠加', () => {
@@ -858,17 +874,20 @@ describe('computeNetHours · 净工时推导', () => {
     });
     expect(r.overtimeBonus).toBeCloseTo(480 * 0.5, 1);
     expect(r.nightBonus).toBe(240);
-    expect(r.netMinutes).toBeCloseTo(480 + 240 + 240, 1);
+    // effectiveGross=0,netMinutes = 0 + 240 + 240 = 480
+    expect(r.netMinutes).toBeCloseTo(240 + 240, 1);
   });
 
-  it('PRD §7 #3 验收:6h 工时 + 1h 午休 + 22m 摸鱼 → net=278m', () => {
-    const now = date(2026, 7, 31, 12, 0, 0);
+  it('PRD §7 #3 验收:6h 工时 + 1h 午休 + 22m 摸鱼(now=19:00 已收工,口径不变)', () => {
+    // v1.3.4-patch1:now=19:00,merged={10-16},已工作 = 360(封顶)
+    // effectiveSlack = 午休 [720, 780) clip 到 [600, 960] → 60; 摸鱼 [840, 862) → 22
+    // netMinutes = 360 - (60+22) + 0 + 0 = 278(同旧口径)
+    const now = date(2026, 7, 31, 19, 0, 0);
     const cfg = { ...baseConfig, startTime: '10:00', endTime: '16:00', lunchEnabled: true };
     const sessions = [makeSession('2026-08-31', 14, 0, 14, 22)];
     const r = computeNetHours({
       date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
     });
-    // gross = 360, lunch = 60(12:00-13:00 落 10-16), slack = 22, union = 60+22 = 82(不重叠)
     expect(r.grossMinutes).toBe(360);
     expect(r.slackUnionLunch).toBe(82);
     expect(r.netMinutes).toBe(278);
@@ -883,7 +902,9 @@ describe('computeNetHours · 净工时推导', () => {
       date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
     });
     expect(r.slackingMinutes).toBe(30);
-    expect(r.netMinutes).toBe(510);
+    // merged {09-18},mergeStart=540,winEnd=720
+    // 摸鱼 [1350, 1380) clip → 空
+    expect(r.netMinutes).toBe(180);
   });
 
   it('日间摸鱼 session 不标记 nightShift', () => {
@@ -894,7 +915,8 @@ describe('computeNetHours · 净工时推导', () => {
       date: now, config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
     });
     expect(r.slackingMinutes).toBe(30);
-    expect(r.netMinutes).toBe(510);
+    // 摸鱼 [600, 630) clip 到 [540, 720] → 30min
+    expect(r.netMinutes).toBe(150);
   });
 
   // v1.3.3 patch3·加班 session 不计入摸鱼扣除
@@ -915,7 +937,8 @@ describe('computeNetHours · 净工时推导', () => {
     });
     expect(r.slackingMinutes).toBe(0); // 加班不算摸鱼
     expect(r.overtimeBonus).toBe(60);  // patch4:加班 session × multiplier=1 → 计入 60 min
-    expect(r.netMinutes).toBe(600);    // 540 (gross-lunch) + 60 (加班加成)
+    // 已工作 180 + 加班加成 60
+    expect(r.netMinutes).toBe(240);
   });
 
   // v1.3.3 patch3·加班日:夜班场景自动 ×1.5,日间不自动加成
@@ -1301,7 +1324,9 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     lunchEnabled: true,
   };
   const dateKey = '2026-08-30';
-  const now = new Date('2026-08-30T10:00:00');
+  // v1.3.4-patch1:测试 now=19:00(已收工),此时 effectiveGross=gross=540
+  //   → 新旧算法结果一致,无需修改期望值
+  const now = new Date('2026-08-30T19:00:00');
 
   it('普通工作日:添加 30 min 加班 → netMinutes 同步增加', () => {
     // 基线:无加班记录
@@ -1442,5 +1467,468 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
       ],
     });
     expect(r.overtimeBonus).toBeCloseTo(90, 1);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.4-patch1 · 净工时实时累计(口径改造)
+// ══════════════════════════════════════════════════════════════
+describe('computeNetHours · 净工时实时累计 (v1.3.4-patch1)', () => {
+  // baseConfig:startTime=09:00, endTime=18:00, lunchEnabled=false
+  // merged={09:00-18:00}, mergeStart=540 (09:00)
+  // 时间线:
+  //   08:00 工时前 → 0
+  //   09:30 已工作 30min → 30
+  //   11:00 已工作 2h → 120
+  //   12:30 午休时段内(若启用 lunch)→ clip 后午休部分发生
+  //   13:30 午休后 → 扣 1h 午休
+  //   19:00 收工 → 封顶 gross - lunch
+
+  it('工时前(now=08:00,早于 09:00)→ netMinutes = 0', () => {
+    const now = date(2026, 7, 31, 8, 0, 0);
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r.netMinutes).toBe(0);
+  });
+
+  it('刚开工 30min(now=09:30)→ netMinutes = 30', () => {
+    const now = date(2026, 7, 31, 9, 30, 0);
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r.netMinutes).toBe(30);
+  });
+
+  it('工时段内 2h(now=11:00)→ netMinutes = 120', () => {
+    const now = date(2026, 7, 31, 11, 0, 0);
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r.netMinutes).toBe(120);
+  });
+
+  it('午休时段内(now=12:30 + lunchEnabled)→ 已工作 3.5h,clip 后 30min 午休发生 = 180', () => {
+    const now = date(2026, 7, 31, 12, 30, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: now,
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    // 已工作 210min(09:00-12:30),mergeStart=540,winEnd=750
+    // clip [540, 750] 与午休 [720, 780] 求交 = [720, 750] = 30min
+    expect(r.netMinutes).toBe(180);
+    expect(r.lunchMinutes).toBe(60); // 字段不变(段×午休窗口 union)
+  });
+
+  it('午休结束(now=13:30 + lunchEnabled)→ 已工作 270min,扣 60min 午休 = 210', () => {
+    const now = date(2026, 7, 31, 13, 30, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: now,
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    // 已工作 270min(09:00-13:30),winEnd=810
+    // clip [540, 810] 与午休 [720, 780] 求交 = [720, 780] = 60min
+    expect(r.netMinutes).toBe(270 - 60);
+  });
+
+  it('收工后(now=19:00)→ netMinutes = gross - lunch = 480', () => {
+    const now = date(2026, 7, 31, 19, 0, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: now,
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    // 已工作封顶到 gross=540,clip [540, 1080] 与午休 [720, 780] 求交 = 60
+    expect(r.netMinutes).toBe(540 - 60);
+  });
+
+  it('收工后 + 加班日 multiplier=1.5 → 已工作 540 - 60 + 270 = 750', () => {
+    const now = date(2026, 7, 31, 19, 0, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const overrides: DayOverrides = {
+      '2026-08-31': { type: 'paid_overtime', multiplier: 1.5, segments: null, nightShift: false },
+    };
+    const r = computeNetHours({
+      date: now,
+      config: cfg,
+      overrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r.netMinutes).toBe(540 - 60 + 540 * 0.5);
+  });
+
+  it('工时段内 + 10min 摸鱼(now=10:30,session 10:00-10:10)→ 已工作 90 - 10 = 80', () => {
+    const now = date(2026, 7, 31, 10, 30, 0);
+    const sessions = [makeSession('2026-08-31', 10, 0, 10, 10)];
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: sessions,
+    });
+    // 已工作 90min(09:00-10:30),clip [540, 630] 与摸鱼 [600, 610] 求交 = [600, 610] = 10min
+    expect(r.netMinutes).toBe(90 - 10);
+    expect(r.slackingMinutes).toBe(10); // 字段不变
+  });
+
+  it('工时前 + 午休段(now=08:00 + lunchEnabled)→ netMinutes = 0,午休不预扣', () => {
+    const now = date(2026, 7, 31, 8, 0, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: now,
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    // effectiveGross=0,午休 clip 到 [540, 540] → 空 → 0
+    expect(r.netMinutes).toBe(0);
+    expect(r.lunchMinutes).toBe(60); // 字段不变(段与午休窗口的 union)
+  });
+
+  it('跨天凌晨段 22-06 + 昨日 override + now=02:00 → 已工作 2h + 夜班加成 4h = 360', () => {
+    // 昨日 override 22:00-06:00,合并昨日跨天段到今日坐标系
+    // merged 含 [{00:00, 06:00}],mergeStart=0
+    // now=02:00,nowMin=120,elapsedWorkedMin=120
+    // winEnd = 0 + 120 = 120
+    // nightBonus = nightShiftMinutes(segs) × 0.5 = 480 × 0.5 = 240
+    // netMinutes = 120 + 0 + 0 + 240 = 360
+    const now = date(2026, 7, 31, 2, 0, 0);
+    const overrides: DayOverrides = {
+      '2026-08-30': {
+        type: 'work', multiplier: 1, nightShift: true,
+        segments: [{ start: '22:00', end: '06:00' }],
+      },
+    };
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig,
+      overrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r.netMinutes).toBe(120 + 240);
+    expect(r.grossMinutes).toBe(480);
+    expect(r.nightBonus).toBe(240);
+  });
+
+  it('净工时随时间线性增长(09:00→12:00 vs 13:00→17:00)', () => {
+    // 09:00-12:00 已工作 180min,无扣除 → 180
+    // 17:00 已工作 480min,扣 1h 午休 → 420
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r1 = computeNetHours({
+      date: date(2026, 7, 31, 12, 0, 0),
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r1.netMinutes).toBe(180); // 12:00 还没到午休结束
+
+    const r2 = computeNetHours({
+      date: date(2026, 7, 31, 17, 0, 0),
+      config: cfg,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    // 17:00 已工作 480min,扣 1h 午休 = 420
+    expect(r2.netMinutes).toBe(480 - 60);
+
+    // r2 > r1 → 时间增长 → 净工时增长
+    expect(r2.netMinutes).toBeGreaterThan(r1.netMinutes);
+  });
+
+  it('收工封顶:连续两个时间点(now=19:00 和 now=20:00)→ netMinutes 一致', () => {
+    // 已收工 → effectiveGross 封顶到 gross,后续不再变化
+    const r1 = computeNetHours({
+      date: date(2026, 7, 31, 19, 0, 0),
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    const r2 = computeNetHours({
+      date: date(2026, 7, 31, 20, 0, 0),
+      config: baseConfig,
+      overrides: noOverrides,
+      holidays: emptyHolidays,
+      slackingSessions: [],
+    });
+    expect(r1.netMinutes).toBe(r2.netMinutes);
+    expect(r1.netMinutes).toBe(540); // gross,无扣
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.4-patch2 · dashboard 2×2 实时累计字段(grossElapsed/lunchElapsed/slackingElapsed/overtimeElapsed)
+// ══════════════════════════════════════════════════════════════
+describe('computeNetHours · dashboard 实时累计字段 (v1.3.4-patch2)', () => {
+  // baseConfig:startTime=09:00, endTime=18:00, lunchEnabled=false
+  // 启用午休测试时显式 { ...baseConfig, lunchEnabled: true }
+
+  // ── grossElapsed ──
+  it('grossElapsed: 工时前 08:00 → 0', () => {
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 8, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(0);
+  });
+
+  it('grossElapsed: 工时中 10:00 → 60min', () => {
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 10, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(60);
+  });
+
+  it('grossElapsed: 午休中 12:30(默认无 lunch)→ 210min(含午休时段,因段不扣)', () => {
+    // 默认 baseConfig.lunchEnabled=false → 段 [09:00-18:00] 整段都算"已工作"
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 12, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(210);
+  });
+
+  it('grossElapsed: 收工后 19:00 → 540min(封顶 gross)', () => {
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 19, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(540);
+  });
+
+  // ── lunchElapsed ──
+  it('lunchElapsed: lunchEnabled + 11:00(午休前)→ 0', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 11, 0, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(0);
+  });
+
+  it('lunchElapsed: lunchEnabled + 12:30(午休中)→ 30min', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 12, 30, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(30);
+  });
+
+  it('lunchElapsed: lunchEnabled + 13:00(午休结束)→ 60min', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 13, 0, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(60);
+  });
+
+  it('lunchElapsed: lunchEnabled + 19:00(收工)→ 60min(封顶)', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 19, 0, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(60);
+  });
+
+  it('lunchElapsed: lunchEnabled + 工时前 08:00 → 0(不预扣)', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 8, 0, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(0);
+  });
+
+  it('lunchElapsed: lunchEnabled=false → 永远 0', () => {
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 12, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(0);
+  });
+
+  // ── slackingElapsed(已结束 session) ──
+  it('slackingElapsed: 工时中 10:30 + session 10:00-10:10(已结束)→ 10min', () => {
+    const sessions = [makeSession('2026-08-31', 10, 0, 10, 10)];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 10, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingElapsed).toBe(10);
+  });
+
+  // ── slackingElapsed(进行中 session) ──
+  it('slackingElapsed: 进行中 session(10:00 至今)→ 按 now-startTs 实时累加', () => {
+    // 构造进行中 session:startTs=10:00, endTs=null
+    const now = date(2026, 7, 31, 10, 30, 0);
+    const startTs = new Date(2026, 7, 31, 10, 0, 0).getTime();
+    const liveSession: SlackingSession = {
+      id: 'live', dateKey: '2026-08-31', label: 'slack',
+      startTs, endTs: null, nightShift: false,
+    };
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [liveSession],
+    });
+    // 30 分钟摸鱼(进行中实时落地)
+    expect(r.slackingElapsed).toBe(30);
+  });
+
+  it('slackingElapsed: 工时前 08:00 + session 10:00-10:30(已结束)→ 0(clip 后不在窗口)', () => {
+    const sessions = [makeSession('2026-08-31', 10, 0, 10, 30)];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 8, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    // 已工作 = 0,clip [540, 540] → 空 → 0
+    expect(r.slackingElapsed).toBe(0);
+  });
+
+  it('slackingElapsed: 收工后 19:00 + session 10:00-10:30 → 30min(封顶到 session 总长)', () => {
+    const sessions = [makeSession('2026-08-31', 10, 0, 10, 30)];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 19, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingElapsed).toBe(30);
+  });
+
+  it('slackingElapsed: overtime/other label 不计入', () => {
+    const start = new Date(2026, 7, 31, 10, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 10, 30, 0).getTime();
+    const sessions: SlackingSession[] = [
+      { id: 'ot', dateKey: '2026-08-31', label: 'overtime', startTs: start, endTs: end, nightShift: false },
+      { id: 'other', dateKey: '2026-08-31', label: 'other', startTs: start, endTs: end, nightShift: false, customLabel: '厕所' },
+    ];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 10, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingElapsed).toBe(0);
+  });
+
+  // ── overtimeElapsed(用户 overtime session 累计) ──
+  it('overtimeElapsed: 工时段内无 session → 0', () => {
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 12, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.overtimeElapsed).toBe(0);
+  });
+
+  it('overtimeElapsed: session 19:00-20:00(已结束)→ 60min', () => {
+    const start = new Date(2026, 7, 31, 19, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const sessions: SlackingSession[] = [
+      { id: 'ot', dateKey: '2026-08-31', label: 'overtime', startTs: start, endTs: end, nightShift: false },
+    ];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 19, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.overtimeElapsed).toBe(60);
+  });
+
+  it('overtimeElapsed: 进行中 session(19:00 至今)→ 实时累加', () => {
+    const startTs = new Date(2026, 7, 31, 19, 0, 0).getTime();
+    const sessions: SlackingSession[] = [
+      { id: 'live-ot', dateKey: '2026-08-31', label: 'overtime', startTs, endTs: null, nightShift: false },
+    ];
+    const now = date(2026, 7, 31, 19, 30, 0);
+    const r = computeNetHours({
+      date: now,
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.overtimeElapsed).toBe(30);
+  });
+
+  it('overtimeElapsed: 跨夜班 session 20:00-23:30 → dayMin+nightMin 累加', () => {
+    // 20:00-23:30 = 210min,拆 dayMin=120(20-22)+nightMin=90(22-23:30)
+    const start = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 23, 30, 0).getTime();
+    const sessions: SlackingSession[] = [
+      { id: 'ot', dateKey: '2026-08-31', label: 'overtime', startTs: start, endTs: end, nightShift: true },
+    ];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 23, 30, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.overtimeElapsed).toBe(210);
+  });
+
+  it('overtimeElapsed: slack/other session 不计入', () => {
+    const start = new Date(2026, 7, 31, 19, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const sessions: SlackingSession[] = [
+      { id: 's', dateKey: '2026-08-31', label: 'slack', startTs: start, endTs: end, nightShift: false },
+      { id: 'o', dateKey: '2026-08-31', label: 'other', startTs: start, endTs: end, nightShift: false },
+    ];
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 20, 0, 0),
+      config: baseConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.overtimeElapsed).toBe(0);
+  });
+
+  // ── 4 字段总和:互斥累加(收工后) ──
+  it('4 字段组合(收工后 19:00 + lunchEnabled + 已结束 1h 摸鱼 + 已结束 1h 加班)→ 校验互斥', () => {
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const slackSession: SlackingSession = {
+      id: 's', dateKey: '2026-08-31', label: 'slack',
+      startTs: new Date(2026, 7, 31, 10, 0, 0).getTime(),
+      endTs: new Date(2026, 7, 31, 11, 0, 0).getTime(),
+      nightShift: false,
+    };
+    const otSession: SlackingSession = {
+      id: 'ot', dateKey: '2026-08-31', label: 'overtime',
+      startTs: new Date(2026, 7, 31, 19, 0, 0).getTime(),
+      endTs: new Date(2026, 7, 31, 20, 0, 0).getTime(),
+      nightShift: false,
+    };
+    const r = computeNetHours({
+      date: date(2026, 7, 31, 19, 0, 0),
+      config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [slackSession, otSession],
+    });
+    // grossElapsed = 540(封顶)
+    // lunchElapsed = 60
+    // slackingElapsed = 60(10:00-11:00 在已工作窗口内)
+    // overtimeElapsed = 60(19:00-20:00)
+    expect(r.grossElapsed).toBe(540);
+    expect(r.lunchElapsed).toBe(60);
+    expect(r.slackingElapsed).toBe(60);
+    expect(r.overtimeElapsed).toBe(60);
   });
 });

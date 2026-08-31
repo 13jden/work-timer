@@ -265,6 +265,16 @@ export type SlackingSessions = TimeSessions;
 
 /**
  * 净工时推导明细,供 UI 展示
+ *
+ * v1.3.4-patch2 扩展:4 张 dashboard 卡片所需的"已发生"实时累计字段。
+ * - `*Minutes` 系列:**全天总数**(UI 仅用于"已收工"场景对照/详情页 footer)
+ * - `*Elapsed` 系列:**已发生**(实时累加,dashboard 2×2 主用)
+ *
+ * 关系:
+ *   grossElapsed   = min(elapsedWorkedMin, grossMinutes)         // ≤ grossMinutes
+ *   lunchElapsed   = 已发生午休(lunch 时段 ∩ 已工作窗口)
+ *   slackingElapsed = 已发生摸鱼(含进行中 session,endTs===null 按 now 算)
+ *   overtimeElapsed = 用户 overtime session 累计(含进行中 dayMin + nightMin)
  */
 export interface NetHoursBreakdown {
   /** 总工时(分钟,跨天段 union 去重叠) */
@@ -283,4 +293,14 @@ export interface NetHoursBreakdown {
   nightShiftFlag: boolean;
   /** 净工时(分钟)= gross - slackUnionLunch + overtimeBonus + nightBonus */
   netMinutes: number;
+
+  // ── v1.3.4-patch2 新增:实时累计字段 ──
+  /** 已工作分钟数(已含午休时段,封顶 grossMinutes) */
+  grossElapsed: number;
+  /** 已发生午休分钟数(0..lunchMinutes) */
+  lunchElapsed: number;
+  /** 已发生摸鱼分钟数(含进行中 session,按 now 实时累加) */
+  slackingElapsed: number;
+  /** 用户 overtime session 累计分钟数(含进行中 dayMin + nightMin) */
+  overtimeElapsed: number;
 }

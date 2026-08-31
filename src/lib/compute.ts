@@ -764,15 +764,139 @@ export function progressPct(
   return Math.min((worked / totalWorkMin) * 100, 100);
 }
 
+/**
+ * v1.3.4-patch1:截至 now 时刻,已工作多少分钟(基于 merged segments,跨天段自动处理)
+ *
+ * 算法要点:
+ *   1. segs 优先从昨日跨天段 entry 读取(跨天班次跨日,班次的"前半段"属于昨日);
+ *      否则回退到今日 entry / config 默认段。
+ *   2. merged 是 unionSegments 后的段列表,跨天段会被 unionSegments 拆成 [{00:00, endDay), {startEve, 24:00)}]
+ *   3. 跨天段识别:merged[0].start=00:00 且 merged[1].end=24:00 → 跨天班次
+ *   4. 已工作 = 在 mergedAll(今日 merged ∪ 昨日跨天段后半段)中,now 落在某段内的部分
+ *      - 跨天班次(now=12:00 等"中段")→ worked=0(班次未到/已收工,等价于今日还没开始)
+ *      - 跨天班次(now 在某段内,如 02:00 在 [00:00, 06:00))→ worked=nowMin
+ *      - 普通班次 → 标准累加(now 在某段内 → 当前段进度;前面段已收工)
+ *
+ * 边界:
+ *   - 工时前 → 0
+ *   - 工时段内 → nowMin - firstStartAfter(累加前面的整段)
+ *   - 已收工 → totalSegmentsMinutes(segs)(封顶)
+ *   - 跨天凌晨(22:00-06:00 跨天段,now=02:00)→ 2h = 120min
+ */
+function elapsedWorkedMinutes(
+  now: Date,
+  config: Config,
+  overrides: DayOverrides,
+): number {
+  const dateKey = formatDateKey(now);
+  const entry = getDayOverride(overrides, dateKey);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yKey = formatDateKey(yesterday);
+  const yEntry = getDayOverride(overrides, yKey);
+
+  // 跨天班次优先级:昨日跨天段 entry.segments > 今日 entry.segments > config fallback
+  // 理由:用户设了 22:00-06:00 夜班班次,凌晨 02:00 仍在班次内,今日 default 段不应干扰
+  const segs =
+    yEntry && yEntry.segments && yEntry.segments.length > 0
+      ? yEntry.segments
+      : getEffectiveSegments(config, entry);
+
+  const merged = unionSegments(segs);
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+
+  // 昨日跨天段 push(只取 split 后的 [00:00, end) 后半段)
+  const yesterdaySegments: WorkSegment[] = [];
+  if (yEntry && yEntry.segments && yEntry.segments.length > 0) {
+    for (const seg of yEntry.segments) {
+      for (const s of splitSegment(seg)) {
+        if (toMinutes(s.start) === 0) {
+          yesterdaySegments.push(s);
+        }
+      }
+    }
+  }
+  const mergedAll = unionSegments([...merged, ...yesterdaySegments]);
+
+  let worked = 0;
+
+  // 跨天班次识别:merged[0] 从 00:00 开始 且 merged[1] 以 24:00 结束
+  const hasCrossDay =
+    merged.length >= 2 &&
+    toMinutes(merged[0]!.start) === 0 &&
+    merged[1]!.end === '24:00';
+
+  if (hasCrossDay) {
+    // 跨天班次:只在 now 落在某段内时才计 work(中段和刚收工都算 0)
+    //   - 物理时间 02:00 在 [00:00, 06:00) 内 → worked = 120(今日凌晨段已工作 2h)
+    //   - 物理时间 22:00 在 [22:00, 24:00) 内 → worked = 0(新一轮刚开始)
+    //   - 物理时间 12:00 不在任何段内 → worked = 0(班次中段)
+    //   - 物理时间 06:00 不在 [00:00, 06:00) 右开区间,也不在 [22:00, 24:00) → worked = 0
+    for (const seg of mergedAll) {
+      const startMin = toMinutes(seg.start);
+      const endMin = seg.end === '24:00' ? 24 * 60 : toMinutes(seg.end);
+      if (nowMin >= startMin && nowMin < endMin) {
+        worked = nowMin - startMin;
+        break;
+      }
+    }
+  } else {
+    // 普通多段 / 单段(可能含昨日跨天段后半段):标准遍历
+    for (const seg of mergedAll) {
+      const startMin = toMinutes(seg.start);
+      const endMin = seg.end === '24:00' ? 24 * 60 : toMinutes(seg.end);
+      if (nowMin >= startMin && nowMin < endMin) {
+        // 当前在段内:已工作 = now - start
+        worked += nowMin - startMin;
+        break;
+      } else if (nowMin >= endMin) {
+        // 段已结束:累加整段
+        worked += endMin - startMin;
+      } else {
+        // 段未开始:后面的段也不用看了
+        break;
+      }
+    }
+  }
+
+  const gross = totalSegmentsMinutes(segs);
+  return Math.min(worked, gross);
+}
+
+/**
+ * v1.3.4-patch1:把一组 [startMin, endMin) 区间 clip 到 [startMin, endMax] 内的总分钟数
+ *
+ * 用于把"全天的摸鱼∪午休 union"裁剪到"已工作时间"窗口内,确保工时前不误扣。
+ *
+ * 算法:对每个区间求与 [startOffset, endMax] 的交集,合并后求总长。
+ */
+function clipIntervalsToElapsed(
+  intervals: Array<{ startMin: number; endMin: number }>,
+  startOffset: number,
+  endMax: number,
+): number {
+  if (endMax <= startOffset || intervals.length === 0) return 0;
+  const clipped: Array<{ startMin: number; endMin: number }> = [];
+  for (const it of intervals) {
+    const start = Math.max(it.startMin, startOffset);
+    const end = Math.min(it.endMin, endMax);
+    if (end > start) clipped.push({ startMin: start, endMin: end });
+  }
+  return intervalsUnionTotal(clipped);
+}
+
 // ════════════════════════════════════════════════════════════
 // 净工时(v1.3 新增)
 // ════════════════════════════════════════════════════════════
 
 /**
  * 把摸鱼 sessions 转成 (startMin, endMin) 区间列表(基于 dateKey 0:00-24:00)
+ *
+ * v1.3.4-patch2:加 `nowTs` 参数,endTs===null 的进行中 session 按 nowTs 算落地结束时间。
+ * 这让 `slackingElapsed`(dashboard "已发生摸鱼"卡片)能正确显示进行中摸鱼的实时分钟数。
  */
 function sessionsToIntervals(
   sessions: SlackingSession[],
+  nowTs: number = Date.now(),
 ): Array<{ startMin: number; endMin: number }> {
   const out: Array<{ startMin: number; endMin: number }> = [];
   for (const s of sessions) {
@@ -780,9 +904,8 @@ function sessionsToIntervals(
     //   - overtime(加班):是工作时间的一部分,不扣
     //   - other(其他):中性,不扣
     if (s.label !== 'slack') continue;
-    if (s.endTs === null) continue; // 进行中跳过
     const startDate = new Date(s.startTs);
-    const endDate = new Date(s.endTs);
+    const endDate = s.endTs === null ? new Date(nowTs) : new Date(s.endTs);
     // 跨 00:00 截断(PRD 边界 #3)
     const dayStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
@@ -819,7 +942,22 @@ function intervalsUnionTotal(intervals: Array<{ startMin: number; endMin: number
 /**
  * 计算当日净工时
  *
- * netMinutes = grossMinutes - slackUnionLunch + overtimeBonus + nightBonus
+ * v1.3.4-patch1 改造:netMinutes 改为**实时累计**口径
+ *
+ * ```
+ * effectiveGross = min(elapsedWorkedMinutes, grossMinutes)
+ * effectiveSlack = min(slackUnionLunch, effectiveGross)   // 已发生的扣除不超已工作
+ * netMinutes     = effectiveGross - effectiveSlack + overtimeBonus + nightBonus
+ * ```
+ *
+ * 行为差异(vs 旧版本):
+ *   - 工时前(now 早于第一段) → netMinutes = overtimeBonus + nightBonus(可能为 0)
+ *   - 工时段内 → netMinutes 随时间线性增长
+ *   - 收工后(now 晚于最后一段) → effectiveGross 封顶到 grossMinutes,后续不再增长
+ *   - 跨天段(22:00-06:00 跨天,now=02:00)→ 已工作 = now - 0,正常累计
+ *
+ * 注意:slackingIntervals 只算已结束 session(进行中跳过),语义天然对齐"已发生的扣除"。
+ * lunchOverlapMinutes 计算段与午休窗口的 union,**仍然需要 clip 到已工作时间**(避免工时前就扣 60min 午休)。
  */
 export function computeNetHours(input: {
   date: Date;
@@ -834,12 +972,26 @@ export function computeNetHours(input: {
 
   const dateKey = formatDateKey(date);
   const entry = getDayOverride(overrides, dateKey);
-  const segs = getEffectiveSegments(config, entry);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yKey = formatDateKey(yesterday);
+  const yEntry = getDayOverride(overrides, yKey);
+
+  // 跨天班次优先级:昨日跨天段 entry.segments > 今日 entry.segments > config fallback
+  // (与 elapsedWorkedMinutes 保持一致:用户设了 22:00-06:00 夜班班次,凌晨 02:00 仍在班次内,
+  //  今日 default 段不应干扰"夜班加成 / gross" 等计算)
+  const segs =
+    yEntry && yEntry.segments && yEntry.segments.length > 0
+      ? yEntry.segments
+      : getEffectiveSegments(config, entry);
 
   const grossMinutes = totalSegmentsMinutes(segs);
 
+  // v1.3.4-patch1:已工作分钟数(实时累计)
+  const elapsedWorkedMin = elapsedWorkedMinutes(now, config, overrides);
+  const merged = unionSegments(segs);
+
   // 摸鱼
-  const slackingIntervals = sessionsToIntervals(slackingSessions);
+  const slackingIntervals = sessionsToIntervals(slackingSessions, now.getTime());
   const slackingMinutes = intervalsUnionTotal(slackingIntervals);
 
   // 午休
@@ -854,6 +1006,18 @@ export function computeNetHours(input: {
     unionIntervals.push({ startMin: ls, endMin: ls + config.lunchMinutes });
   }
   const slackUnionLunch = intervalsUnionTotal(unionIntervals);
+
+  // v1.3.4-patch1:净工时口径改造
+  // effectiveGross = 已工作(封顶到 gross,单位:分钟)
+  // mergeStart = merged segments 的最早起点(分钟,从 00:00 起算;跨天段可能从 0 开始)
+  // 有效时间窗口 = [mergeStart, mergeStart + effectiveGross]
+  // effectiveSlack = 把"全天摸鱼∪午休 union"clip 到该窗口内
+  //   - 工时前(午休还没到):union 在窗口外 → 不预扣 ✓
+  //   - 已过午休:union 与窗口求交 → 正常扣 ✓
+  const effectiveGross = Math.min(elapsedWorkedMin, grossMinutes);
+  const mergeStart = merged.length > 0 ? toMinutes(merged[0]!.start) : 0;
+  const effectiveWindowEnd = mergeStart + effectiveGross;
+  const effectiveSlack = clipIntervalsToElapsed(unionIntervals, mergeStart, effectiveWindowEnd);
 
   // 加班加成(v1.3.3 patch3 + patch5):
   //   - 夜班场景(夜班时刻或夜班段覆盖)→ 自动 ×0.5,**只算夜间段部分**(22:00-06:00),不污染日间
@@ -882,11 +1046,58 @@ export function computeNetHours(input: {
     split.nightMin * (isOvertimeDay ? multiplier : 1) * 1.5;
   const overtimeBonus = Math.max(nightAutoBonus, manualBonus) + userOvertimeBonus;
 
-  // 夜班加权
-  const nightShiftFlag = entry?.nightShift === true;
-  const nightBonus = nightShiftFlag ? nightShiftMinutes(segs) * 0.5 : 0;
+  // 夜班加权(v1.3.4-patch1)
+  // - 夜班标志可能在今日 entry 或昨日跨天段 entry(跨天班次的前半段属于昨日)
+  // - 夜班加成基数:看标志位来自哪个 entry,就用哪个 entry 的 segments 计算夜间段分钟数
+  const nightShiftToday = entry?.nightShift === true;
+  const nightShiftYesterday = yEntry?.nightShift === true;
+  const nightShiftFlag = nightShiftToday || nightShiftYesterday;
+  const segsForNightBonus = nightShiftToday
+    ? segs
+    : (nightShiftYesterday ? getEffectiveSegments(config, yEntry) : segs);
+  const nightBonus = nightShiftFlag ? nightShiftMinutes(segsForNightBonus) * 0.5 : 0;
 
-  const netMinutes = grossMinutes - slackUnionLunch + overtimeBonus + nightBonus;
+  // v1.3.4-patch1:净工时 = 已工作 - 已发生的扣除 + 加班加成 + 夜班补偿
+  const netMinutes = effectiveGross - effectiveSlack + overtimeBonus + nightBonus;
+
+  // ── v1.3.4-patch2:实时累计字段(dashboard 2×2 主用) ──
+  // 全部按 now 实时算,进行中 session 也计入
+
+  // grossElapsed = 已工作分钟数(封顶到 gross)
+  // 逻辑:工时前 = 0,工时段内线性增长,收工后 = gross
+  const grossElapsed = effectiveGross;
+
+  // lunchElapsed = 已发生午休分钟数
+  // 算法:lunch 段 [ls, le) clip 到 [mergeStart, mergeStart + effectiveGross]
+  let lunchElapsed = 0;
+  if (config.lunchEnabled) {
+    const ls = toMinutes(config.lunchStart);
+    const le = ls + config.lunchMinutes;
+    const start = Math.max(ls, mergeStart);
+    const end = Math.min(le, mergeStart + effectiveGross);
+    if (end > start) lunchElapsed = end - start;
+  }
+
+  // slackingElapsed = 已发生摸鱼(只算工时段内已落地的摸鱼 session)
+  // 算法:slackingIntervals clip 到 [mergeStart, mergeStart + effectiveGross]
+  //   - 工时前:session 全部在窗口外 → 0
+  //   - 摸鱼 session 进行中:已落地部分计入
+  //   - 收工后:封顶到 session 总长
+  // 注意:`slackingMinutes`(全天总数)用 sessionsToIntervals 不过滤 endTs;
+  //   但 `slackingIntervals` 来自 sessionsToIntervals(只算已结束),
+  //   所以进行中摸鱼此处**不**算 —— 但 liveMinutesByLabel 算的是含进行中的总长,
+  //   两者不一致。dashboard 4 卡都用同一份"已发生"语义 → 这里 clip 后取的是
+  //   "工时段内已落地的摸鱼分钟数",与 effectiveSlack(lunchUnion)对偶。
+  const slackingElapsed = clipIntervalsToElapsed(
+    slackingIntervals,
+    mergeStart,
+    mergeStart + effectiveGross,
+  );
+
+  // overtimeElapsed = 用户 overtime session 累计(含进行中 day + night)
+  // 直接复用 overtimeSessionSplit(dayMin + nightMin,endTs===null 按 now 算)
+  const otSplit = overtimeSessionSplit(slackingSessions, now.getTime());
+  const overtimeElapsed = otSplit.dayMin + otSplit.nightMin;
 
   return {
     grossMinutes,
@@ -897,6 +1108,11 @@ export function computeNetHours(input: {
     nightBonus,
     nightShiftFlag,
     netMinutes,
+    // v1.3.4-patch2 新增
+    grossElapsed,
+    lunchElapsed,
+    slackingElapsed,
+    overtimeElapsed,
   };
 }
 
@@ -1069,6 +1285,30 @@ export function totalSlackingMinutes(
     if (endMin > startMin) total += endMin - startMin;
   }
   return Math.round(total);
+}
+
+/**
+ * v1.3.4-patch2:某 label session 的"实时累计"分钟数(含进行中)
+ *
+ * 区别于 `totalSlackingMinutes`(只算已结束):本函数对 `endTs === null` 的 session
+ * 按 `nowTs` 实时累加,用于 dashboard 2×2 的"摸鱼 / 加班"卡片显示。
+ *
+ * 注意:不做日界线裁剪,假设调用方传进来的 sessions 已经是当天的;
+ * 跨日的 session 在 computeNetHours 阶段已被 sessionsToIntervals 隐式处理过。
+ */
+export function liveMinutesByLabel(
+  sessions: SlackingSession[],
+  label: TimeRecordLabel,
+  nowTs: number,
+): number {
+  let total = 0;
+  for (const s of sessions) {
+    if (s.label !== label) continue;
+    const end = s.endTs ?? nowTs;
+    const dur = Math.max(0, end - s.startTs);
+    total += dur / 60000;
+  }
+  return total;
 }
 
 // ════════════════════════════════════════════════════════════
