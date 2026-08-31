@@ -1,0 +1,43 @@
+21:33:20 [vite] Internal server error: Failed to resolve import "../store/configStore" from "src/components/NetHoursDashboard/NetHoursDashboard.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: D:/MyProject/work-timer/src/components/NetHoursDashboard/NetHoursDashboard.tsx:13:31
+  17 |  var _s = $RefreshSig$();
+  18 |  import { useMemo, useState } from "react";
+  19 |  import { useConfigStore } from "../store/configStore";
+     |                                  ^
+  20 |  import { useCalendarStore } from "../store/calendarStore";
+  21 |  import { useSlackingStore, todayKey } from "../store/slackingStore";
+      at TransformPluginContext._formatError (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 4)
+      at async TransformPluginContext.transform (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+21:33:20 [vite] Pre-transform error: Failed to resolve import "../store/configStore" from "src/components/NetHoursDashboard/NetHoursDashboard.tsx". Does the file exist?
+21:35:02 [vite] Pre-transform error: Failed to resolve import "../store/configStore" from "src/components/NetHoursDashboard/NetHoursDashboard.tsx". Does the file exist?
+node:internal/fs/watchers:323
+    const error = new UVException({
+                  ^
+
+Error: EBUSY: resource busy or locked, watch 'D:\MyProject\work-timer\src-tauri\target\release\build\app-35f4a74f1218687d\build_script_build-35f4a74f1218687d.exe'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at Object.watch (node:fs:2609:36)
+    at createFsWatchInstance (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42780:17)
+    at setFsWatchListener (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42827:15)
+    at NodeFsHandler._watchWithNodeFs (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42982:14)
+    at NodeFsHandler._handleFile (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43046:23)
+    at NodeFsHandler._addToNodeFs (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43288:21)
+Emitted 'error' event on FSWatcher instance at:
+    at FSWatcher._handleError (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:44481:10)
+    at NodeFsHandler._addToNodeFs (file:///D:/MyProject/work-timer/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43296:18) {
+  errno: -4082,
+  syscall: 'watch',
+  code: 'EBUSY',
+  path: 'D:\\MyProject\\work-timer\\src-tauri\\target\\release\\build\\app-35f4a74f1218687d\\build_script_build-35f4a74f1218687d.exe',
+  filename: 'D:\\MyProject\\work-timer\\src-tauri\\target\\release\\build\\app-35f4a74f1218687d\\build_script_build-35f4a74f1218687d.exe'
+}
+
+Node.js v24.20.0

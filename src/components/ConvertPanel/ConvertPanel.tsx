@@ -113,6 +113,14 @@ export function ConvertPanel({ mode, showAllLink, onShowAll }: ConvertPanelProps
         </div>
       )}
 
+      {/* compact 模式标题（桌面端右栏） */}
+      {mode === 'compact' && (
+        <div className={styles.header}>
+          <h3 className={styles.title}>等价换算</h3>
+          <p className={styles.desc}>按当前时薪，工时可换算成：</p>
+        </div>
+      )}
+
       {/* 列表 */}
       <div className={mode === 'full' ? sharedStyles.list : styles.list}>
         {visibleItems.map((item) => {

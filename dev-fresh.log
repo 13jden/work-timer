@@ -1,0 +1,190 @@
+
+> work-timer@2.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v5.4.21  ready in 457 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: http://192.168.1.10:5174/
+12:27:39 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx
+12:27:48 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx
+12:27:57 [vite] hmr update /src/pages/TodayPage.tsx
+12:28:19 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+12:29:01 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+12:29:09 [vite] hmr update /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx
+12:29:36 [vite] hmr update /src/components/ConvertPanel/ConvertPanel.tsx
+12:29:44 [vite] hmr update /src/components/MiniCalendar/MiniCalendar.tsx
+12:29:58 [vite] hmr update /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+12:30:14 [vite] hmr update /src/pages/CalendarPage.tsx
+12:31:14 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx
+12:31:34 [vite] hmr update /src/pages/TodayPage.tsx
+12:31:42 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+12:31:50 [vite] hmr update /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx
+12:31:57 [vite] hmr update /src/components/ConvertPanel/ConvertPanel.tsx
+12:32:25 [vite] hmr update /src/components/MiniCalendar/MiniCalendar.tsx
+12:32:41 [vite] hmr update /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+12:32:50 [vite] hmr update /src/pages/CalendarPage.tsx
+12:33:00 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+13:14:32 [vite] hmr update /src/components/ConvertPanel/ConvertPanel.tsx
+13:14:32 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+13:14:32 [vite] hmr update /src/components/MiniCalendar/MiniCalendar.tsx
+13:14:32 [vite] hmr update /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:14:32 [vite] hmr update /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx
+13:14:32 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+13:14:32 [vite] hmr update /src/pages/CalendarPage.tsx
+13:14:32 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx
+13:14:32 [vite] hmr update /src/pages/TodayPage.tsx
+13:16:58 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:32:29 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:32:29 [vite] hmr update /src/pages/SettingsPage.tsx
+13:32:29 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:40:59 [vite] hmr update /src/pages/SettingsPage.tsx
+13:40:59 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:40:59 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:42:39 [vite] hmr update /src/pages/SettingsPage.tsx
+13:42:39 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:42:39 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:42:42 [vite] hmr update /src/pages/SettingsPage.tsx
+13:42:42 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+13:42:42 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+15:08:56 [vite] hmr update /src/pages/SettingsPage.tsx
+15:25:59 [vite] hmr update /src/pages/SettingsPage.tsx
+15:35:49 [vite] hmr update /src/pages/SettingsPage.tsx
+15:37:52 [vite] hmr update /src/pages/SettingsPage.tsx
+17:09:54 [vite] hmr update /src/pages/TodayPage.tsx
+17:09:54 [vite] hmr update /src/components/DaySheet/DaySheet.tsx
+17:09:54 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+17:09:54 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+17:09:54 [vite] hmr update /src/pages/SettingsPage.tsx
+17:09:54 [vite] hmr update /src/pages/CalendarPage.tsx
+17:09:54 [vite] hmr update /src/pages/ConvertPage.tsx
+17:09:54 [vite] hmr update /src/pages/SettingsPage.tsx
+17:09:54 [vite] hmr update /src/pages/CalendarPage.tsx
+17:09:54 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/DaySheet/DaySheet.tsx
+17:09:54 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+17:09:54 [vite] hmr update /src/components/DaySheet/DaySheet.tsx
+17:09:54 [vite] hmr update /src/App.tsx
+17:09:54 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+17:09:54 [vite] hmr update /src/pages/ConvertPage.tsx, /src/components/ConvertPanel/ConvertPanel.tsx
+17:09:54 [vite] hmr update /src/pages/CalendarPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TodayPage.tsx, /src/pages/SettingsPage.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/SegmentsEditor/SegmentsEditor.tsx, /src/components/DaySheet/DaySheet.tsx, /src/components/SegmentPicker/SegmentPicker.tsx
+17:09:54 [vite] hmr update /src/App.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopSidebar/DesktopSidebar.tsx, /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/QuoteCard/QuoteCard.tsx, /src/components/SegmentsEditor/SegmentsEditor.tsx, /src/components/DaySheet/DaySheet.tsx, /src/components/ItemSheet/ItemSheet.tsx
+21:17:28 [vite] hmr update /src/components/DaySheet/DaySheet.tsx
+21:17:28 [vite] hmr update /src/pages/TodayPage.tsx
+21:17:28 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+21:17:28 [vite] hmr update /src/pages/SettingsPage.tsx
+21:17:28 [vite] hmr update /src/pages/CalendarPage.tsx
+21:17:28 [vite] hmr update /src/pages/ConvertPage.tsx
+21:17:28 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+21:17:28 [vite] hmr update /src/components/DaySheet/DaySheet.tsx
+21:17:28 [vite] hmr update /src/App.tsx
+21:17:28 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx
+21:17:28 [vite] hmr update /src/pages/CalendarPage.tsx
+21:17:28 [vite] hmr update /src/pages/SettingsPage.tsx
+21:17:28 [vite] hmr update /src/pages/ConvertPage.tsx, /src/components/ConvertPanel/ConvertPanel.tsx
+21:17:28 [vite] hmr update /src/components/TimerCard/TimerCard.tsx
+21:17:28 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/DaySheet/DaySheet.tsx
+21:17:28 [vite] hmr update /src/pages/CalendarPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TodayPage.tsx, /src/pages/SettingsPage.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/SegmentsEditor/SegmentsEditor.tsx, /src/components/DaySheet/DaySheet.tsx, /src/components/SegmentPicker/SegmentPicker.tsx
+21:17:28 [vite] hmr update /src/App.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopSidebar/DesktopSidebar.tsx, /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/GenerateSheet/GenerateSheet.tsx, /src/components/QuoteCard/QuoteCard.tsx, /src/components/SegmentsEditor/SegmentsEditor.tsx, /src/components/DaySheet/DaySheet.tsx, /src/components/ItemSheet/ItemSheet.tsx
+21:24:40 [vite] hmr update /src/App.tsx
+21:24:56 [vite] hmr update /src/App.tsx
+21:26:13 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+21:28:47 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+21:30:27 [vite] hmr update /src/pages/CalendarPage.tsx
+21:30:36 [vite] hmr update /src/pages/CalendarPage.tsx
+21:30:43 [vite] hmr update /src/pages/CalendarPage.tsx
+21:31:00 [vite] hmr update /src/pages/CalendarPage.tsx
+21:31:07 [vite] hmr update /src/pages/CalendarPage.tsx
+21:32:36 [vite] hmr update /src/pages/CalendarPage.tsx
+21:32:46 [vite] hmr update /src/pages/CalendarPage.tsx
+21:33:20 [vite] hmr update /src/pages/TodayPage.tsx
+21:35:02 [vite] hmr update /src/pages/TodayPage.tsx
+21:35:30 [vite] hmr update /src/pages/TodayPage.tsx
+21:35:35 [vite] hmr update /src/components/RecordsPanel/RecordsPanel.tsx
+21:35:43 [vite] hmr update /src/pages/CalendarPage.tsx
+21:57:05 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:00:52 [vite] hmr update /src/pages/CalendarPage.tsx
+22:00:52 [vite] hmr update /src/pages/TodayPage.tsx
+22:00:52 [vite] hmr update /src/pages/TodayPage.tsx
+22:00:52 [vite] hmr update /src/pages/CalendarPage.tsx
+22:00:52 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:00:52 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:00:52 [vite] hmr update /src/App.tsx
+22:00:52 [vite] hmr update /src/App.tsx
+22:00:52 [vite] hmr update /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:00:52 [vite] hmr update /src/components/RecordsPanel/RecordsPanel.tsx
+22:05:35 [vite] hmr update /src/pages/CalendarPage.tsx
+22:05:35 [vite] hmr update /src/pages/TodayPage.tsx
+22:05:35 [vite] hmr update /src/pages/TodayPage.tsx
+22:05:35 [vite] hmr update /src/pages/CalendarPage.tsx
+22:05:35 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:05:35 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:05:35 [vite] hmr update /src/App.tsx
+22:05:35 [vite] hmr update /src/App.tsx
+22:05:35 [vite] hmr update /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:05:35 [vite] hmr update /src/components/RecordsPanel/RecordsPanel.tsx
+22:06:29 [vite] hmr update /src/pages/TodayPage.tsx
+22:06:45 [vite] hmr update /src/pages/TodayPage.tsx
+22:08:34 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:08:49 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:09:11 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:19:26 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:19:26 [vite] hmr update /src/App.tsx
+22:19:26 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:19:26 [vite] hmr update /src/pages/CalendarPage.tsx
+22:19:26 [vite] hmr update /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:19:26 [vite] hmr update /src/components/RecordsPanel/RecordsPanel.tsx
+22:19:26 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:19:26 [vite] hmr update /src/App.tsx
+22:19:26 [vite] hmr update /src/pages/CalendarPage.tsx
+22:19:26 [vite] hmr update /src/pages/TodayPage.tsx
+22:19:26 [vite] hmr update /src/pages/TodayPage.tsx
+22:20:09 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:20:09 [vite] hmr update /src/App.tsx
+22:20:09 [vite] hmr update /src/pages/CalendarPage.tsx
+22:20:09 [vite] hmr update /src/pages/TodayPage.tsx, /src/pages/CalendarPage.tsx, /src/pages/SettingsPage.tsx, /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimerCard/TimerCard.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/ConvertPanel/ConvertPanel.tsx, /src/components/MiniCalendar/MiniCalendar.tsx, /src/components/MonthIncomeProgress/MonthIncomeProgress.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:20:09 [vite] hmr update /src/pages/CalendarPage.tsx
+22:20:09 [vite] hmr update /src/pages/TodayPage.tsx
+22:20:09 [vite] hmr update /src/App.tsx
+22:20:09 [vite] hmr update /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:20:09 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:20:09 [vite] hmr update /src/pages/TodayPage.tsx
+22:20:09 [vite] hmr update /src/components/RecordsPanel/RecordsPanel.tsx
+22:23:41 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:23:46 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:25:28 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:25:55 [vite] hmr update /src/pages/TodayPage.tsx
+22:26:17 [vite] hmr update /src/pages/TodayPage.tsx
+22:26:34 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:26:42 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:26:52 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:26:54 [vite] hmr update /src/components/DesktopRightPanel/DesktopRightPanel.tsx
+22:27:05 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:28:16 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:28:19 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:28:33 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:28:58 [vite] hmr update /src/pages/TodayPage.tsx
+22:29:12 [vite] hmr update /src/components/QuoteCard/QuoteCard.tsx
+22:29:34 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:29:35 [vite] hmr update /src/components/StatCard/StatCard.tsx
+22:29:52 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:29:56 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:35:30 [vite] hmr update /src/components/ConvertPanel/ConvertPanel.tsx
+22:35:41 [vite] hmr update /src/components/ConvertPanel/ConvertPanel.tsx
+22:35:59 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:36:05 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:36:10 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:36:16 [vite] hmr update /src/pages/CalendarPage.tsx
+22:36:21 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:36:24 [vite] page reload docs/plans/tauri-migration/v1.3/task-032-v1.3.5-prd/task-032-v1.3.5-prd.html
+22:36:34 [vite] hmr update /src/pages/CalendarPage.tsx
+22:36:55 [vite] hmr update /src/pages/CalendarPage.tsx
+22:39:37 [vite] hmr update /src/pages/CalendarPage.tsx
+22:43:46 [vite] hmr update /src/pages/CalendarPage.tsx
+22:44:17 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:44:31 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:44:45 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:44:55 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx, /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx, /src/components/RecordsPanel/RecordsPanel.tsx, /src/components/NetHoursDashboard/NetHoursDashboard.tsx
+22:46:05 [vite] hmr update /src/pages/TimeTrackerDetailPage.tsx
+22:46:24 [vite] hmr update /src/components/TimeTrackerWidget/TimeTrackerWidget.tsx

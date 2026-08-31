@@ -6,6 +6,35 @@
   min-width: 0;
 }
 
+/* 桌面端:撑满父容器高度,增大字体 */
+@media (min-width: 1024px) {
+  .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(16px, 3vh, 24px) clamp(16px, 2vw, 22px);
+  }
+
+  .value {
+    font-size: clamp(28px, 5vh, 40px) !important;
+    margin-bottom: clamp(6px, 1.5vh, 10px) !important;
+  }
+
+  .flavor {
+    font-size: clamp(24px, 4.2vh, 32px) !important;
+  }
+
+  .sub {
+    font-size: clamp(11px, 1.3vh, 13px) !important;
+  }
+
+  .extra {
+    font-size: clamp(11px, 1.3vh, 12px) !important;
+    margin-top: clamp(6px, 1.5vh, 10px) !important;
+  }
+}
+
 .income {
   background: var(--accent);
   color: var(--ink);

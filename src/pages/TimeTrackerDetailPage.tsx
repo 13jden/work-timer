@@ -59,11 +59,11 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
-  const sessions = useSlackingStore((s) => s.sessions);
+  const getSessionsByDate = useSlackingStore((s) => s.getSessionsByDate);
   const removeSession = useSlackingStore((s) => s.removeSession);
 
   const dateKey = todayKey(now);
-  const todaySessions = sessions[dateKey] ?? [];
+  const todaySessions = getSessionsByDate(dateKey);
 
   // 净工时
   const net = useMemo(() => computeNetHours({
@@ -351,17 +351,22 @@ function TimeRecordSheet({
     const startTs = parseTimeToTs(dateKey, start);
     const endTs = parseTimeToTs(dateKey, end);
     const payloadCustom = label === 'other' ? customLabel : undefined;
-    if (target) {
-      updateSession(target.id, {
-        label,
-        customLabel: payloadCustom,
-        startTs,
-        endTs,
-      });
-    } else {
-      addPast(dateKey, label, startTs, endTs, payloadCustom);
+    try {
+      if (target) {
+        updateSession(target.id, {
+          label,
+          customLabel: payloadCustom,
+          startTs,
+          endTs,
+        });
+      } else {
+        addPast(dateKey, label, startTs, endTs, payloadCustom);
+      }
+      onClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '保存失败';
+      alert(msg);
     }
-    onClose();
   };
 
   return (

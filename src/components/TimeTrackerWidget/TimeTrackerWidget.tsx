@@ -140,7 +140,12 @@ export function TimeTrackerWidget({ onOpenDetail }: Props) {
     //  - 已过下班 / 未到上班 / 夜班时刻:加班(自愿)
     // v1.3.3 patch5:与 idleLabel 保持一致逻辑(避免 chip 文字与点击行为不一致)
     const autoLabel: TimeRecordLabel = idleLabel;
-    startSession(dateKey, autoLabel);
+    try {
+      startSession(dateKey, autoLabel);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '开始失败';
+      alert(msg);
+    }
   };
 
   const handleStop = () => {

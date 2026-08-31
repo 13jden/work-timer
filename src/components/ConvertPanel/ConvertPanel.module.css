@@ -2,6 +2,29 @@
    ConvertPanel — 桌面端右栏的紧凑型换算列表
    与 ConvertPage 移动端列表样式独立
    ========================================================== */
+.header {
+  margin-bottom: 12px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.3px;
+}
+
+.desc {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin: 0;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+
 .list {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,22 @@
 /**
- * TodayPage — 今日页(Timer + Stats + 摸鱼 Widget)
+ * TodayPage — 今日页
  *
- * v1.3 扩展:
- *   - SlackingWidget 摸鱼卡片
- *   - 详情页路由(通过 showSlackingDetail state)
+ * v1.3.4-patch5 桌面端布局重构:
+ * ┌──────────────────────┬─────────────┐
+ * │   TimerCard (主)     │ QuoteCard   │
+ * │                      ├─────────────┤
+ * │                      │ Worth card  │
+ * ├──────────────────────┴─────────────┤
+ * │   TimeTrackerWidget(摸鱼,全宽)    │
+ * ├───────────────────────────────────┤
+ * │   NetHoursDashboard(4 卡,全宽)   │
+ * └───────────────────────────────────┘
+ *
+ * 右栏(DesktopRightPanel):
+ * - ConvertPanel(等价换算)
+ * - RecordsPanel(时间记录)
+ *
+ * 移动端沿用原纵向流式布局(各组件全宽堆叠)。
  */
 import { useState } from 'react';
 import { useConfigStore } from '../store/configStore';
@@ -11,10 +24,12 @@ import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
 import { effectiveHourlyRate, perSecond, todayEarned } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
+import { useIsDesktop } from '../hooks/useMediaQuery';
 import { TimerCard } from '../components/TimerCard';
 import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
 import { TimeTrackerWidget } from '../components/TimeTrackerWidget';
+import { NetHoursDashboard } from '../components/NetHoursDashboard/NetHoursDashboard';
 import { TimeTrackerDetailPage } from './TimeTrackerDetailPage';
 import styles from './TodayPage.module.css';
 
@@ -35,11 +50,9 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
+  const isDesktop = useIsDesktop();
 
   const earned = todayEarned(now, config, overrides, HOLIDAYS);
-  // v1.3.2 Bug Fix:时薪按当前正在的工作计算
-  // 优先级:override.segments(今天如果有兼职/自定义工时) > config.segmentTemplates > config.startTime/endTime
-  // effectiveHourlyRate 内部走 effectiveDailyRate,已内置 freelance override(优先级:freelanceHourly > freelanceDaily > config.manualDailyRate)
   const hourly = effectiveHourlyRate(now, config, overrides, HOLIDAYS);
   const perSec = perSecond(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
   const coffeeCount = config.coffeePrice > 0 ? earned / config.coffeePrice : 0;
@@ -60,9 +73,58 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
     );
   }
 
+  // ── 移动端:纵向堆叠 ──
+  if (!isDesktop) {
+    return (
+      <div className={styles.page}>
+        {/* TopBar */}
+        <div className={styles.topbar}>
+          <div className={styles.topbarEyebrowRow}>
+            <span className={styles.topbarEyebrow}>today</span>
+            <span className={styles.topbarEnglish}>What does it cost</span>
+            <span className={styles.topbarRight}>{formatDate(now)}</span>
+          </div>
+          <div className={styles.topbarCenter}>今日出售时间</div>
+        </div>
+
+        <div className={styles.timerWrap}>
+          <TimerCard />
+        </div>
+
+        <div className={styles.quoteWrap}>
+          <QuoteCard index={dayOfYear} />
+        </div>
+
+        <div className={styles.statsRow}>
+          <StatCard
+            index="01 / INCOME"
+            value={`¥${earned.toFixed(2)}`}
+            variant="income"
+            sub={`¥${hourly.toFixed(2)} / 小时`}
+            extra={`¥${perSec.toFixed(4)} / 秒`}
+          />
+          <StatCard
+            index="02 / WORTH"
+            value={`${Math.floor(coffeeCount)} 杯`}
+            variant="equivalent"
+            flavor
+            sub={`按 ¥${config.coffeePrice} 算`}
+            extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
+            onClick={onOpenConvert}
+          />
+        </div>
+
+        <div className={styles.slackingWrap}>
+          <TimeTrackerWidget onOpenDetail={() => setShowSlackingDetail(true)} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── 桌面端:TopBar(全宽一行)+ Timer+Quote/Worth 同行 + Widget + Dashboard ──
   return (
-    <div className={styles.page}>
-      {/* ============ TopBar — 两行结构 ============ */}
+    <div className={styles.desktopPage}>
+      {/* Row 0: TopBar 占据整个桌面端一行 */}
       <div className={styles.topbar}>
         <div className={styles.topbarEyebrowRow}>
           <span className={styles.topbarEyebrow}>today</span>
@@ -72,39 +134,35 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
         <div className={styles.topbarCenter}>今日出售时间</div>
       </div>
 
-      {/* ============ TimerCard ============ */}
-      <div className={styles.timerWrap}>
-        <TimerCard />
+      {/* Row 1: TimerCard(左) + Quote/Worth 竖排(右,高度匹配 Timer) */}
+      <div className={styles.topRow}>
+        <div className={styles.timerWrap}>
+          <TimerCard />
+        </div>
+        <div className={styles.sideCol}>
+          <div className={styles.quoteWrap}>
+            <QuoteCard index={dayOfYear} />
+          </div>
+          <StatCard
+            index="02 / WORTH"
+            value={`${Math.floor(coffeeCount)} 杯`}
+            variant="equivalent"
+            flavor
+            sub={`按 ¥${config.coffeePrice} 算`}
+            extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
+            onClick={onOpenConvert}
+          />
+        </div>
       </div>
 
-      {/* ============ QuoteCard (在 Timer 和 Stats 之间) ============ */}
-      <div className={styles.quoteWrap}>
-        <QuoteCard index={dayOfYear} />
-      </div>
-
-      {/* ============ Stats Row (两卡片并排) ============ */}
-      <div className={styles.statsRow}>
-        <StatCard
-          index="01 / INCOME"
-          value={`¥${earned.toFixed(2)}`}
-          variant="income"
-          sub={`¥${hourly.toFixed(2)} / 小时`}
-          extra={`¥${perSec.toFixed(4)} / 秒`}
-        />
-        <StatCard
-          index="02 / WORTH"
-          value={`${Math.floor(coffeeCount)} 杯`}
-          variant="equivalent"
-          flavor
-          sub={`按 ¥${config.coffeePrice} 算`}
-          extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
-          onClick={onOpenConvert}
-        />
-      </div>
-
-      {/* ============ TimeTrackerWidget(v1.3.3 重命名自 SlackingWidget) ============ */}
+      {/* Row 2: 摸鱼 Widget 全宽(移除详情按钮) */}
       <div className={styles.slackingWrap}>
-        <TimeTrackerWidget onOpenDetail={() => setShowSlackingDetail(true)} />
+        <TimeTrackerWidget onOpenDetail={undefined} />
+      </div>
+
+      {/* Row 3: 净工时 Dashboard 全宽 */}
+      <div className={styles.dashboardWrap}>
+        <NetHoursDashboard />
       </div>
     </div>
   );

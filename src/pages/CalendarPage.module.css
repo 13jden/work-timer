@@ -1,7 +1,7 @@
-/* Header:两行结构 */
+/* Header:两行结构（桌面端紧凑） */
 .head {
   width: 100%;
-  padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
+  padding: clamp(12px, 2vh, 16px) clamp(16px, 4vw, 22px) clamp(8px, 1.5vh, 12px);
   display: flex;
   flex-direction: column;
 }
@@ -10,12 +10,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(6px, 1vh, 10px);
+  margin-bottom: clamp(4px, 0.8vh, 6px);
 }
 
 .headEyebrow {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
+  font-size: clamp(8px, 1vh, 10px);
   font-weight: 600;
   letter-spacing: 1.5px;
   color: var(--muted);
@@ -26,7 +26,7 @@
 
 .headEnglish {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
+  font-size: clamp(8px, 1vh, 10px);
   font-weight: 600;
   letter-spacing: 1.5px;
   color: var(--muted);
@@ -37,7 +37,7 @@
 
 .headRight {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
+  font-size: clamp(8px, 1vh, 10px);
   font-weight: 600;
   letter-spacing: 1.5px;
   color: var(--muted);
@@ -49,7 +49,7 @@
 .headTitle {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(24px, 4vh, 30px);
+  font-size: clamp(20px, 3.2vh, 26px);
   font-weight: 400;
   letter-spacing: -0.5px;
   line-height: 1.1;
@@ -86,14 +86,14 @@
 .summary {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  padding: 0 16px;
-  margin-bottom: 16px;
+  gap: 6px;
+  padding: 0 12px;
+  margin-bottom: 12px;
 }
 
 .summaryCard {
   border-radius: var(--r-md);
-  padding: 12px 10px;
+  padding: 8px 8px;
   text-align: center;
   font-family: inherit;
 }
@@ -137,10 +137,10 @@
 /* 已赚右上角小圆点:提示可点击 */
 .earnDot {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--accent-deep);
   animation: earnPulse 1.6s ease-in-out infinite;
@@ -153,18 +153,18 @@
 
 .summaryNum {
   font-family: var(--font-num);
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1;
   font-weight: 300;
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .summaryLbl {
   font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1px;
+  font-size: 8px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
   opacity: 0.6;
 }
@@ -174,12 +174,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 16px 12px;
+  padding: 2px 12px 8px;
 }
 
 .navBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -189,28 +189,28 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   transition: background 0.2s, color 0.2s;
 }
 
 .navTitle {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   color: var(--accent);
   text-transform: uppercase;
   cursor: pointer;
   border: none;
   background: none;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 6px;
   transition: background 0.2s;
 }
 
 /* ── 网格 ───────────────────────────────────── */
 .grid {
-  padding: 0 16px 24px;
+  padding: 0 12px 16px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -218,7 +218,7 @@
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -226,18 +226,18 @@
 .weekdayCell {
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: var(--muted);
   text-transform: uppercase;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 .days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 3px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -248,8 +248,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 12px;
   position: relative;
   background: var(--card);
   border: 1px solid var(--line-soft);
@@ -260,6 +260,22 @@
   max-width: 100%;
   min-width: 0;
   padding: 2px;
+}
+
+/* 桌面端：缩小格子高度 + 放大字体 */
+@media (min-width: 768px) {
+  .day {
+    aspect-ratio: 1.3;
+    font-size: 16px;
+  }
+  
+  .dayNum {
+    font-size: 18px;
+  }
+  
+  .earn {
+    font-size: 12px !important;
+  }
 }
 
 .dayEmpty {
@@ -294,7 +310,7 @@
 /* 金额显示：使用更小的字体确保完整显示 */
 .earn {
   font-family: var(--font-num);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 300;
   opacity: 0.7;
   margin-top: 1px;
@@ -319,16 +335,17 @@
 .dayOverride::after {
   content: '';
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 4px;
-  height: 4px;
+  top: 3px;
+  right: 3px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
   background: var(--accent-deep);
 }
 
 /* ==========================================================
-   v1.3.4 桌面端日历页分栏布局
+   v1.3.4-patch4 桌面端日历页分栏布局
+   右栏 DaySheet 由 DesktopRightPanel 渲染,本组件只负责左 2/3 日历
    ========================================================== */
 
 /* 外层容器 */
@@ -338,7 +355,8 @@
   min-height: 100%;
 }
 
-/* 桌面端分栏:左列(内容) + 右列(内联 DaySheet) */
+/* 桌面端分栏:左列(日历) + 右列(DaySheet 由 DesktopRightPanel 渲染,本组件不输出)
+   pageInline 模式下,左列自然撑满整宽(ContentArea 的 2/3) */
 .pageInline {
   flex-direction: row;
   align-items: flex-start;
@@ -347,27 +365,22 @@
   padding: 0 8px;
 }
 
-/* 左列:原有日历内容 — v1.3.4-patch3:去掉 900px 上限,让它撑满 2/3 */
+/* 左列:日历内容 — 撑满整个 ContentArea 的 2/3(mainCol 在外层 grid 中已是 2fr) */
 .mainCol {
-  flex: 2;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
 }
 
-/* ── 右列:桌面端内联 DaySheet — v1.3.4-patch3:对齐 400px 右栏宽度 ── */
-.inlineSheet {
-  flex: 1;
-  min-width: 400px;
-  max-width: 400px;
-  padding: 20px 18px 20px 14px;
-  position: sticky;
-  top: 0;
-  max-height: 100vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+/* 选中日期高亮(DesktopRightPanel 渲染 DaySheet 时,网格同步高亮) */
+.daySelected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
-/* inlineSheet 内的 DaySheet sheet 去掉手柄(可选) */
-/* .inlineSheet :global([class*="handle"]) { display: none; } */
+.daySelected.dayToday {
+  outline-color: var(--accent);
+}
+
+/* ── v1.3.4-patch4:删除 inlineSheet 相关样式(DaySheet 移到 DesktopRightPanel) ── */

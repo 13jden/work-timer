@@ -1,128 +1,207 @@
 /**
- * DesktopRightPanel — 桌面端三栏布局的右栏（v1.3.4）
+ * DesktopRightPanel — 桌面端三栏布局的右栏（v1.3.4-patch5）
  *
- * 根据当前页面（today / calendar）渲染对应的上下文面板：
+ * - today    → ConvertPanel(等价换算) + RecordsPanel(时间记录)
+ * - calendar → 内联 DaySheet(从 App.tsx 接收 pickedDate)
  *
- * today    → 迷你月历 + 今日详情 + 换算 Top 5
- * calendar → 日历页点选日期的 DaySheet（inline，无 modal 外壳）
- *
- * 点击迷你月历的日期 → onNavigateToCalendar(key: string)
+ * 右栏作为 grid 1fr 单元,宽度 = ContentArea 的 1/3(自动随 Sidebar 收起/展开)。
+ * 内部 overflow-y: auto,所以右侧 panel 独立滚动,不带动主区。
  */
-import { MiniCalendar } from '../MiniCalendar';
+import { useMemo, useState } from 'react';
+import { DaySheet } from '../DaySheet';
+import { RecordsPanel } from '../RecordsPanel/RecordsPanel';
 import { ConvertPanel } from '../ConvertPanel';
+import { GenerateSheet } from '../GenerateSheet';
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
+import { useMonthlyStore } from '../../store/monthlyStore';
 import { HOLIDAYS } from '../../lib/constants';
-import { dailySalary, effectiveHourlyRate, todayEarned, isWorkday, getDayOverride } from '../../lib/compute';
+import { dailySalary, isWorkday } from '../../lib/compute';
 import { formatDateKey } from '../../lib/time';
-import { useNow } from '../../hooks/useNow';
-import { CaretRight } from '@phosphor-icons/react';
+import { Gear } from '@phosphor-icons/react';
 import type { DesktopTabId } from '../DesktopSidebar';
 import styles from './DesktopRightPanel.module.css';
 
-interface TodayDetailProps {
-  onEditDay: () => void;
-}
-
-function TodayDetail({ onEditDay }: TodayDetailProps) {
-  const config = useConfigStore();
-  const overrides = useCalendarStore((s) => s.dayOverrides);
-  const now = useNow(60_000);
-
-  const dateKey = formatDateKey(now);
-  const entry = getDayOverride(overrides, dateKey);
-  const dayType = entry?.type ?? 'work';
-  const multiplier = entry?.multiplier ?? 1;
-
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const daily = dailySalary(year, month, config, overrides, HOLIDAYS);
-  const hourly = effectiveHourlyRate(now, config, overrides, HOLIDAYS);
-  const earned = todayEarned(now, config, overrides, HOLIDAYS);
-  const isWork = isWorkday(now, config, overrides, HOLIDAYS);
-
-  const typeLabel: Record<string, string> = {
-    work: '工作日', paid_overtime: '加班', freelance: '自由/兼职', leave: '请假', rest: '休息日',
-  };
-
-  const timeText = config.salaryMode === 'monthly'
-    ? `${config.startTime}–${config.endTime}`
-    : '见工时模板';
-
-  return (
-    <div className={styles.todayDetail}>
-      <div className={styles.todayDetailHeader}>
-        <span className={styles.todayDetailTitle}>今日详情</span>
-        <button type="button" className={styles.editBtn} onClick={onEditDay}>
-          <CaretRight size={12} weight="bold" />
-          编辑
-        </button>
-      </div>
-
-      <div className={styles.todayDetailRows}>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>类型</span>
-          <span className={styles.detailValue}>{typeLabel[dayType] ?? dayType}{multiplier > 1 ? ` ×${multiplier}` : ''}</span>
-        </div>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>工时</span>
-          <span className={styles.detailValue}>{timeText}</span>
-        </div>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>日薪</span>
-          <span className={styles.detailValue}>¥{daily.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>时薪</span>
-          <span className={styles.detailValue}>¥{hourly.toFixed(2)}/h</span>
-        </div>
-        <div className={styles.detailRow}>
-          <span className={styles.detailLabel}>今日已赚</span>
-          <span className={`${styles.detailValue} ${styles.detailEarn}`}>
-            {isWork ? `¥${earned.toFixed(2)}` : '休息日'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────
-
 interface DesktopRightPanelProps {
   page: DesktopTabId;
+  /** 日历页选中的日期(calendar tab 才用) */
+  pickedDate: Date | null;
+  /** 日历页关闭选中 */
+  onClosePickedDate: () => void;
+  /** 跳转日历页(可选,保留扩展) */
   onNavigateToCalendar?: (dateKey: string) => void;
+  /** 打开设置抽屉 */
+  onOpenSettings?: () => void;
 }
 
-export function DesktopRightPanel({ page, onNavigateToCalendar }: DesktopRightPanelProps) {
-  // 今日页：日历选中日期时跳到日历 tab
-  function handlePickDate(key: string) {
-    onNavigateToCalendar?.(key);
-  }
-
+export function DesktopRightPanel({
+  page,
+  pickedDate,
+  onClosePickedDate,
+  onOpenSettings,
+}: DesktopRightPanelProps) {
+  // ── today tab:Convert(等价换算) + Records(时间记录) ──
   if (page === 'today') {
     return (
       <aside className={styles.panel}>
-        <MiniCalendar onPickDate={handlePickDate} />
+        {/* 右上角设置按钮 */}
+        {onOpenSettings && (
+          <button
+            type="button"
+            className={styles.settingsBtn}
+            onClick={onOpenSettings}
+            title="设置"
+            aria-label="设置"
+          >
+            <Gear size={18} weight="regular" />
+          </button>
+        )}
 
-        <TodayDetail onEditDay={() => onNavigateToCalendar?.('')} />
-
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>等价换算</div>
-          <ConvertPanel mode="compact" showAllLink onShowAll={() => {}} />
+        {/* 等价换算 */}
+        <div className={styles.convertWrap}>
+          <ConvertPanel mode="compact" />
         </div>
+
+        {/* 时间记录 */}
+        <RecordsPanel title="时间记录" />
       </aside>
     );
   }
 
-  // calendar tab: right panel is reserved for DaySheet inline editing
-  // handled by CalendarPage itself, so right panel shows a placeholder
+  // ── calendar tab:内联 DaySheet ──
   return (
     <aside className={styles.panel}>
-      <div className={styles.calHint}>
-        <span>← 点击日历日期</span>
-        <span>在右侧编辑设置</span>
-      </div>
+      <CalendarRightContent
+        pickedDate={pickedDate}
+        onClosePickedDate={onClosePickedDate}
+        onOpenSettings={onOpenSettings}
+      />
     </aside>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CalendarRightContent — 日历 tab 的右栏内容(基于 pickedDate 渲染 DaySheet)
+// ─────────────────────────────────────────────────────────────
+function CalendarRightContent({
+  pickedDate,
+  onClosePickedDate,
+  onOpenSettings,
+}: {
+  pickedDate: Date | null;
+  onClosePickedDate: () => void;
+  onOpenSettings?: () => void;
+}) {
+  const config = useConfigStore();
+  const overrides = useCalendarStore((s) => s.dayOverrides);
+  const setDayOverride = useCalendarStore((s) => s.setDayOverride);
+  const clearOverride = useCalendarStore((s) => s.clearOverride);
+  const year = useCalendarStore((s) => s.year);
+  const month = useCalendarStore((s) => s.month);
+  const setConfig = useConfigStore((s) => s.setConfig);
+  const snapshots = useMonthlyStore((s) => s.snapshots);
+  const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
+
+  const [genOpen, setGenOpen] = useState(false);
+
+  const currentKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const snapshot = snapshots[currentKey];
+
+  const dateKey = pickedDate ? formatDateKey(pickedDate) : '';
+  const entry = dateKey ? (overrides[dateKey] ?? null) : null;
+  const isWork = pickedDate ? isWorkday(pickedDate, config, overrides, HOLIDAYS) : false;
+  const daily = useMemo(() => {
+    if (!pickedDate) return 0;
+    return dailySalary(pickedDate.getFullYear(), pickedDate.getMonth(), config, overrides, HOLIDAYS);
+  }, [pickedDate, config, overrides]);
+
+  function handleGenerate(salary: number) {
+    setConfig({ ...config, monthlySalary: salary });
+    createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
+  }
+
+  if (!pickedDate) {
+    return (
+      <>
+        {/* 右上角设置按钮 */}
+        {onOpenSettings && (
+          <button
+            type="button"
+            className={styles.settingsBtn}
+            onClick={onOpenSettings}
+            title="设置"
+            aria-label="设置"
+          >
+            <Gear size={18} weight="regular" />
+          </button>
+        )}
+
+        <div className={styles.daySheetEmpty}>
+          <span>← 点击日历日期</span>
+          <span>在右侧编辑设置</span>
+        </div>
+
+        {genOpen && (
+          <GenerateSheet
+            open={genOpen}
+            year={year}
+            month={month}
+            config={config}
+            defaultSalary={snapshot?.salary ?? config.monthlySalary}
+            overrides={overrides}
+            holidays={HOLIDAYS}
+            onClose={() => setGenOpen(false)}
+            onConfirm={handleGenerate}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* 右上角设置按钮 */}
+      {onOpenSettings && (
+        <button
+          type="button"
+          className={styles.settingsBtn}
+          onClick={onOpenSettings}
+          title="设置"
+          aria-label="设置"
+        >
+          <Gear size={18} weight="regular" />
+        </button>
+      )}
+
+      <div className={styles.daySheetWrap}>
+        <DaySheet
+          inline
+          open={true}
+          date={pickedDate}
+          isWork={isWork}
+          dailyEarning={daily}
+          currentEntry={entry}
+          salaryMode={config.salaryMode}
+          segmentTemplates={config.segmentTemplates}
+          onClose={onClosePickedDate}
+          onSave={(key, entry) => setDayOverride(key, entry)}
+          onReset={(key) => clearOverride(key)}
+        />
+      </div>
+
+      {genOpen && (
+        <GenerateSheet
+          open={genOpen}
+          year={year}
+          month={month}
+          config={config}
+          defaultSalary={snapshot?.salary ?? config.monthlySalary}
+          overrides={overrides}
+          holidays={HOLIDAYS}
+          onClose={() => setGenOpen(false)}
+          onConfirm={handleGenerate}
+        />
+      )}
+    </>
   );
 }

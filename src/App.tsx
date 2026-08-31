@@ -1,13 +1,18 @@
 /**
  * Salary Timer — Root Component
  *
- * v1.3.4 桌面端三栏布局：
- * - 桌面端（≥1024px）：DesktopSidebar（可收起）+ Topbar（齿轮）+ 主内容 + DesktopRightPanel（上下文）
- * - 移动端（<1024px）：BottomNav + 页面切换（Today / Convert / Calendar / Settings）
+ * v1.3.4-patch4 桌面端布局重构:
+ * - 桌面端(≥1024px):Sidebar(auto) + ContentArea(2fr | 1fr)
+ *   - 主区 2/3:Topbar + 主内容(TimerCard | Quote+Worth / TimeTrackerWidget / Net Hours)
+ *   - 右栏 1/3:DesktopRightPanel
+ *     - today → RecordsPanel(记录列表,可滚动)
+ *     - calendar → DaySheet 内联(日历选中日期的设置)
+ * - 移动端(<1024px):BottomNav + 页面切换,完全独立分支
  */
 import { useEffect, useState } from 'react';
 import { bootstrapTheme, useThemeStore } from './store/themeStore';
 import { useIsDesktop } from './hooks/useMediaQuery';
+import { useDesktopScale, BASE_WIDTH, BASE_HEIGHT } from './hooks/useDesktopScale';
 import { type TabId } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { TodayPage } from './pages/TodayPage';
@@ -15,19 +20,23 @@ import { ConvertPage } from './pages/ConvertPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DesktopSidebar, type DesktopTabId } from './components/DesktopSidebar';
-import { DesktopTopbar } from './components/DesktopTopbar';
 import { DesktopRightPanel } from './components/DesktopRightPanel';
 import { SettingsDrawer } from './components/SettingsDrawer';
 import './styles/tokens.css';
 import styles from './App.module.css';
 
-// ── 桌面端子页面（与桌面端 Sidebar 的 tab 映射）─────────────
-function DesktopContent({ activeTab }: { activeTab: DesktopTabId }) {
+// ── 桌面端子页面(与桌面端 Sidebar 的 tab 映射)─────────────
+function DesktopContent({
+  activeTab,
+  onPickedDate,
+}: {
+  activeTab: DesktopTabId;
+  onPickedDate: (date: Date) => void;
+}) {
   if (activeTab === 'today') {
     return <TodayPage onOpenConvert={() => {}} />;
   }
-  // calendar tab：CalendarPage 桌面端用 inline DaySheet（不使用 modal）
-  return <CalendarPage isDesktopInline />;
+  return <CalendarPage isDesktopInline onPickDate={onPickedDate} />;
 }
 
 function renderPage(tab: TabId, onOpenConvert: () => void) {
@@ -42,52 +51,77 @@ function renderPage(tab: TabId, onOpenConvert: () => void) {
 export function App() {
   const isDesktop = useIsDesktop();
   const theme = useThemeStore((s) => s.theme);
+  const scale = useDesktopScale();
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // 启动时：同步主题到 DOM（防止页面闪烁）
+  // v1.3.4-patch4:日历页选中日期,提到 App 层让 DesktopRightPanel 共用
+  const [pickedDate, setPickedDate] = useState<Date | null>(null);
+
+  // 启动时:同步主题到 DOM(防止页面闪烁)
   useEffect(() => {
     bootstrapTheme();
   }, []);
 
-  // ── 桌面端三栏布局 ─────────────────────────────────────────
+  // ── 桌面端布局 ─────────────────────────────────────────
   if (isDesktop) {
     return (
-      <div
-        data-theme={theme}
-        className={styles.desktopShell}
-      >
-        {/* 左栏：可收起导航 */}
-        <DesktopSidebar
-          activeTab={desktopTab}
-          onTabChange={(tab) => {
-            setDesktopTab(tab);
-            // 桌面端切 tab 不影响移动端 tab state
+      <div data-theme={theme} className={styles.scaleWrap}>
+        <div
+          className={styles.scaleSpacer}
+          style={{
+            width: BASE_WIDTH * scale,
+            height: BASE_HEIGHT * scale,
           }}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
+        >
+          <div
+            className={styles.desktopShell}
+            style={{ transform: `scale(${scale})` }}
+          >
+          {/* 左栏:可收起导航 */}
+          <DesktopSidebar
+            activeTab={desktopTab}
+            onTabChange={(tab) => {
+              setDesktopTab(tab);
+              // 切 tab 时清空选中日期(避免右侧显示 stale 日期)
+              if (tab !== 'calendar') setPickedDate(null);
+            }}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
 
-        {/* 中间：Topbar + 主内容 */}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-          <DesktopTopbar activeTab={desktopTab} onOpenSettings={() => setSettingsOpen(true)} />
-          <main style={{ flex: 1, overflow: 'auto' }}>
-            <DesktopContent activeTab={desktopTab} />
-          </main>
+          {/* 内容区:2fr 主区 + 1fr 右栏(2:1 比例自动保持) */}
+          <div className={styles.contentArea}>
+            {/* 中间:主内容(移除 Topbar) */}
+            <div className={styles.mainColumn}>
+              <main className={styles.main}>
+                <DesktopContent
+                  activeTab={desktopTab}
+                  onPickedDate={(d) => {
+                    setPickedDate(d);
+                  }}
+                />
+              </main>
+            </div>
+
+            {/* 右栏:上下文面板 */}
+            <DesktopRightPanel
+              page={desktopTab}
+              pickedDate={pickedDate}
+              onClosePickedDate={() => setPickedDate(null)}
+              onNavigateToCalendar={(_dateKey) => {
+                setDesktopTab('calendar');
+              }}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          </div>
+
+          {/* 设置抽屉 */}
+          <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+            <SettingsPage />
+          </SettingsDrawer>
+          </div>
         </div>
-
-        {/* 右栏：上下文面板 */}
-        <DesktopRightPanel
-          page={desktopTab}
-          onNavigateToCalendar={(_dateKey) => {
-            setDesktopTab('calendar');
-          }}
-        />
-
-        {/* 设置抽屉 */}
-        <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-          <SettingsPage />
-        </SettingsDrawer>
       </div>
     );
   }

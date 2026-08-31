@@ -1,0 +1,179 @@
+/* ==========================================================
+   TimeRecordSheet — 右栏内联的编辑/添加弹窗样式（v1.3.4-patch4）
+   ========================================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet {
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 18px 18px 24px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: scaleIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 999px;
+  margin: 0 auto 14px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.label {
+  font: 500 10px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 12px 0 6px;
+}
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  background: var(--paper-2);
+  padding: 4px;
+  border-radius: var(--r-sm);
+}
+
+.segmentedChip {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 8px 4px;
+  border-radius: 6px;
+  font: 500 11px var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.segmentedChip:hover {
+  color: var(--ink);
+}
+
+.segmentedChipActive {
+  background: var(--ink);
+  color: var(--accent);
+}
+
+.segmentedChipActive:hover {
+  background: var(--ink);
+  color: var(--accent);
+}
+
+.input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  font: 500 13px var(--font-sans);
+  color: var(--ink);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.save {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--ink);
+  color: var(--accent);
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.save:hover {
+  opacity: 0.88;
+}
+
+.cancel {
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cancel:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* 夜班 badge — 沿用 SlackingDetailPage 样式 */
+.nightBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}

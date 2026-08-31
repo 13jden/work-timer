@@ -59,6 +59,19 @@ export const useSlackingStore = create<SlackingState>()(
       startSession: (dateKey, label, customLabel) => {
         const id = uuid();
         const startTs = Date.now();
+        
+        // 检查时间冲突
+        const dayList = get().sessions[dateKey] ?? [];
+        const hasConflict = dayList.some((s) => {
+          const existingEnd = s.endTs ?? Date.now();
+          // 新 session 开始时间与现有 session 有重叠
+          return startTs >= s.startTs && startTs < existingEnd;
+        });
+        
+        if (hasConflict) {
+          throw new Error('时间段冲突：当前时间与已有摸鱼记录重叠');
+        }
+        
         const session: SlackingSession = {
           id,
           dateKey,
@@ -69,7 +82,6 @@ export const useSlackingStore = create<SlackingState>()(
           // v1.3.3:开始时按 startTs 预标记夜班(结束时不更新——避免边界场景)
           nightShift: isInNightWindow(new Date(startTs)),
         };
-        const dayList = get().sessions[dateKey] ?? [];
         set({
           sessions: {
             ...get().sessions,
@@ -110,6 +122,23 @@ export const useSlackingStore = create<SlackingState>()(
       addPastSession: (dateKey, label, startTs, endTs, customLabel) => {
         // v1.3.3:< 1 分钟不记录(避免误触)
         if (endTs - startTs < 60_000) return '';
+        
+        // 检查时间冲突
+        const dayList = get().sessions[dateKey] ?? [];
+        const hasConflict = dayList.some((s) => {
+          const existingEnd = s.endTs ?? Date.now();
+          // 新 session 与现有 session 有重叠
+          return (
+            (startTs >= s.startTs && startTs < existingEnd) ||
+            (endTs > s.startTs && endTs <= existingEnd) ||
+            (startTs <= s.startTs && endTs >= existingEnd)
+          );
+        });
+        
+        if (hasConflict) {
+          throw new Error('时间段冲突：与已有摸鱼记录重叠');
+        }
+        
         const id = uuid();
         const session: SlackingSession = {
           id,
@@ -120,7 +149,6 @@ export const useSlackingStore = create<SlackingState>()(
           endTs,
           nightShift: detectNightShift(startTs, endTs),
         };
-        const dayList = get().sessions[dateKey] ?? [];
         set({
           sessions: {
             ...get().sessions,
@@ -135,6 +163,31 @@ export const useSlackingStore = create<SlackingState>()(
         for (const k of Object.keys(sessions)) {
           const list = sessions[k];
           if (!list) continue;
+          
+          // 找到要更新的 session
+          const target = list.find((s) => s.id === id);
+          if (!target) continue;
+          
+          // 如果更新了时间,检查冲突
+          if (patch.startTs !== undefined || patch.endTs !== undefined) {
+            const newStart = patch.startTs ?? target.startTs;
+            const newEnd = patch.endTs ?? target.endTs ?? target.startTs;
+            
+            const hasConflict = list.some((s) => {
+              if (s.id === id) return false; // 跳过自己
+              const existingEnd = s.endTs ?? Date.now();
+              return (
+                (newStart >= s.startTs && newStart < existingEnd) ||
+                (newEnd > s.startTs && newEnd <= existingEnd) ||
+                (newStart <= s.startTs && newEnd >= existingEnd)
+              );
+            });
+            
+            if (hasConflict) {
+              throw new Error('时间段冲突：与已有摸鱼记录重叠');
+            }
+          }
+          
           sessions[k] = list.map((s) => {
             if (s.id !== id) return s;
             const merged = { ...s, ...patch };
@@ -166,7 +219,11 @@ export const useSlackingStore = create<SlackingState>()(
       },
 
       // Selectors(实现成方法,通过 getState 调用)
-      getSessionsByDate: (dateKey) => get().sessions[dateKey] ?? [],
+      getSessionsByDate: (dateKey) => {
+        const list = get().sessions[dateKey] ?? [];
+        // 按 startTs 升序排序
+        return list.slice().sort((a, b) => a.startTs - b.startTs);
+      },
       getCurrentSession: () => {
         const id = get().currentSessionId;
         if (!id) return null;

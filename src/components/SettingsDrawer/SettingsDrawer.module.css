@@ -20,6 +20,7 @@
   top: 0;
   right: 0;
   bottom: 0;
+  /* 宽度由 JS 动态计算：max 480px，随窗口缩小自动收缩 */
   width: 480px;
   max-width: 92vw;
   background: var(--paper);

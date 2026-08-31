@@ -1,9 +1,12 @@
 /**
  * CalendarPage — 月度工作日网格
  *
- * v1.3.4 桌面端改造：
- * - `isDesktopInline` prop：桌面端 DaySheet 不弹窗，直接内联在页面内
- * - 桌面端布局：日历年/月历占左侧，DaySheet 占右侧（无弹窗遮罩）
+ * v1.3.4-patch4 桌面端改造：
+ * - `isDesktopInline` prop：桌面端 DaySheet 不在页面内渲染，**而是由 DesktopRightPanel 接管**
+ *   - 这里只负责日历网格 + Summary + 导航 + 选中日期触发
+ *   - 选中日期通过 `onPickDate(date)` 回调上抛给 App.tsx
+ * - 桌面端布局：日历网格占左 2/3，右侧 DaySheet 由 DesktopRightPanel 渲染
+ * - 移动端：日 Sheet 仍走弹窗（保留原行为）
  */
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../store/configStore';
@@ -19,8 +22,12 @@ import { CaretLeft, CaretRight, Crosshair } from '@phosphor-icons/react';
 import styles from './CalendarPage.module.css';
 
 interface CalendarPageProps {
-  /** 桌面端内联模式（不弹窗，DaySheet 直接渲染在页面内） */
+  /** 桌面端内联模式：日历在主区,右侧 DaySheet 由 DesktopRightPanel 接管 */
   isDesktopInline?: boolean;
+  /** 桌面端：选中日期时回调（App 层会用此渲染 DesktopRightPanel） */
+  onPickDate?: (date: Date) => void;
+  /** 桌面端：当前已选中的日期（用于网格高亮） */
+  selectedDate?: Date | null;
 }
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
@@ -38,22 +45,11 @@ function formatEarnText(value: number): string {
   return `¥${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
-  // 页面可见时刷新 now(秒级)
-  const [now, setNow] = useState(() => new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    function tick() {
-      setNow(new Date());
-    }
-    tick();
-    intervalRef.current = setInterval(tick, 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
-
+export function CalendarPage({
+  isDesktopInline = false,
+  onPickDate,
+  selectedDate = null,
+}: CalendarPageProps) {
   const config = useConfigStore();
   const year = useCalendarStore((s) => s.year);
   const month = useCalendarStore((s) => s.month);
@@ -68,6 +64,21 @@ export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
   const setMonthlyRestMode = useCalendarStore((s) => s.setMonthlyRestMode);
   const setConfig = useConfigStore((s) => s.setConfig);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
+
+  // 页面可见时刷新 now(秒级)
+  const [now, setNow] = useState(() => new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    function tick() {
+      setNow(new Date());
+    }
+    tick();
+    intervalRef.current = setInterval(tick, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   // 当前月的快照
   const currentKey = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -141,7 +152,10 @@ export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
   function openDay(d: number) {
     const date = new Date(year, month, d);
     setPickedDate(date);
-    setSheetOpen(true);
+    if (isDesktopInline && onPickDate) {
+      // 桌面端:把选中日期抛给 App 层,DesktopRightPanel 接管渲染
+      onPickDate(date);
+    }
   }
 
   const pickedKey = pickedDate ? formatDateKey(pickedDate) : '';
@@ -185,14 +199,17 @@ export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
   const yearLabel = `${year}`;
 
   // ── DaySheet 渲染策略 ──────────────────────────────────────
-  // desktop inline:渲染 sheet 但不用遮罩层,直接放在页面流里
-  // mobile:用遮罩弹窗(默认)
-  const sheetVisible = sheetOpen && pickedDate !== null;
+  // v1.3.4-patch4:
+  //   desktop inline → DaySheet 由 DesktopRightPanel 渲染(本组件不渲染 sheet),
+  //                  仅通过 onPickDate 上抛选中日期
+  //   mobile         → DaySheet 走弹窗遮罩(原行为)
+  // 当前选中日期 key(用于网格高亮,即便 DaySheet 在 DesktopRightPanel 渲染)
+  const selectedKey = selectedDate ? formatDateKey(selectedDate) : null;
 
   return (
     <div className={`${styles.pageWrap} ${isDesktopInline ? styles.pageInline : ''}`}>
 
-      {/* ── 左/主列:Header + Summary + 导航 + 网格 ── */}
+      {/* ── 左/主列:Summary + 导航 + 网格(移除 Header,标题移到右侧) ── */}
       <div className={styles.mainCol}>
 
         {/* Header:两行结构 — eyebrow + 月份标题(可点击) */}
@@ -289,12 +306,14 @@ export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
                 (year === now.getFullYear() && month === now.getMonth() && d < now.getDate());
               const key = formatDateKey(date);
               const hasOv = key in overrides;
+              const isPicked = selectedKey === key;
 
               const classes = [
                 styles.day,
                 !isWork ? styles.dayWeekend : '',
                 isToday ? styles.dayToday : '',
                 hasOv ? styles.dayOverride : '',
+                isPicked ? styles.daySelected : '',
               ].filter(Boolean).join(' ');
 
               let earnText = '';
@@ -323,24 +342,8 @@ export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
         </div>
       </div>
 
-      {/* ── 右列:桌面端内联 DaySheet（仅 desktop inline 模式显示） ── */}
-      {isDesktopInline && (
-        <div className={styles.inlineSheet}>
-          <DaySheet
-            inline
-            open={sheetVisible}
-            date={pickedDate}
-            isWork={isPickedWork}
-            dailyEarning={daily}
-            currentEntry={pickedEntry}
-            salaryMode={config.salaryMode}
-            segmentTemplates={config.segmentTemplates}
-            onClose={() => setSheetOpen(false)}
-            onSave={(key, entry) => setDayOverride(key, entry)}
-            onReset={(key) => clearOverride(key)}
-          />
-        </div>
-      )}
+      {/* ── v1.3.4-patch4:桌面端右栏 DaySheet 由 DesktopRightPanel 渲染 ──
+          本组件不再输出右侧 inlineSheet,选中日期通过 onPickDate 抛到 App 层 */}
 
       {/* ── 移动端弹窗 DaySheet（仅非 inline 模式渲染遮罩） ── */}
       {!isDesktopInline && (

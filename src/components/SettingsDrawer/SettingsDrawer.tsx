@@ -9,7 +9,7 @@
  * 实现：把 `<SettingsPage />` 当作 children 传入，由 App 路由层决定渲染时机。
  * 本组件只负责外壳（遮罩 + 抽屉 + 关闭按钮）。
  */
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { X } from '@phosphor-icons/react';
 import styles from './SettingsDrawer.module.css';
 
@@ -19,7 +19,29 @@ interface SettingsDrawerProps {
   children: React.ReactNode;
 }
 
+/** 抽屉最大宽度 */
+const MAX_W = 480;
+/** 右侧保留边距 */
+const RIGHT_MARGIN = 20;
+
 export function SettingsDrawer({ open, onClose, children }: SettingsDrawerProps) {
+  // 窗口缩放时动态计算宽度，防止超出视口
+  const [drawerWidth, setDrawerWidth] = useState(MAX_W);
+
+  const recalcWidth = useCallback(() => {
+    setDrawerWidth(Math.min(MAX_W, window.innerWidth - RIGHT_MARGIN));
+  }, []);
+
+  useEffect(() => {
+    if (open) recalcWidth();
+  }, [open, recalcWidth]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener('resize', recalcWidth);
+    return () => window.removeEventListener('resize', recalcWidth);
+  }, [open, recalcWidth]);
+
   // ESC 关闭
   useEffect(() => {
     if (!open) return;
@@ -45,7 +67,13 @@ export function SettingsDrawer({ open, onClose, children }: SettingsDrawerProps)
   return (
     <>
       <div className={styles.backdrop} onClick={onClose} aria-hidden />
-      <aside className={styles.drawer} role="dialog" aria-modal="true" aria-label="设置">
+      <aside
+        className={styles.drawer}
+        style={{ width: drawerWidth }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="设置"
+      >
         <div className={styles.head}>
           <div className={styles.headLeft}>
             <span className={styles.eyebrow}>preferences</span>
