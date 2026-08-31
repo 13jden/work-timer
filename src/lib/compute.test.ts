@@ -1932,3 +1932,135 @@ describe('computeNetHours · dashboard 实时累计字段 (v1.3.4-patch2)', () =
     expect(r.overtimeElapsed).toBe(60);
   });
 });
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.4-patch4 · 多段工时 + 午餐在间隙 不再误扣
+// ══════════════════════════════════════════════════════════════
+//
+// 旧 BUG:computeNetHours 用 [mergeStart, mergeStart + effectiveGross] 单窗口 clip 摸鱼∪午休 union,
+// 多段工时下 elapsedWorkedMin 跨越间隙,把间隙里的午餐/摸鱼当作扣除。
+//
+// 修复:改为按每个 merged 段独立 clip,自然跳过段间间隙。
+// 详情见 docs/plans/tauri-migration/v1.3/TASK-031。
+
+describe('computeNetHours · v1.3.4-patch4 多段工时 + 午餐在间隙', () => {
+  // 多段工时 [09:00-12:00, 14:00-18:00] = 7h(420min),午休 12:00-13:00 在间隙
+  const multiSegmentConfig: Config = {
+    ...baseConfig,
+    segments: [
+      { start: '09:00', end: '12:00' },
+      { start: '14:00', end: '18:00' },
+    ],
+    lunchEnabled: true,
+  };
+
+  it('单段 + 过了午休(now=14:00,旧/新行为一致)→ lunchElapsed=60, net=240', () => {
+    // 回归保护:旧场景(单段工时 + 午餐在工时段内 + now 过了午休)行为不变
+    const now = date(2026, 7, 31, 14, 0, 0);
+    const cfg = { ...baseConfig, lunchEnabled: true };
+    const r = computeNetHours({
+      date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(300); // 09-14 = 5h
+    expect(r.lunchElapsed).toBe(60);  // 12-13 整段扣
+    expect(r.netMinutes).toBe(240);   // 5h - 1h = 4h
+  });
+
+  it('多段 + 午餐在间隙 [12-13] + now=16:00 → lunchElapsed=0(关键修复)', () => {
+    // 用户反馈场景:09-12, 14-18 + 午餐 12-13 + now=16:00
+    // 旧行为:窗口 [09:00, 14:00] clip 午餐 [12:00, 13:00] → 60min 误扣
+    // 新行为:每段独立 clip → 段 1 [09-12], 段 2 [14-16],午餐在间隙 → 0
+    const now = date(2026, 7, 31, 16, 0, 0);
+    const r = computeNetHours({
+      date: now, config: multiSegmentConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossMinutes).toBe(420); // 7h
+    expect(r.grossElapsed).toBe(300); // 09-12 全 + 14-16 = 3+2 = 5h
+    expect(r.lunchElapsed).toBe(0);   // 午餐在间隙 [12-14],不在任一段 → 不扣 ✓
+    expect(r.netMinutes).toBe(300);   // 5h
+  });
+
+  it('多段 + 午餐在间隙 [13-14] + now=15:30 → lunchElapsed=0', () => {
+    // 午餐 13-14 完全在间隙 [12-14] 内,now=15:30 在段 2 内
+    // 旧:窗口 [09:00, 09:00 + 4.5h=540min] = [09:00, 13:30] clip [13:00, 14:00] → 30min 误扣
+    // 新:每段独立 clip,午餐在间隙 → 0
+    const now = date(2026, 7, 31, 15, 30, 0);
+    const cfg = { ...multiSegmentConfig, lunchStart: '13:00' };
+    const r = computeNetHours({
+      date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(270); // 09-12 (3h) + 14-15:30 (1.5h) = 4.5h
+    expect(r.lunchElapsed).toBe(0);
+    expect(r.netMinutes).toBe(270);
+  });
+
+  it('多段紧贴 [09-12, 13-18] + 午餐 12-13 在间隙 + now=17:00 → lunchElapsed=0', () => {
+    // 段间隙正好是午休时间,午餐应完全在间隙
+    const now = date(2026, 7, 31, 17, 0, 0);
+    const cfg = {
+      ...baseConfig,
+      segments: [
+        { start: '09:00', end: '12:00' },
+        { start: '13:00', end: '18:00' },
+      ],
+      lunchEnabled: true,
+    };
+    const r = computeNetHours({
+      date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossMinutes).toBe(480); // 8h
+    expect(r.grossElapsed).toBe(420); // 09-12 (3h) + 13-17 (4h) = 7h
+    expect(r.lunchElapsed).toBe(0);   // 午餐 [12-13] 在间隙,不在段内 → 不扣 ✓
+    expect(r.netMinutes).toBe(420);
+  });
+
+  it('多段紧贴 + 午餐与上午段重叠 [11:30-12:30] + now=17:00 → lunchElapsed=30', () => {
+    // 午餐 11:30-12:30 与上午段 [09-12] 重叠 11:30-12:00 = 30min → 应扣 30
+    // 与下午段 [13-18] 无重叠
+    const now = date(2026, 7, 31, 17, 0, 0);
+    const cfg = {
+      ...baseConfig,
+      segments: [
+        { start: '09:00', end: '12:00' },
+        { start: '13:00', end: '18:00' },
+      ],
+      lunchEnabled: true,
+      lunchStart: '11:30',
+    };
+    const r = computeNetHours({
+      date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.grossElapsed).toBe(420);
+    expect(r.lunchElapsed).toBe(30); // 仅重叠部分
+    expect(r.netMinutes).toBe(390);  // 7h - 30min
+  });
+
+  it('多段 + 摸鱼 session 跨间隙 [11:30-14:30] → slackingElapsed=60(只在工时段内)', () => {
+    // session 11:30-14:30 (3h)
+    // 在多段 [{09-12, 14-18}] 下,实际只在工时段内:11:30-12:00 (30min) + 14:00-14:30 (30min) = 60min
+    // 旧算法窗口 [09:00, 09:00 + 5h=14:00] clip [690, 870] → [690, 840] = 150min(整段误算)
+    // 新算法按段 clip:段 1 [09-12] clip [690, 870] → [690, 720] = 30; 段 2 [14-15:30] clip → [840, 870] = 30
+    const now = date(2026, 7, 31, 15, 30, 0);
+    const sessions = [
+      makeSession('2026-08-31', 11, 30, 14, 30),
+    ];
+    const r = computeNetHours({
+      date: now, config: multiSegmentConfig, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: sessions,
+    });
+    expect(r.slackingMinutes).toBe(180); // 全天 session 总长(不变)
+    expect(r.slackingElapsed).toBe(60);  // 实际只在工时段内的摸鱼
+    // grossElapsed=270, slackingElapsed=60, lunchElapsed=0
+    // netMinutes = 270 - 60 - 0 + 0 + 0 = 210
+    expect(r.netMinutes).toBe(210);
+  });
+
+  it('lunchEnabled=false → lunchElapsed=0(与多段无关)', () => {
+    const now = date(2026, 7, 31, 16, 0, 0);
+    const cfg = { ...multiSegmentConfig, lunchEnabled: false };
+    const r = computeNetHours({
+      date: now, config: cfg, overrides: noOverrides, holidays: emptyHolidays, slackingSessions: [],
+    });
+    expect(r.lunchElapsed).toBe(0);
+    expect(r.netMinutes).toBe(300);
+  });
+});

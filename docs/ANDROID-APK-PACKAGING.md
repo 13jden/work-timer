@@ -1,43 +1,43 @@
-# Android APK ???? ? Salary Timer
+# Android APK 打包指南 · Salary Timer
 
-> ??: Windows 11 ? Tauri 2.x ? Rust 1.82+ ? Android SDK build-tools 35 ? JDK 17
-> ????: 0.1.0 (?? tauri.conf.json ? version)
+> 环境: Windows 11 · Tauri 2.x · Rust 1.82+ · Android SDK build-tools 35 · JDK 17
+> 当前版本: 0.1.0 (参见 tauri.conf.json 的 version)
 
 ---
 
-## ??????
+## 环境准备
 
-| ?? | ????? / ?? | ?? |
+| 依赖 | 验证命令 / 路径 | 说明 |
 |------|-------------------|------|
-| Node.js ? 20 | `node --version` | ?? `npm run build` |
-| Rust stable | `rustup show` | 4 ? Android target |
+| Node.js ≥ 20 | `node --version` | 需能 `npm run build` |
+| Rust stable | `rustup show` | 4 个 Android target |
 | Tauri CLI | `npx tauri --version` | 2.x |
-| JDK 17 | `E:\environment\jdk17` | Gradle ??? 17 |
+| JDK 17 | `E:\environment\jdk17` | Gradle 编译需要 17 |
 | Android SDK | `C:\Users\admin\AppData\Local\Android\Sdk` | build-tools 35+ |
 
-### ????
+### 环境变量
 
 ```powershell
 $env:ANDROID_HOME = "C:\Users\admin\AppData\Local\Android\Sdk"
 $env:JAVA_HOME    = "E:\environment\jdk17"
 ```
 
-### Rust Android targets (???)
+### Rust Android targets (一次性)
 
     rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 ---
 
-## ???? Keystore (???? release.keystore)
+## 签名 Keystore (仅需创建一次 release.keystore)
 
-| ?? | ? |
+| 参数 | 值 |
 |------|---|
-| keystore ?? | `release.keystore` |
-| alias | `salarytimer` |
+| keystore 文件 | `release.keystore` |
+| alias | `salary-timer` (注意带连字符!) |
 | storepass / keypass | `SalaryTimer2026` |
-| ???? | **v2 + v3 only** (?? v1 JAR ??) |
+| 签名方案 | **v2 + v3 only** (禁用 v1 JAR 签名) |
 
-????:
+创建命令:
 
 ```powershell
 & "$env:JAVA_HOME\bin\keytool.exe" -genkeypair -v -keystore release.keystore -alias salarytimer -keyalg RSA -keysize 2048 -validity 10000 -storepass SalaryTimer2026 -keypass SalaryTimer2026
@@ -45,14 +45,15 @@ $env:JAVA_HOME    = "E:\environment\jdk17"
 
 ---
 
-## ?????? (?? Android Adaptive Icon ??)
+## 图标生成 (含 Android Adaptive Icon 适配)
 
-### ??
-?? `npx tauri icon image/LS20260827102934.png` ??? Adaptive Icon ??? mask ?????? 30% ??(?????????),?? LOGO ????
+### 问题
 
-### ?? (???, 2026-08-29 ????????)
+直接 `npx tauri icon image/LS20260827102934.png` 生成的 Adaptive Icon 在圆形 mask 下会裁掉约 30% 的画面(安全区限制)，导致 LOGO 被裁切。
 
-**Step 1 ? ?????**: ? System.Drawing ??? `min(W,H)` ???,????????(??????),??? 1024?1024?300 dpi?????,??? `src-tauri/icon-source.png`?
+### 解决 (手动, 2026-08-29 实测可行)
+
+**Step 1 · 裁剪正方形**: 用 System.Drawing 取 `min(W,H)` 居中裁剪(保证不变形)，输出 1024×1024·300 dpi 的 PNG，保存为 `src-tauri/icon-source.png`。
 
 ```powershell
 Add-Type -AssemblyName System.Drawing
@@ -74,37 +75,37 @@ $g2.DrawImage($crop, 0, 0, 1024, 1024)
 $final.Save("src-tauri\icon-source.png", [System.Drawing.Imaging.ImageFormat]::Png)
 ```
 
-**Step 2 ? manifest JSON (??!????)**: ?? `src-tauri/icon-manifest.json` ? `android_fg_scale: 80` ??????????:
+**Step 2 · manifest JSON (关键!控制缩放)**: 创建 `src-tauri/icon-manifest.json` 并设 `android_fg_scale: 80` 以预留安全区:
 
 ```json
 { "default": "icon-source.png", "android_fg_scale": 80 }
 ```
 
-| android_fg_scale | ?? |
+| android_fg_scale | 效果 |
 |---|---|
-| 100 (??) | ???? mask ? LOGO ???? ? |
-| 80 (??) | ???? ~10% ? LOGO ???? ? |
-| 70           | ???? ? ???? |
+| 100 (默认) | 铺满圆形 mask，LOGO 边角被裁 |
+| 80 (推荐) | 四周留白 ~10%，LOGO 完整显示 |
+| 70           | 留白更多，图标偏小 |
 
     cd src-tauri
     npx tauri icon icon-manifest.json
     cd ..
 
-**Step 3**: tauri icon ????? adaptive-icon ??(xml + png)???? `src-tauri/gen/android/app/src/main/res/` ? mipmap-* ? drawable-anydpi-v26 ??,**??????**?
+**Step 3**: tauri icon 会自动生成 adaptive-icon 文件(xml + png)，输出到 `src-tauri/gen/android/app/src/main/res/` 下 mipmap-* 和 drawable-anydpi-v26 目录，**无需手动操作**。
 
 ---
 
-## ???????? (? jniLibs symlink ???)
+## 完整打包流程 (含 jniLibs symlink 替代方案)
 
-### ??? ? Windows jniLibs ???????? (??!)
+### 核心问题 → Windows jniLibs 签名冲突 (必看!)
 
-Tauri Gradle ?????? Rust .so ? symlink ?? jniLibs/<arch>??:
-1. Windows 11 ????????????(???????)
-2. ??????? symlink ????????
+Tauri Gradle 构建会把 Rust .so 用 symlink 链接到 jniLibs/<arch> 下:
+1. Windows 11 默认未开启开发者模式(普通权限)
+2. 创建 symlink 需要管理员权限或特殊策略
 
-??: `New-Item : ??? jniLibs/arm64-v8a ???????? ? ????!`
+报错示例: `New-Item : 无法创建指向 jniLibs/arm64-v8a 的链接，因为目标是不支持的类型!`
 
-**????????:**
+**解决方案: 提前清理 + 用 HardLink 替代:**
 
 ```powershell
 Remove-Item src-tauri\gen\android\app\src\main\jniLibs -Recurse -Force -EA SilentlyContinue
@@ -113,24 +114,24 @@ Remove-Item src-tauri\target                              -Recurse -Force -EA Si
 $jr = "src-tauri\gen\android\app\src\main\jniLibs"
 foreach ($a in @("arm64-v8a","armeabi-v7a","x86","x86_64")) { mkdir "$jr\$a" -Force | Out-Null }
 ```
-### Step 1 ? ????
+### Step 1 · 构建前端
 
-    npm run build   # ? dist/
+    npm run build   # 输出 dist/
 
-### Step 2 ? (???????) ?????????????
+### Step 2 · (可选) 仅构建 arm64 以加速
 
-### Step 3 ? ?????????? + ?? jniLibs ?????
+### Step 3 · 运行 Tauri Android 构建 + 准备 jniLibs 目录
 
-### Step 4 ? Tauri Android build --apk (Rust ?? .so)
+### Step 4 · Tauri Android build --apk (Rust 编译 .so)
 
     npx tauri android build --apk
 
-> ??? **90% ???? jniLibs ????????**,??? 4 ?? Rust `.so` **?????**,
-> ??? `src-tauri/target/<triple>/release/libapp_lib.so`?**????,?? Step 5!**
+> 注意 **90% 的报错是 jniLibs 签名冲突**，此时 4 个架构的 Rust `.so` **已经编译完成**，
+> 位于 `src-tauri/target/<triple>/release/libapp_lib.so`。**不要慌，直接 Step 5!**
 
-### Step 5 ? ?? HardLink .so ? jniLibs
+### Step 5 · 用 HardLink 复制 .so 到 jniLibs
 
-Windows symlink ??,????(HardLink)?????:
+Windows symlink 有问题，改用硬链接(HardLink)无需特殊权限:
 
 ```powershell
 $tb = "src-tauri\target"
@@ -151,9 +152,9 @@ foreach ($k in $map.Keys) {
 }
 ```
 
-### Step 6 ? Gradle assembleUniversalRelease (?? Rust ???)
+### Step 6 · Gradle assembleUniversalRelease (跳过 Rust 编译)
 
-???? `-x` ??,Tauri Gradle ??????? rustBuild ??,???? symlink ?:
+利用 `-x` 排除，Tauri Gradle 插件会尝试 rustBuild 任务，但我们已经手动处理了 symlink:
 
 ```powershell
 cd src-tauri\gen\android
@@ -167,81 +168,54 @@ $env:JAVA_HOME    = "E:\environment\jdk17"
   -x ":app:rustBuildUniversalRelease" --no-daemon
 ```
 
-?? **BUILD SUCCESSFUL** ?,unsigned APK ?:
+看到 **BUILD SUCCESSFUL** 后，unsigned APK 位于:
 
     src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 
-### Step 7 ? arm64 ??? (35 MB ? 12 MB, ??)
+### Step 7 · arm64 精简版 (35 MB → 12 MB，推荐)
 
-?? 99% ???? arm64-v8a,?? lib/armeabi-v7a?lib/x86?lib/x86_64 ?????
-?????? **strip-arm64.cjs**(package.json type=module,?? .cjs ?? CommonJS):
+目前 99% 的手机都是 arm64-v8a，去掉 lib/armeabi-v7a、lib/x86、lib/x86_64 可以大幅减小体积。
 
-```javascript
-// strip-arm64.cjs  (????????)
-const fs    = require("fs");
-const yauzl = require("yauzl");
-const yazl  = require("yazl");
+> **重要**: 不要用 yazl/yauzl 重新打包！会破坏 resources.arsc 的对齐，导致安装失败。
+> 正确做法是用 `aapt remove` 直接删除不需要的架构文件，保留原始 APK 的对齐结构。
 
-const IN  = "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk";
-const OUT = "dist-android/arm64-unsigned.apk";
-fs.mkdirSync("dist-android", { recursive: true });
-fs.copyFileSync(IN, "dist-android/universal-unsigned.apk");
+```powershell
+$bt = "C:\Users\admin\AppData\Local\Android\Sdk\build-tools\35.0.0"
+mkdir dist-android -Force | Out-Null
+Copy-Item src-tauri\gen\android\app\build\outputs\apk\universal\release\app-universal-release-unsigned.apk dist-android\arm64-unsigned.apk -Force
 
-const out = new yazl.ZipFile();
-yauzl.open(IN, { lazyEntries: true }, (err, zf) => {
-  if (err) throw err;
-  let dropped = 0;
-  zf.readEntry();
-  zf.on("entry", (entry) => {
-    const isOtherArch = /^lib\/(armeabi-v7a|x86|x86_64)\//.test(entry.fileName);
-    if (isOtherArch) { dropped++; zf.readEntry(); return; }
-    zf.openReadStream(entry, (e2, stream) => {
-      if (e2) throw e2;
-      const isSo = entry.fileName.endsWith(".so");
-      out.addReadStream(stream, entry.fileName, {
-        mtime: entry.getLastModDate(),
-        compress: !isSo,   // ? ??: .so ?? STORE ??(????)
-      });                  //    ?? arm64 ???? 4~5 MB(??? ~12 MB)
-      zf.readEntry();
-    });
-  });
-  zf.on("end", () => {
-    out.outputStream.pipe(fs.createWriteStream(OUT)).on("close", () => {
-      console.log("dropped entries:", dropped);
-      console.log("arm64 size:", (fs.statSync(OUT).size/1024/1024).toFixed(2), "MB");
-    });
-    out.end();
-  });
-});
+# 用 aapt remove 删除其他架构的 .so
+& "$bt\aapt.exe" remove dist-android\arm64-unsigned.apk `
+  lib/armeabi-v7a/libapp_lib.so `
+  lib/x86/libapp_lib.so `
+  lib/x86_64/libapp_lib.so
 ```
 
-??:  `node strip-arm64.cjs`
+### Step 8 · zipalign 对齐 + apksigner 签名 (最终产物!)
 
-### Step 8 ? zipalign ?? + apksigner ?? (??????!)
-
-> ?????!??? APK ????????build-tools ??:
+> 注意签名方案!使用 APK Signature Scheme v2+v3，build-tools 路径:
 > `C:\Users\admin\AppData\Local\Android\Sdk\build-tools\35.0.0\`
 
 ```powershell
 $bt = "C:\Users\admin\AppData\Local\Android\Sdk\build-tools\35.0.0"
 
-# A. 4 ?? zipalign
+# A. 4 字节对齐 zipalign
 & "$bt\zipalign.exe" -f 4 dist-android\arm64-unsigned.apk     dist-android\SalaryTimer-0.1.0-arm64.apk
 & "$bt\zipalign.exe" -f 4 dist-android\universal-unsigned.apk dist-android\SalaryTimer-0.1.0-universal.apk
 
-# B. v2+v3 ??,?? v1 JAR ??
+# B. v2+v3 签名 (注意 --ks-key-alias salary-timer 带连字符!)
 $apks = @("dist-android\SalaryTimer-0.1.0-arm64.apk", "dist-android\SalaryTimer-0.1.0-universal.apk")
 foreach ($f in $apks) {
-  & "$bt\apksigner.bat" sign --ks release.keystore --ks-pass pass:SalaryTimer2026 --key-pass pass:SalaryTimer2026 --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true $f
+  & "$bt\apksigner.bat" sign --ks release.keystore --ks-key-alias salary-timer --ks-pass pass:SalaryTimer2026 --key-pass pass:SalaryTimer2026 --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true $f
 }
 
-# C. ??(?? v1=false / v2=true / v3=true)
+# C. 验证(确认 v1=false / v2=true / v3=true)
 foreach ($f in $apks) {
   Write-Host "=== $f ==="; & "$bt\apksigner.bat" verify --verbose $f | Select-String "Verified using"
 }
 ```
 
-????:
+预期输出:
 
 ```
 Verified using v1 scheme (JAR signing): false
@@ -249,7 +223,7 @@ Verified using v2 scheme (APK Signature Scheme v2): true
 Verified using v3 scheme (APK Signature Scheme v3): true
 ```
 
-### Step 9 ? ??????
+### Step 9 · 清理临时文件
 
 ```powershell
 Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk, strip-arm64.cjs -Force -EA SilentlyContinue
@@ -257,64 +231,133 @@ Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk
 
 ---
 
-## ?????? (dist-android/)
+## 最终产物 (dist-android/)
 
-| ?? | ?? | ???? |
-|------|------|---------|
-| **SalaryTimer-0.1.0-arm64.apk** | **11.86 MB** | ?? ??,?? 99% ??(??/?? ?? arm64) |
-| SalaryTimer-0.1.0-universal.apk | 35.38 MB     | ????? / x86 Android ??? / ???? |
+| 文件 | 大小 | 说明 |
+|------|------|------|
+| **SalaryTimer-0.1.0-arm64.apk** | **11.86 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
+| SalaryTimer-0.1.0-universal.apk | 35.38 MB     | 全架构版 / x86 模拟器 / 收藏备用 |
 
-### ????? (??????)
-1. `package.json` ? `version` (??? x.y.z)
-2. `src-tauri/tauri.conf.json` ? `version` (Gradle versionName ??)
-3. `src-tauri/tauri.conf.json` ? `versionCode` (Android ?????,??????? **?? +1**)
-
----
-
-## ?????????
-
-| ?? | ?? | ???? |
-|------|------|---------|
-| jniLibs ???????? | Windows ?? + ???? | ???? jniLibs/build/target ? ? 4 ??? ? Step 5 HardLink .so |
-| Gradle assemble ??? rustBuild ???? | Tauri Gradle ???? | ? 5 ? `-x :app:rustBuildXxxRelease` ??? |
-| arm64 ? < 10 MB (????) | yazl ? .so ? DEFLATE ??? | `compress: !isSo`,.so ? STORE |
-| ??? Android ????? | v1 JAR ??? zipalign ?? | ?? v1,?? v2+v3 |
-| Android ?? LOGO ???? | adaptive icon fg ???? | manifest ? `android_fg_scale: 80` ?? |
-| ?????? | ???????? tauri icon | ? System.Drawing ??? 1024?1024 ??? |
-| Cannot find module yauzl | ???????? | ???????? |
-| require is not defined (ESM ??) | package.json type=module ? .js ? ESM | ?????? `.cjs` |
+### 发版前检查清单 (每次必做)
+1. `package.json` 的 `version` (格式 x.y.z)
+2. `src-tauri/tauri.conf.json` 的 `version` (Gradle versionName 来源)
+3. `src-tauri/tauri.conf.json` 的 `versionCode` (Android 版本号，每次发版必须 **+1**)
 
 ---
 
-## ?????? (?????? PowerShell,??????)
+## 常见问题排查
+
+| 问题 | 原因 | 解决方案 |
+|------|------|---------|
+| jniLibs 签名冲突报错 | Windows 权限 + symlink 限制 | 提前清理 jniLibs/build/target → 重建 4 个空目录 → Step 5 HardLink .so |
+| Gradle assemble 报 rustBuild 任务失败 | Tauri Gradle 插件默认行为 | 加 5 个 `-x :app:rustBuildXxxRelease` 排除 |
+| **安装失败/解析错误** | **yazl 重新打包破坏 resources.arsc 对齐** | **用 `aapt remove` 删除架构，不要用 yazl/yauzl 重新打包!** |
+| arm64 APK > 10 MB (体积异常) | .so 被 DEFLATE 压缩 | `aapt remove` 保留原始压缩方式 |
+| Android 桌面 LOGO 被裁切 | adaptive icon fg 图片太大 | manifest 里设 `android_fg_scale: 80` 缩小 |
+| 图标模糊/锯齿 | 原始图片分辨率不够 | 用 System.Drawing 裁剪 1024×1024 高清图 |
+
+---
+
+## 打包注意点 (踩坑记录)
+
+> 以下为 2026-08-31 实测踩坑总结，每条都对应一次真实失败。
+
+### 1. Keystore alias 带连字符
+
+实际 keystore 中的 alias 是 `salary-timer`（带连字符），不是 `salarytimer`。
+用 `keytool -list` 确认:
+
+```powershell
+& "$env:JAVA_HOME\bin\keytool.exe" -list -keystore release.keystore -storepass SalaryTimer2026
+```
+
+apksigner 签名时也需要用 `--ks-key-alias salary-timer`:
+
+```powershell
+& "$bt\apksigner.bat" sign --ks release.keystore --ks-key-alias salary-timer --ks-pass pass:SalaryTimer2026 ...
+```
+
+### 2. 绝对不要用 yazl/yauzl 重新打包 APK
+
+用 Node.js 的 yazl/yauzl 重新打包会破坏 `resources.arsc` 的 4 字节对齐（STORE → DEFLATE），
+导致 Android 安装失败（解析错误）。
+
+**正确做法**: 用 `aapt remove` 直接从原始 APK 中删除不需要的文件，保留原始对齐结构:
+
+```powershell
+& "$bt\aapt.exe" remove dist-android\arm64-unsigned.apk `
+  lib/armeabi-v7a/libapp_lib.so lib/x86/libapp_lib.so lib/x86_64/libapp_lib.so
+```
+
+### 3. 签名顺序: 先 zipalign，再 apksigner
+
+`apksigner` 的 v2/v3 签名会校验 APK 的字节对齐，如果先签名再 zipalign，zipalign 会破坏签名。
+正确顺序:
+
+```
+unsigned APK → zipalign → apksigner → 最终 APK
+```
+
+### 4. apksigner 的 v1 签名在 targetSdk 36 下无效
+
+即使设置 `--v1-signing-enabled true`，apksigner 在 targetSdk ≥ 36 时也会自动跳过 v1 JAR 签名。
+这是 Android 的设计行为，不是 bug。
+
+- Target SDK 36 要求至少 v2 签名
+- v2 + v3 覆盖 Android 7.0+（2016 年后的所有设备）
+- 如需兼容 Android 6.0 及以下，需降低 targetSdk（但会影响 Google Play 上架）
+
+### 5. resources.arsc 必须是 STORE 模式
+
+`resources.arsc` 文件必须保持未压缩（STORE），否则 Android 无法解析 APK。
+验证方法:
+
+```powershell
+& "$bt\zipalign.exe" -c -v 4 your.apk | Select-String "resources.arsc"
+# 期望输出: resources.arsc (OK)
+# 如果显示: resources.arsc (BAD) → 安装会失败!
+```
+
+### 6. 精简后的 APK 体积参考
+
+| 方式 | arm64 APK 大小 | 说明 |
+|------|---------------|------|
+| aapt remove (推荐) | ~11.6 MB | 保留原始对齐，安装正常 |
+| yazl 重新打包 (禁止) | ~10.9 MB | 看起来更小，但 resources.arsc 被压缩，安装失败 |
+
+---
+
+## 一键打包脚本 (适合 PowerShell，复制即用)
 
 ```powershell
 cd d:\MyProject\work-timer
-# 1 ??
+# 1 构建前端
 npm run build
-# 2 ?? jniLibs
+# 2 清理 jniLibs
 Remove-Item src-tauri\gen\android\app\src\main\jniLibs -Recurse -Force -EA SilentlyContinue
 Remove-Item src-tauri\gen\android\app\build            -Recurse -Force -EA SilentlyContinue
 Remove-Item src-tauri\target                              -Recurse -Force -EA SilentlyContinue
 $jr = "src-tauri\gen\android\app\src\main\jniLibs"
 foreach ($a in @("arm64-v8a","armeabi-v7a","x86","x86_64")) { mkdir "$jr\$a" -Force | Out-Null }
-# 3 Tauri build (Rust ?? .so; ?? symlink ??!)
+# 3 Tauri 构建 (Rust 编译 .so; 可能 symlink 报错，忽略!)
 npx tauri android build --apk 2>&1 | Select-Object -Last 20
-# 4 HardLink so ? jniLibs
+# 4 HardLink so 到 jniLibs
 $tb="src-tauri\target"; $map=@{ "aarch64-linux-android"="arm64-v8a"; "armv7-linux-androideabi"="armeabi-v7a"; "i686-linux-android"="x86"; "x86_64-linux-android"="x86_64" };
 foreach ($k in $map.Keys) { $s="$tb\$k\release\libapp_lib.so"; $d="$jr\$($map[$k])\libapp_lib.so"; if (Test-Path $s) { try { New-Item HardLink $d $s -Force -EA Stop | Out-Null } catch { Copy-Item $s $d -Force } } }
-# 5 Gradle assemble (?? Rust)
+# 5 Gradle assemble (跳过 Rust)
 cd src-tauri\gen\android
 $env:ANDROID_HOME="C:\Users\admin\AppData\Local\Android\Sdk"; $env:JAVA_HOME="E:\environment\jdk17";
 .\gradlew :app:assembleUniversalRelease -x ":app:rustBuildArm64Release" -x ":app:rustBuildArmRelease" -x ":app:rustBuildX86Release" -x ":app:rustBuildX86_64Release" -x ":app:rustBuildUniversalRelease" --no-daemon 2>&1 | Select-Object -Last 8
 cd ..\..\..
-# 6 arm64 ?? (? strip-arm64.cjs ???)
-node strip-arm64.cjs
-# 7 zipalign + sign
+# 6 arm64 精简 (用 aapt remove，不要用 yazl!)
 $bt = "C:\Users\admin\AppData\Local\Android\Sdk\build-tools\35.0.0"
+mkdir dist-android -Force | Out-Null
+Copy-Item src-tauri\gen\android\app\build\outputs\apk\universal\release\app-universal-release-unsigned.apk dist-android\arm64-unsigned.apk -Force
+& "$bt\aapt.exe" remove dist-android\arm64-unsigned.apk lib/armeabi-v7a/libapp_lib.so lib/x86/libapp_lib.so lib/x86_64/libapp_lib.so
+# 7 zipalign + sign
 & "$bt\zipalign.exe" -f 4 dist-android\arm64-unsigned.apk     dist-android\SalaryTimer-0.1.0-arm64.apk
 & "$bt\zipalign.exe" -f 4 dist-android\universal-unsigned.apk dist-android\SalaryTimer-0.1.0-universal.apk
-foreach ($f in @("dist-android\SalaryTimer-0.1.0-arm64.apk","dist-android\SalaryTimer-0.1.0-universal.apk")) { & "$bt\apksigner.bat" sign --ks release.keystore --ks-pass pass:SalaryTimer2026 --key-pass pass:SalaryTimer2026 --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true $f }
+foreach ($f in @("dist-android\SalaryTimer-0.1.0-arm64.apk","dist-android\SalaryTimer-0.1.0-universal.apk")) { & "$bt\apksigner.bat" sign --ks release.keystore --ks-key-alias salary-timer --ks-pass pass:SalaryTimer2026 --key-pass pass:SalaryTimer2026 --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true $f }
 # 8 verify + clean
 foreach ($f in @("dist-android\SalaryTimer-0.1.0-arm64.apk","dist-android\SalaryTimer-0.1.0-universal.apk")) { Write-Host "=== $f ==="; & "$bt\apksigner.bat" verify --verbose $f | Select-String "Verified using" }
 Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk, strip-arm64.cjs -Force -EA SilentlyContinue
@@ -323,4 +366,4 @@ Get-ChildItem dist-android\*.apk | Select-Object Name, @{N='MB';E={[math]::Round
 
 ---
 
-*????: 2026-08-29 ? ?? Salary Timer v0.1.0 / Tauri 2.x / Windows 11*
+*最后更新: 2026-08-31 · 补充打包踩坑记录 (aapt remove 替代 yazl / alias 修正 / 签名顺序)*
