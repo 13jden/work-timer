@@ -88,6 +88,28 @@
   color: var(--muted-2);
 }
 
+/* v1.3.4-patch2:月度目标 input 旁的"清除"小按钮(显示已设值时出现) */
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--paper-3);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+  padding: 0;
+}
+.clearBtn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--paper-2);
+}
+
 .prefix {
   font-family: var(--font-mono);
   color: var(--muted);
@@ -213,7 +235,145 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(200, 255, 0, 0.35); }
   50%      { box-shadow: 0 0 0 6px rgba(200, 255, 0, 0); }
 }
-/* ══ Footer ══ */
+/* ══ Toggle switch ══ */
+.toggle {
+  width: 40px;
+  height: 24px;
+  background: var(--line);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 200ms;
+  border: none;
+  padding: 0;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--card);
+  border-radius: 50%;
+  transition: right 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.toggleOn {
+  background: var(--accent);
+}
+
+.toggleOn::after {
+  right: calc(100% - 22px);
+}
+
+/* ══ Template editor(v1.3.1 新增) ══ */
+.templateCard {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 12px 0 4px;
+}
+
+.templateCard:last-of-type {
+  border-bottom: none;
+}
+
+.templateHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 8px;
+}
+
+.templateNum {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2, var(--card));
+  border-radius: 50%;
+  font: 700 11px var(--font-mono);
+  color: var(--muted);
+}
+
+.templateLabel {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.templateLabelInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: var(--paper-2, var(--card));
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: 600 14px var(--font-sans);
+  color: var(--ink);
+}
+
+.templateActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.templateAction {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.templateAction:hover {
+  background: var(--paper-2, var(--card));
+  color: var(--ink);
+}
+
+.templateActionDanger:hover {
+  color: var(--danger);
+}
+
+.templateAddBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 14px 12px;
+  padding: 10px;
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.templateAddBtn:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* ══ Page wrap ══ */
+.wrap {
+  padding-bottom: 120px;
+}
+
 .footer {
   text-align: center;
   padding: 28px 20px 12px;
@@ -222,4 +382,448 @@
   letter-spacing: 1.5px;
   color: var(--muted-2);
   text-transform: uppercase;
+}
+
+/* ══ v1.3.2:休息模式独立组 �═ */
+.disabledHintRow {
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
+/* ══ v1.3.2:高级面板 — 有 subGroup + 统一 card 包裹 ══ */
+.subGroup {
+  margin-bottom: 16px;
+}
+
+.subGroupEyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0 4px 8px;
+}
+
+/* 高级面板整体 */
+.advancedPanel {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.advancedPanelOpen {
+  max-height: 2000px;
+}
+
+.advancedPanelInner {
+  padding-top: 2px;
+}
+
+/* 高级面板折叠触发按钮 */
+.advancedToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.advancedToggle:hover {
+  color: var(--ink);
+}
+
+.advancedToggleLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.advancedBadge {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.advancedChevron {
+  color: var(--muted-2);
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  flex-shrink: 0;
+}
+
+.advancedChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ══ v1.3.2:高级面板内模板列表 — 内联展示模板名+时段 ══ */
+.templateModalBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: calc(100% - 28px);
+  margin: 12px 14px 10px;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font: 600 12px var(--font-sans);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.templateModalBtn:hover {
+  border-color: var(--accent);
+  background: rgba(200, 255, 0, 0.04);
+}
+
+.templateListItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line-soft);
+  transition: background 0.15s;
+}
+
+.templateListItem:first-of-type {
+  border-top: none;
+}
+
+.templateListNum {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2, var(--card));
+  border-radius: 50%;
+  font: 700 10px var(--font-mono);
+  color: var(--muted);
+}
+
+.templateListInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.templateListLabel {
+  font: 600 13px var(--font-sans);
+  color: var(--ink);
+}
+
+.templateListTime {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.templateListEdit {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.templateListEdit:hover {
+  background: var(--paper-2, var(--card));
+  color: var(--ink);
+}
+
+/* ══ 时间 input (高级面板内午休时间用) ══ */
+.timeInput {
+  font: 500 12px var(--font-mono);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 4px;
+  background: var(--card);
+  font-variant-numeric: tabular-nums;
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  flex-shrink: 0;
+}
+
+/* ══ v1.3.2:默认工时极简卡 ══ */
+.hoursCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  gap: 12px;
+}
+
+.hoursLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.hoursEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.hoursDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.hoursTemplateCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted-2);
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+.hoursTime {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.hoursTimeMain {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hoursDuration {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--paper-2, var(--card));
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+
+.hoursEditBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font: 600 11px var(--font-sans);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 150ms var(--ease, ease-out);
+  flex-shrink: 0;
+}
+
+.hoursEditBtn:hover {
+  border-color: var(--accent);
+  background: var(--paper-2, var(--card));
+}
+
+.hoursEditBtn:active {
+  transform: scale(0.97);
+}
+
+/* ══ v1.3.2:模板编辑弹窗 ══ */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 15, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 200;
+  animation: fadeIn 0.2s var(--ease, ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modalCard {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 480px);
+  max-height: 86vh;
+  background: var(--paper);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  z-index: 201;
+  animation: scaleIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.modalHeader {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: 6px 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  position: relative;
+}
+
+.modalHandle {
+  grid-column: 1;
+  grid-row: 1;
+  width: 36px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin: 0 auto 4px;
+  display: none; /* 居中弹窗不需要把手 */
+}
+
+.modalTitle {
+  grid-column: 1;
+  grid-row: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+}
+
+.modalTitleIcon {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.modalHint {
+  grid-column: 1;
+  grid-row: 3;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.modalClose {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: start;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--paper-2, var(--card));
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.modalClose:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  scrollbar-width: thin;
+}
+
+.modalFooter {
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modalDoneBtn {
+  padding: 10px 22px;
+  background: var(--ink);
+  color: var(--accent);
+  border: none;
+  border-radius: 10px;
+  font: 700 12px var(--font-mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.modalDoneBtn:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+/* ══ 模板卡片(弹窗中) — 紧凑型,去掉下边距视觉过重 ══ */
+.modalBody .templateCard {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  padding: 12px 0 4px;
+  background: var(--card);
+}
+
+.modalBody .templateCard:last-of-type {
+  margin-bottom: 4px;
 }

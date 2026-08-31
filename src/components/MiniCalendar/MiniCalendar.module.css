@@ -1,0 +1,95 @@
+/* ==========================================================
+   MiniCalendar — 桌面端右栏的迷你月历
+   ========================================================== */
+.wrap {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding: 12px 12px 14px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.weekdayCell {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 4px 0;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-family: var(--font-num);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 0.12s;
+  padding: 0;
+}
+
+.day:hover { background: var(--paper-2); }
+
+.dayRest { color: var(--muted); }
+
+.dayToday {
+  background: var(--ink);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dayToday:hover { background: var(--ink); }
+
+.dayOverride {
+  position: relative;
+}
+
+.dayOverride::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+}
+
+.dayEmpty { background: transparent; }

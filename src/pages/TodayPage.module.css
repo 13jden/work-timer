@@ -75,15 +75,28 @@
 }
 
 /* TimerCard wrapper — flex:1 fills remaining, allows content to expand */
+/* v1.3.4-patch3:删除 max-width:560px,让左侧 2/3 内容撑满(不再收缩居中制造空白) */
 .timerWrap {
   flex: 1 1 auto;
   padding: 0 clamp(12px, 3vw, 18px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* QuoteCard — fixed height, increased spacing */
 .quoteWrap {
   flex-shrink: 0;
   padding: clamp(8px, 1.5vh, 14px) clamp(12px, 3vw, 18px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* v1.3.1 摸鱼 widget 容器 — 移至页面底部 */
+.slackingWrap {
+  padding: 0 clamp(12px, 3vw, 18px);
+  margin-top: clamp(8px, 2vh, 14px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Stats Row — fixed height, increased spacing */
@@ -94,4 +107,6 @@
   padding: 0 clamp(12px, 3vw, 18px);
   flex-shrink: 0;
   margin-bottom: clamp(8px, 2vh, 16px);
+  width: 100%;
+  box-sizing: border-box;
 }

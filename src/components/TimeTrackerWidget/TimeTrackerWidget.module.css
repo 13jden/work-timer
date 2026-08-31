@@ -1,0 +1,396 @@
+/* ════════════════════════════════════════════════════════════
+ * TimeTrackerWidget — 「时间戳小票」设计
+ *
+ * 布局:4 段
+ *   1. eyebrow row(eyebrow + mode chip)
+ *   2. 黑色里程表(签名元素)
+ *   3. 摸鱼薪资行
+ *   4. 主次按钮
+ *
+ * 视觉锚点:中央里程表块(.odoFrame)— 黑底 + 巨号白字
+ * ════════════════════════════════════════════════════════════ */
+
+.widget {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px;
+  margin-bottom: 12px;
+  position: relative;
+  transition: border-color 200ms;
+}
+
+.widget:hover {
+  border-color: var(--accent);
+}
+
+.widget.disabled {
+  opacity: 0.85;
+}
+
+.widget.running {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-shadow, rgba(200, 255, 0, 0.25));
+}
+
+/* v1.3.3 patch3:右上角详情箭头 */
+.detailArrowTop {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 150ms, background 150ms;
+  flex-shrink: 0;
+}
+
+.detailArrowTop:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--ink);
+}
+
+/* ── Receipt container ── */
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Row 1 · Eyebrow ── */
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eyebrow {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.eyebrowDate {
+  margin-left: 4px;
+  color: var(--muted);
+  opacity: 0.6;
+  letter-spacing: 0.4px;
+}
+
+/* ── Mode chip ── */
+.modeChip {
+  font: 600 11px var(--font-sans);
+  color: var(--ink);
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1;
+}
+
+.modeChipMuted {
+  font: 500 11px var(--font-sans);
+  color: var(--muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+
+.modeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+}
+
+.modeChipActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.modeChipActive .modeDot {
+  background: var(--ink);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.6; }
+}
+
+/* ── Row 2 · Odometer (signature element) ── */
+.odoFrame {
+  background: var(--ink);
+  border-radius: var(--r-sm);
+  padding: 8px 14px 8px;
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 装饰:右上角细微刻度纹理 */
+.odoFrame::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 6px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--paper) 0,
+    var(--paper) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.15;
+}
+
+.odoLabel {
+  font: 500 10px var(--font-mono);
+  color: var(--accent);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.odoNumber {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  font: 700 22px/1 var(--font-num, var(--font-sans));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+  color: var(--paper);
+  margin: 2px 0 4px;
+  position: relative;
+}
+
+.odoMin,
+.odoSec {
+  display: inline-block;
+  min-width: 30px;
+  text-align: center;
+}
+
+.odoColon {
+  display: inline-block;
+  margin: 0 2px;
+  animation: colonBlink 1s steps(2, end) infinite;
+}
+
+@keyframes colonBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.25; }
+}
+
+.odoMuted {
+  font: 500 13px var(--font-sans);
+  color: var(--paper);
+  opacity: 0.55;
+  text-align: center;
+  padding: 14px 0;
+}
+
+/* 休息日静态文字 — 替代 odometer 黑框位置,居中显示 */
+.restNote {
+  font: 500 14px/1.4 var(--font-sans);
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.03em;
+  padding: 12px 0;
+}
+
+.odoSub {
+  font: 400 10px var(--font-mono);
+  color: var(--paper);
+  opacity: 0.45;
+  text-align: center;
+  letter-spacing: 0.6px;
+}
+
+/* v1.3.3 patch3:里程表横向布局 — 模式 chip + 小数字 + 单按钮一行 */
+.odoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.odoRowCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.odoRowChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 242, 234, 0.08);
+  color: var(--paper);
+  opacity: 0.75;
+  margin-bottom: 2px;
+}
+
+.odoRowChipActive {
+  background: var(--accent);
+  color: var(--ink);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.odoRowChipDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.odoRowChipActive .odoRowChipDot {
+  animation: dotPulse 1.4s ease-in-out infinite;
+  opacity: 1;
+}
+
+/* 进行中状态:数字轻微发光 */
+.widget.running .odoNumber {
+  text-shadow: 0 0 18px var(--accent-shadow, rgba(200, 255, 0, 0.35));
+}
+
+/* ── Row 3 · 摸鱼薪资 ── */
+.earnRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.earnLabel {
+  font: 400 12px var(--font-sans);
+  color: var(--muted);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.earnRate {
+  font: 400 10px var(--font-mono);
+  color: var(--muted);
+  opacity: 0.6;
+  letter-spacing: 0.4px;
+}
+
+.earnValue {
+  font: 600 17px var(--font-num, var(--font-sans));
+  color: var(--accent-deep, #9FCC00);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+  transition: color 200ms;
+}
+
+.earnValue:not(.earnLive) {
+  color: var(--muted);
+}
+
+.earnLive {
+  color: var(--accent-deep, #9FCC00);
+  animation: earnGlow 1.6s ease-in-out infinite;
+}
+
+@keyframes earnGlow {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50% { text-shadow: 0 0 12px var(--accent-shadow, rgba(200, 255, 0, 0.5)); }
+}
+
+/* ── Row 4 · 单按钮(开始/结束二态) + 详情箭头 ── */
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.actionBtn {
+  flex: 1;
+  border: none;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font: 600 12px var(--font-sans);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.3px;
+  transition: transform 100ms, background 150ms;
+}
+
+.actionBtn:active {
+  transform: scale(0.97);
+}
+
+.actionBtnStart {
+  background: var(--ink);
+  color: var(--accent);
+}
+
+.actionBtnStart:hover {
+  background: #1a1e26;
+}
+
+.actionBtnStop {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.actionBtnDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger, #E5484D);
+  display: inline-block;
+}
+
+.detailArrow {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 150ms, background 150ms;
+}
+
+.detailArrow:hover {
+  border-color: var(--ink);
+  background: var(--paper);
+}

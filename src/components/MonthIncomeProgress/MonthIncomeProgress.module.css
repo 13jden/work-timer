@@ -1,0 +1,221 @@
+/* ==========================================================
+   MonthIncomeProgress — 桌面端侧边栏底部月度收入进度
+   ========================================================== */
+
+/* ── 展开态 · Block ── */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 8px;
+  background: var(--paper-2);
+  border-radius: var(--r-sm);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doneBadge {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--accent-deep);
+  background: var(--accent);
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: none;
+}
+
+.amountRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.amountMain {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+}
+
+.amountCurrency {
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 1px;
+}
+
+.amountNum {
+  font-family: var(--font-num);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+  line-height: 1;
+}
+
+.amountGoal {
+  font-family: var(--font-num);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: 1px;
+}
+
+.bar {
+  width: 100%;
+  height: 5px;
+  background: var(--card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s var(--ease);
+  box-shadow: 0 0 6px var(--accent-shadow);
+}
+
+.barFillDone {
+  /* 完成态保持主题色,但稍微亮一点(脉冲感) */
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-shadow);
+}
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted-2);
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 展开态 · Setup Card(未设置目标) ── */
+.setupCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  width: 100%;
+  text-align: left;
+}
+
+.setupCard:hover {
+  background: var(--paper-2);
+  border-color: var(--accent);
+}
+
+.setupIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.setupText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.setupEyebrow {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+}
+
+.setupLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── 收起态 · Small ring ── */
+.progressRingSmall {
+  position: relative;
+  width: 36px;
+  height: 36px;
+}
+
+.progressRingSmall svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringBg {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 3;
+}
+
+.ringFg {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s var(--ease);
+}
+
+.ringNum {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-num);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 收起态 · Empty button(未设置目标) ── */
+.ringEmptyBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ringEmptyBtn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}

@@ -1,0 +1,76 @@
+/* ==========================================================
+   DesktopTopbar — 桌面端三栏布局的顶部栏
+   高度 56px · 单行 · 左标题 / 右设置齿轮
+   ========================================================== */
+.topbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.divider {
+  color: var(--muted-2);
+  font-size: 12px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.iconBtn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.iconBtn:active {
+  transform: scale(0.95);
+}

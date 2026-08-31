@@ -1,3 +1,14 @@
+/* ==========================================================
+   DaySheet — 日历日详情弹窗(v1.3.1 重设计)
+
+   设计原则:
+   - 5 个 section 清晰分层:handle/日期 → 类型 → 当日工时 → 夜班 → 薪资 → 操作
+   - 每个 section 独立 sectionLabel + 内容块,呼吸感足
+   - 删除原 .toggle CSS 复用冲突
+   - 夜班加权 toggle 宽度 52px,加 knob 视觉重量
+   - 弹窗两侧 padding 收紧到 18px,内容更紧凑
+   ========================================================== */
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -20,60 +31,140 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%) translateY(100%);
-  width: min(100vw, 420px);
+  width: min(100vw, 440px);
   background: var(--paper);
   border-radius: 24px 24px 0 0;
-  padding: 8px 20px calc(20px + var(--safe-bottom, 0px));
-  transition: transform 0.4s var(--ease-spring);
-  max-height: 85vh;
+  padding: 8px 18px calc(20px + var(--safe-bottom, 0px));
+  transition: transform 0.4s var(--ease-spring, cubic-bezier(0.32, 0.72, 0, 1));
+  max-height: 88vh;
   overflow-y: auto;
   z-index: 201;
+  /* 隐藏滚动条但保留滚动能力 */
+  scrollbar-width: thin;
 }
 
 .sheetOpen {
   transform: translateX(-50%) translateY(0);
 }
 
+/* 桌面端内联模式:取消 fixed 定位,变为普通页面流元素 */
+.sheetInline {
+  position: static;
+  transform: none;
+  width: 100%;
+  border-radius: var(--r-md);
+  bottom: auto;
+  left: auto;
+  z-index: auto;
+  max-height: none;
+  padding: 8px 18px 20px;
+}
+
+/* ── 顶部 handle ── */
 .handle {
   width: 36px;
   height: 4px;
   background: var(--line);
   border-radius: 2px;
-  margin: 0 auto 16px;
+  margin: 0 auto 12px;
+}
+
+/* ── 头部行:日期 + 状态 badge ── */
+.headRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.dateBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.dateLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
 .date {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 400;
-  text-align: center;
-  margin: 0 0 18px 0;
   letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--ink);
 }
 
-/* ── 类型选择(select 下拉) ─────────────────────────── */
+.dateBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--paper-2, var(--card));
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-left: 12px;
+}
+
+/* ── Section 通用样式(层级容器) ── */
+.section {
+  margin-bottom: 16px;
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.sectionHint {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: var(--muted-2);
+  text-transform: none;
+}
+
+/* ── 类型 select ── */
 .typeRow {
-  margin-bottom: 12px;
+  position: relative;
 }
 
 .typeSelect {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px 36px 12px 14px;
   background: var(--card);
   border: 1.5px solid var(--line-soft);
   border-radius: 12px;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   color: var(--ink);
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  padding-right: 36px;
+  -webkit-appearance: none;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -87,26 +178,24 @@
   font-size: 13px;
 }
 
-/* ── 倍率输入 ───────────────────────────────────── */
+.typeChevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* ── 加班倍率输入 ── */
 .multRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 12px 14px;
   background: var(--card);
   border: 1.5px solid var(--line-soft);
   border-radius: 12px;
-}
-
-.multLabel {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--muted);
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .multInput {
@@ -134,19 +223,217 @@
   color: var(--accent);
 }
 
-/* ── 薪资卡片 ───────────────────────────────────── */
-.figure {
-  text-align: center;
-  padding: 20px 16px;
+/* ── v1.3.2:freelance 临时费率 ── */
+.freelanceRateRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
   background: var(--card);
   border: 1.5px solid var(--line-soft);
-  border-radius: 16px;
-  margin-bottom: 18px;
+  border-radius: 12px;
+}
+
+.freelanceModeRow {
+  display: flex;
+  gap: 6px;
+  padding: 3px;
+  background: var(--paper-2, var(--paper));
+  border-radius: 8px;
+}
+
+.freelanceModeChip {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font: 600 11px var(--font-sans);
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 150ms var(--ease, ease-out);
+}
+
+.freelanceModeChip:hover {
+  color: var(--ink);
+}
+
+.freelanceModeChipActive {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.freelanceRateInputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px 2px;
+}
+
+.freelanceRatePrefix {
+  font: 600 14px var(--font-mono);
+  color: var(--muted);
+}
+
+.freelanceRateInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: 700 18px var(--font-mono);
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0;
+}
+
+.freelanceRateInput::-webkit-outer-spin-button,
+.freelanceRateInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.freelanceRateUnit {
+  font: 500 12px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+/* ── 当日工时:mode chip + picker ── */
+.modeRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.modeChip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 150ms var(--ease, ease-out);
+}
+
+.modeChip:hover {
+  border-color: var(--accent);
+}
+
+.modeChipActive {
+  border-color: var(--accent);
+  background: rgba(200, 255, 0, 0.06);
+}
+
+.modeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 150ms;
+}
+
+.modeChipActive .modeDot {
+  background: var(--accent);
+}
+
+.pickerWrap {
+  padding-top: 4px;
+}
+
+/* ── 夜班加权 toggle(关键 CSS 修复) ── */
+.nightShiftRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+}
+
+.nightShiftLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nightShiftTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.nightShiftHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* 夜班 toggle — 独立命名,不再复用 .toggle */
+.nightToggle {
+  flex-shrink: 0;
+  width: 52px;
+  height: 30px;
+  background: var(--line);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 200ms;
+  border: none;
+  padding: 0;
+}
+
+.nightToggleKnob {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 24px;
+  height: 24px;
+  background: var(--card);
+  border-radius: 50%;
+  transition: right 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.nightToggleOn {
+  background: var(--accent);
+}
+
+.nightToggleOn .nightToggleKnob {
+  right: calc(100% - 27px);
+}
+
+/* ── 薪资预览 ── */
+.figure {
+  text-align: center;
+  padding: 18px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 14px;
+  margin-bottom: 14px;
 }
 
 .earn {
   font-family: var(--font-display);
-  font-size: 44px;
+  font-size: 40px;
   line-height: 1;
   font-weight: 400;
   letter-spacing: -1px;
@@ -163,35 +450,20 @@
   text-transform: uppercase;
 }
 
-/* ── 操作按钮 ───────────────────────────────────── */
+/* ── 操作按钮(修复:删除 .toggle 复用) ── */
 .actions {
   display: flex;
   gap: 10px;
   margin-top: 4px;
 }
 
-.toggle {
-  flex: 1;
-  padding: 16px;
-  background: var(--ink);
-  color: var(--accent);
-  border: none;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
-}
-
-.toggle:active {
-  transform: scale(0.97);
-}
-
-.reset {
-  padding: 16px 18px;
+/* 重置按钮 — 次要 */
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 18px;
   background: transparent;
   color: var(--muted);
   border: 1.5px solid var(--line);
@@ -199,13 +471,49 @@
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font-mono);
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s;
 }
 
-.reset:hover {
+.resetBtn:hover {
   color: var(--ink);
   border-color: var(--ink);
+}
+
+/* 保存按钮 — 主操作,显著区分 */
+.saveBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 20px;
+  background: var(--ink);
+  color: var(--accent);
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.saveBtn:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+/* ── 主题适配 ── */
+:global([data-theme='obsidian']) .dateBadge {
+  background: var(--card);
+  color: var(--muted);
+}
+
+:global([data-theme='obsidian']) .modeChipActive {
+  background: rgba(124, 111, 247, 0.12);
 }

@@ -1,4 +1,19 @@
-## [Unreleased] · 2026-08-29
+## [Unreleased] · 2026-08-30
+
+### 版本索引
+
+| 版本 | 日期 | 主题 | 文档 |
+|---|---|---|---|
+| v1.3.4-patch3 | 2026-08-31 | 右栏加宽到 1/3 + 撤销 patch2 居中(撑满整个页面) | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.4-patch2 | 2026-08-30 | 桌面端主内容 max-width 居中 + 日历页分栏放宽 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.4-patch1 | 2026-08-30 | 跨天班次 + 夜班加成计算口径修正 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.4 | 2026-08-30 | 桌面端三栏布局重构 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.3 | 2026-08-30 | 图标替换 + 时间记录重设计 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.2 | 2026-08-30 | SettingsPage 极简化 + DaySheet 自由日配置增强 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.1 | 2026-08-30 | Bug 修复 + 图标库 + 弹窗重设计 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.3.0 | 2026-08-29 | 增强版薪资模型(加班/摸鱼/自由/多段) | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
+| v1.0–v1.2 | 阶段 1 | 见本文档历史记录 | 本文 |
+
 ### Changed · 主页面各组件内文字间隔收紧
 
 整体缩小 TodayPage 各组件内部的 padding / margin / gap，让布局更紧凑：

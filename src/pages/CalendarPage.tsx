@@ -1,5 +1,9 @@
-﻿/**
+/**
  * CalendarPage — 月度工作日网格
+ *
+ * v1.3.4 桌面端改造：
+ * - `isDesktopInline` prop：桌面端 DaySheet 不弹窗，直接内联在页面内
+ * - 桌面端布局：日历年/月历占左侧，DaySheet 占右侧（无弹窗遮罩）
  */
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../store/configStore';
@@ -11,7 +15,13 @@ import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
 import { RestModeSheet } from '../components/RestModeSheet';
+import { CaretLeft, CaretRight, Crosshair } from '@phosphor-icons/react';
 import styles from './CalendarPage.module.css';
+
+interface CalendarPageProps {
+  /** 桌面端内联模式（不弹窗，DaySheet 直接渲染在页面内） */
+  isDesktopInline?: boolean;
+}
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -28,7 +38,7 @@ function formatEarnText(value: number): string {
   return `¥${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function CalendarPage() {
+export function CalendarPage({ isDesktopInline = false }: CalendarPageProps) {
   // 页面可见时刷新 now(秒级)
   const [now, setNow] = useState(() => new Date());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -97,12 +107,12 @@ export function CalendarPage() {
       })()
     : 0;
 
-  // 当日已赚(仅当前月 + 有快照时显示)
+  // 当日已赚(当前月时实时计算)
   const todayEarn = useMemo(() => {
-    if (!isCurrentMonth || !hasSnapshot) return 0;
+    if (!isCurrentMonth) return 0;
     const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
     return todayEarned(now, cfg, overrides, HOLIDAYS);
-  }, [isCurrentMonth, hasSnapshot, now, effectiveConfig, overrides, effectiveSalary]);
+  }, [isCurrentMonth, now, effectiveConfig, effectiveSalary, overrides]);
 
   // 工作日数
   const workdaysCount = useMemo(() => {
@@ -174,150 +184,179 @@ export function CalendarPage() {
   const monthLabel = `${MONTH_NAMES[month]}`;
   const yearLabel = `${year}`;
 
+  // ── DaySheet 渲染策略 ──────────────────────────────────────
+  // desktop inline:渲染 sheet 但不用遮罩层,直接放在页面流里
+  // mobile:用遮罩弹窗(默认)
+  const sheetVisible = sheetOpen && pickedDate !== null;
+
   return (
-    <>
+    <div className={`${styles.pageWrap} ${isDesktopInline ? styles.pageInline : ''}`}>
 
-      {/* Header:两行结构 — eyebrow + 月份标题(可点击) */}
-      <div className={styles.head}>
-        <div className={styles.headEyebrowRow}>
-          <span className={styles.headEyebrow}>calendar</span>
-          <span className={styles.headEnglish}>Monthly overview</span>
-          <span className={styles.headRight}>{yearLabel}</span>
-        </div>
-        <button
-          type="button"
-          className={styles.headTitle}
-          onClick={() => !isFutureMonth && setGenOpen(true)}
-          disabled={isFutureMonth}
-          title={isFutureMonth ? '未来月份,无法生成' : '点击设置月度薪资'}
-          aria-label="设置当月薪资"
-        >
-          {monthLabel}
-        </button>
-      </div>
+      {/* ── 左/主列:Header + Summary + 导航 + 网格 ── */}
+      <div className={styles.mainCol}>
 
-      {/* Summary:始终三卡;已赚无快照时显示 0 + 右上角小圆点 */}
-      <div className={styles.summary}>
-        <button
-          type="button"
-          className={`${styles.summaryCard} ${styles.green} ${styles.summaryRest}`}
-          onClick={() => setRestOpen(true)}
-          title="调整休息模式"
-        >
-          <div className={styles.summaryNum}>{workdaysCount}</div>
-          <div className={styles.summaryLbl}>工作日</div>
-        </button>
-        <div className={`${styles.summaryCard} ${styles.white}`}>
-          <div className={styles.summaryNum}>
-            ¥{Math.round(daily).toLocaleString('en-US')}
+        {/* Header:两行结构 — eyebrow + 月份标题(可点击) */}
+        <div className={styles.head}>
+          <div className={styles.headEyebrowRow}>
+            <span className={styles.headEyebrow}>calendar</span>
+            <span className={styles.headEnglish}>Monthly overview</span>
+            <span className={styles.headRight}>{yearLabel}</span>
           </div>
-          <div className={styles.summaryLbl}>日均</div>
-        </div>
-        <button
-          type="button"
-          className={`${styles.summaryCard} ${styles.white} ${styles.summaryEarn}`}
-          onClick={() => setGenOpen(true)}
-          title={hasSnapshot ? '调整月薪' : '生成当月薪资'}
-        >
-          <div className={styles.summaryNum}>
-            ¥{Math.round(monthEarned).toLocaleString('en-US')}
-          </div>
-          <div className={styles.summaryLbl}>已赚</div>
-          {!hasSnapshot && !isFutureMonth && (
-            <span className={styles.earnDot} aria-label="可点击生成薪资" />
-          )}
-        </button>
-      </div>
-
-      {/* 月份导航:‹  [now]  › (now 仅非当月显示,颜色用主题 accent) */}
-      <div className={styles.nav}>
-        <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
-          ‹
-        </button>
-        {!isCurrentMonth && (
-          <button type="button" className={styles.navTitle} onClick={goToToday}>
-            now
+          <button
+            type="button"
+            className={styles.headTitle}
+            onClick={() => !isFutureMonth && setGenOpen(true)}
+            disabled={isFutureMonth}
+            title={isFutureMonth ? '未来月份,无法生成' : '点击设置月度薪资'}
+            aria-label="设置当月薪资"
+          >
+            {monthLabel}
           </button>
-        )}
-        <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
-          ›
-        </button>
-      </div>
-
-      {/* 网格 */}
-      <div className={styles.grid}>
-        <div className={styles.weekdays}>
-          {WEEKDAYS.map((d) => (
-            <span key={d} className={styles.weekdayCell}>{d}</span>
-          ))}
         </div>
-        <div className={styles.days}>
-          {Array.from({ length: firstDow }).map((_, i) => (
-            <div key={`empty-${i}`} className={`${styles.day} ${styles.dayEmpty}`} />
-          ))}
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const d = i + 1;
-            const date = new Date(year, month, d);
-            const isWork = isWorkday(date, effectiveConfig, overrides, HOLIDAYS);
-            const units = dayUnits(date, effectiveConfig, overrides, HOLIDAYS);
-            const isToday =
-              d === now.getDate() &&
-              month === now.getMonth() &&
-              year === now.getFullYear();
-            const isPast =
-              year < now.getFullYear() ||
-              (year === now.getFullYear() && month < now.getMonth()) ||
-              (year === now.getFullYear() && month === now.getMonth() && d < now.getDate());
-            const key = formatDateKey(date);
-            const hasOv = key in overrides;
 
-            const classes = [
-              styles.day,
-              !isWork ? styles.dayWeekend : '',
-              isToday ? styles.dayToday : '',
-              hasOv ? styles.dayOverride : '',
-            ].filter(Boolean).join(' ');
+        {/* Summary:始终三卡;已赚无快照时显示 0 + 右上角小圆点 */}
+        <div className={styles.summary}>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.green} ${styles.summaryRest}`}
+            onClick={() => setRestOpen(true)}
+            title="调整休息模式"
+          >
+            <div className={styles.summaryNum}>{workdaysCount}</div>
+            <div className={styles.summaryLbl}>工作日</div>
+          </button>
+          <div className={`${styles.summaryCard} ${styles.white}`}>
+            <div className={styles.summaryNum}>
+              ¥{Math.round(daily).toLocaleString('en-US')}
+            </div>
+            <div className={styles.summaryLbl}>日均</div>
+          </div>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.white} ${styles.summaryEarn}`}
+            onClick={() => setGenOpen(true)}
+            title={hasSnapshot ? '调整月薪' : '生成当月薪资'}
+          >
+            <div className={styles.summaryNum}>
+              ¥{Math.round(monthEarned).toLocaleString('en-US')}
+            </div>
+            <div className={styles.summaryLbl}>已赚</div>
+            {!hasSnapshot && !isFutureMonth && (
+              <span className={styles.earnDot} aria-label="可点击生成薪资" />
+            )}
+          </button>
+        </div>
 
-            // 显示 金额规则:
-            // - 已生成快照:过去工作日显示「已结算金额」(daily * units)
-            // - 今天 + 当前月 + 已生成快照:实时累积「今日已赚」(每秒刷新)
-            // - 今天 + 当前月 + 无快照:不显示(用户没确认数据,不该瞎猜)
-            let earnText = '';
-            if (hasSnapshot && isWork) {
-              if (isToday) {
-                earnText = formatEarnText(todayEarn);
-              } else if (isPast && units > 0) {
-                const dayEarn = daily * units;
-                earnText = formatEarnText(dayEarn);
+        {/* 月份导航:‹  [now]  › (now 仅非当月显示,颜色用主题 accent) */}
+        <div className={styles.nav}>
+          <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="上个月">
+            <CaretLeft size={16} weight="bold" />
+          </button>
+          {!isCurrentMonth && (
+            <button type="button" className={styles.navTitle} onClick={goToToday}>
+              <Crosshair size={12} weight="regular" style={{ marginRight: 4, verticalAlign: '-1px' }} />
+              now
+            </button>
+          )}
+          <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="下个月">
+            <CaretRight size={16} weight="bold" />
+          </button>
+        </div>
+
+        {/* 网格 */}
+        <div className={styles.grid}>
+          <div className={styles.weekdays}>
+            {WEEKDAYS.map((d) => (
+              <span key={d} className={styles.weekdayCell}>{d}</span>
+            ))}
+          </div>
+          <div className={styles.days}>
+            {Array.from({ length: firstDow }).map((_, i) => (
+              <div key={`empty-${i}`} className={`${styles.day} ${styles.dayEmpty}`} />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, i) => {
+              const d = i + 1;
+              const date = new Date(year, month, d);
+              const isWork = isWorkday(date, effectiveConfig, overrides, HOLIDAYS);
+              const units = dayUnits(date, effectiveConfig, overrides, HOLIDAYS);
+              const isToday =
+                d === now.getDate() &&
+                month === now.getMonth() &&
+                year === now.getFullYear();
+              const isPast =
+                year < now.getFullYear() ||
+                (year === now.getFullYear() && month < now.getMonth()) ||
+                (year === now.getFullYear() && month === now.getMonth() && d < now.getDate());
+              const key = formatDateKey(date);
+              const hasOv = key in overrides;
+
+              const classes = [
+                styles.day,
+                !isWork ? styles.dayWeekend : '',
+                isToday ? styles.dayToday : '',
+                hasOv ? styles.dayOverride : '',
+              ].filter(Boolean).join(' ');
+
+              let earnText = '';
+              if (isWork) {
+                if (isToday) {
+                  earnText = formatEarnText(todayEarn);
+                } else if (hasSnapshot && isPast && units > 0) {
+                  const dayEarn = daily * units;
+                  earnText = formatEarnText(dayEarn);
+                }
               }
-            }
 
-            return (
-              <button
-                key={d}
-                type="button"
-                className={classes}
-                onClick={() => openDay(d)}
-              >
-                <span className={styles.dayNum}>{d}</span>
-                {earnText && <span className={styles.earn}>{earnText}</span>}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  className={classes}
+                  onClick={() => openDay(d)}
+                >
+                  <span className={styles.dayNum}>{d}</span>
+                  {earnText && <span className={styles.earn}>{earnText}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* DaySheet:工作日类型切换 */}
-      <DaySheet
-        open={sheetOpen}
-        date={pickedDate}
-        isWork={isPickedWork}
-        dailyEarning={daily}
-        currentEntry={pickedEntry}
-        onClose={() => setSheetOpen(false)}
-        onSave={(key, entry) => setDayOverride(key, entry)}
-        onReset={(key) => clearOverride(key)}
-      />
+      {/* ── 右列:桌面端内联 DaySheet（仅 desktop inline 模式显示） ── */}
+      {isDesktopInline && (
+        <div className={styles.inlineSheet}>
+          <DaySheet
+            inline
+            open={sheetVisible}
+            date={pickedDate}
+            isWork={isPickedWork}
+            dailyEarning={daily}
+            currentEntry={pickedEntry}
+            salaryMode={config.salaryMode}
+            segmentTemplates={config.segmentTemplates}
+            onClose={() => setSheetOpen(false)}
+            onSave={(key, entry) => setDayOverride(key, entry)}
+            onReset={(key) => clearOverride(key)}
+          />
+        </div>
+      )}
+
+      {/* ── 移动端弹窗 DaySheet（仅非 inline 模式渲染遮罩） ── */}
+      {!isDesktopInline && (
+        <DaySheet
+          open={sheetOpen}
+          date={pickedDate}
+          isWork={isPickedWork}
+          dailyEarning={daily}
+          currentEntry={pickedEntry}
+          salaryMode={config.salaryMode}
+          segmentTemplates={config.segmentTemplates}
+          onClose={() => setSheetOpen(false)}
+          onSave={(key, entry) => setDayOverride(key, entry)}
+          onReset={(key) => clearOverride(key)}
+        />
+      )}
 
       {/* RestModeSheet:点击工作日 → 切换休息模式 */}
       <RestModeSheet
@@ -342,6 +381,6 @@ export function CalendarPage() {
         onClose={() => setGenOpen(false)}
         onConfirm={handleGenerate}
       />
-    </>
+    </div>
   );
 }

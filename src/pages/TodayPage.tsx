@@ -1,15 +1,21 @@
-﻿/**
- * TodayPage — 今日页(Timer + Stats)
- * 用户打开 App 第一眼看到的内容。
+/**
+ * TodayPage — 今日页(Timer + Stats + 摸鱼 Widget)
+ *
+ * v1.3 扩展:
+ *   - SlackingWidget 摸鱼卡片
+ *   - 详情页路由(通过 showSlackingDetail state)
  */
+import { useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
-import { hourlyRate, perSecond, todayEarned } from '../lib/compute';
+import { effectiveHourlyRate, perSecond, todayEarned } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
 import { TimerCard } from '../components/TimerCard';
 import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
+import { TimeTrackerWidget } from '../components/TimeTrackerWidget';
+import { TimeTrackerDetailPage } from './TimeTrackerDetailPage';
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
@@ -24,12 +30,17 @@ function formatDate(date: Date): string {
 }
 
 export function TodayPage({ onOpenConvert }: TodayPageProps) {
+  const [showSlackingDetail, setShowSlackingDetail] = useState(false);
+
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
 
   const earned = todayEarned(now, config, overrides, HOLIDAYS);
-  const hourly = hourlyRate(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
+  // v1.3.2 Bug Fix:时薪按当前正在的工作计算
+  // 优先级:override.segments(今天如果有兼职/自定义工时) > config.segmentTemplates > config.startTime/endTime
+  // effectiveHourlyRate 内部走 effectiveDailyRate,已内置 freelance override(优先级:freelanceHourly > freelanceDaily > config.manualDailyRate)
+  const hourly = effectiveHourlyRate(now, config, overrides, HOLIDAYS);
   const perSec = perSecond(now.getFullYear(), now.getMonth(), config, overrides, HOLIDAYS);
   const coffeeCount = config.coffeePrice > 0 ? earned / config.coffeePrice : 0;
 
@@ -39,6 +50,15 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
     const diff = now.getTime() - start.getTime();
     return Math.floor(diff / 86_400_000);
   })();
+
+  // ── 详情页路由 ──
+  if (showSlackingDetail) {
+    return (
+      <TimeTrackerDetailPage
+        onBack={() => setShowSlackingDetail(false)}
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -80,6 +100,11 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
           extra={onOpenConvert ? <span onClick={onOpenConvert}>查看更多 →</span> : undefined}
           onClick={onOpenConvert}
         />
+      </div>
+
+      {/* ============ TimeTrackerWidget(v1.3.3 重命名自 SlackingWidget) ============ */}
+      <div className={styles.slackingWrap}>
+        <TimeTrackerWidget onOpenDetail={() => setShowSlackingDetail(true)} />
       </div>
     </div>
   );

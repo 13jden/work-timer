@@ -1,0 +1,34 @@
+.group {
+  display: flex;
+  background: var(--paper-2);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 0;
+}
+
+.group.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.item {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font: 500 12px var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 150ms var(--ease, ease-out);
+}
+
+.item.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.item:hover:not(.active):not(:disabled) {
+  color: var(--ink);
+}

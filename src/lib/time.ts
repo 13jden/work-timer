@@ -63,3 +63,20 @@ export function formatHMS(ms: number, status: string, label: string): {
     status,
   };
 }
+
+/**
+ * v1.3.3 夜班窗口判断(22:00–06:00)
+ * 给定一个时刻,落在 [22:00, 06:00) 窗口则视为夜班。
+ */
+export function isInNightWindow(d: Date): boolean {
+  const m = d.getHours() * 60 + d.getMinutes();
+  return m >= 22 * 60 || m < 6 * 60;
+}
+
+/**
+ * v1.3.3 给定起始/结束时间戳,判断整段是否跨入夜班窗口
+ * (startTs 或 endTs 任一在窗口内 → true)
+ */
+export function detectNightShift(startTs: number, endTs: number): boolean {
+  return isInNightWindow(new Date(startTs)) || isInNightWindow(new Date(endTs));
+}

@@ -8,7 +8,7 @@ import { useConfigStore } from './configStore';
 import { useItemsStore } from './itemsStore';
 import { useCalendarStore } from './calendarStore';
 import { useThemeStore, bootstrapTheme, THEME_LIST } from './themeStore';
-import { DEFAULT_CONFIG, OVERRIDES_KEY_V2, ITEMS_KEY, STORAGE_KEY_V2 } from '../lib/constants';
+import { DEFAULT_CONFIG, OVERRIDES_KEY_V3, ITEMS_KEY, STORAGE_KEY_V3 } from '../lib/constants';
 
 const STORAGE_PREFIX = 'salary_timer_';
 
@@ -39,9 +39,9 @@ describe('configStore', () => {
     expect(useConfigStore.getState().monthlySalary).toBe(15000);
   });
 
-  it('persists to localStorage with key salary_timer_config_v2', () => {
+  it('persists to localStorage with key salary_timer_config_v3', () => {
     useConfigStore.getState().setConfig({ monthlySalary: 99999 });
-    const raw = localStorage.getItem(STORAGE_KEY_V2);
+    const raw = localStorage.getItem(STORAGE_KEY_V3);
     expect(raw).toBeTruthy();
     expect(raw).toContain('99999');
   });
@@ -139,24 +139,24 @@ describe('calendarStore', () => {
   });
 
   it('clearOverride removes override', () => {
-    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'rest', multiplier: 0 } } });
+    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'rest', multiplier: 0 , segments: null, nightShift: false } } });
     useCalendarStore.getState().clearOverride('2026-08-31');
     expect(useCalendarStore.getState().dayOverrides['2026-08-31']).toBeUndefined();
   });
 
-  it('persists to localStorage v2', () => {
+  it('persists to localStorage v3', () => {
     useCalendarStore.getState().toggleDay('2026-08-31', 'work');
-    expect(localStorage.getItem(OVERRIDES_KEY_V2)).toBeTruthy();
+    expect(localStorage.getItem(OVERRIDES_KEY_V3)).toBeTruthy();
   });
 
   it('setDayOverride with null removes entry', () => {
-    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'work', multiplier: 1 } } });
+    useCalendarStore.setState({ dayOverrides: { '2026-08-31': { type: 'work', multiplier: 1 , segments: null, nightShift: false } } });
     useCalendarStore.getState().setDayOverride('2026-08-31', null);
     expect(useCalendarStore.getState().dayOverrides['2026-08-31']).toBeUndefined();
   });
 
   it('setDayOverride with entry sets it', () => {
-    useCalendarStore.getState().setDayOverride('2026-08-28', { type: 'paid_overtime', multiplier: 2 });
+    useCalendarStore.getState().setDayOverride('2026-08-28', { type: 'paid_overtime', multiplier: 2 , segments: null, nightShift: false });
     const entry = useCalendarStore.getState().dayOverrides['2026-08-28']!;
     expect(entry.type).toBe('paid_overtime');
     expect(entry.multiplier).toBe(2);

@@ -1,0 +1,67 @@
+/* ==========================================================
+   ConvertPanel — 桌面端右栏的紧凑型换算列表
+   与 ConvertPage 移动端列表样式独立
+   ========================================================== */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--paper-2);
+  font-size: 12px;
+  transition: background 0.12s;
+}
+
+.item:hover { background: var(--paper); }
+
+.icon {
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+}
+
+.name {
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hours {
+  font-family: var(--font-num);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+.allLink {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: right;
+  transition: color 0.15s;
+}
+
+.allLink:hover {
+  color: var(--ink);
+}
