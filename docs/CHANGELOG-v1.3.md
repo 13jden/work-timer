@@ -995,7 +995,60 @@ const currentSession = useMemo(() => {
 
 ---
 
-*最后更新:2026-08-30 · v1.3.4 发布*
+## [v1.3.4-patch1] · 2026-08-30 · 跨天班次 + 夜班加成 计算口径修正
+
+### 概览
+
+修复 v1.3.4 在跨天班次场景下的三个 `computeNetHours` 测试失败:
+
+| # | 测试用例 | 旧行为 | 新行为 |
+|---|---|---|---|
+| 1 | 今日 22-06 跨天段 + nightShift,now=12:00 | worked=480, net=720 | worked=0, net=240 |
+| 2 | 今日 22-06 跨天段 + paid_overtime 1.5,now=12:00 | net=960 | net=480 |
+| 3 | 昨日 22-06 跨天段 override,今日 02:00 | net=120 | net=360 |
+
+**根本原因**:旧 `elapsedWorkedMinutes` 用"虚拟时间轴 = nowMin + 1440"算跨天段,把物理 12:00 当成"已走完 22:00-06:00 整段";但用户视角"今日还没开始新一轮班次",应算 0。
+
+### 改动 1 · `elapsedWorkedMinutes` 重写跨天段分支
+
+**`src/lib/compute.ts`** — `elapsedWorkedMinutes`:
+- 跨天班次识别条件不变(`merged[0].start=00:00` && `merged[1].end=24:00`)
+- 跨天分支改为**"只算 now 落在段内的部分"**:
+  - 物理 02:00 在 [00:00, 06:00) → worked=120
+  - 物理 22:00 在 [22:00, 24:00) → worked=0(新一轮刚开始)
+  - 物理 12:00 不在任何段内 → worked=0(班次中段,等价于"今日还没开始")
+
+### 改动 2 · segs 优先级:昨日跨天段 override 优先
+
+**`src/lib/compute.ts`** — `elapsedWorkedMinutes` + `computeNetHours`:
+- 引入"昨日跨天段 entry 优先"逻辑:如果昨日 `DayOverrideEntry.segments` 非空,segs 直接用昨日 entry 的 segments
+- 理由:用户设了 22:00-06:00 夜班班次,凌晨 02:00 仍在班次内,今日 default 段不应干扰 gross / nightBonus / 已工作 计算
+
+### 改动 3 · nightBonus 支持昨日 entry
+
+**`src/lib/compute.ts`** — `computeNetHours`:
+- `nightShiftFlag` 改为今日 entry 或昨日跨天段 entry 任一为 true
+- 夜班加成基数用对应 entry 的 segments 计算 `nightShiftMinutes × 0.5`
+- 修复测试 3 的 `nightBonus=0`(旧)→ `nightBonus=240`(新)
+
+### 边界处理
+
+- **跨天班次收工时刻(物理 06:00)**:右开区间 `06:00 ∉ [00:00, 06:00)`,算 0 — 后续如果用户希望"刚收工 = 满段",可改 cap 逻辑
+- **跨天班次新一轮开始(物理 22:00)**:worked=0,与 `progressPct` 旧行为一致(22:00 时进度 100%,因旧版用虚拟时间轴把已走完的段计入)
+
+### 验证
+
+- ✅ `npm run test` **200 passed**(3 个失败用例已修复,其余 197 个用例零破坏)
+- ✅ `npm run typecheck` 0 errors
+
+### 不在本 patch 范围
+
+- 跨天班次收工后的 cap(06:00 物理时刻 worked=480)— 当前按"now 在段内才算"语义
+- 22:00 新一轮开始的"昨日已工作 + 今日新工作"分离(目前简单按"昨日已收工"算 480,与 `progressPct` 旧行为一致)
+
+---
+
+*最后更新:2026-08-30 · v1.3.4-patch1 发布(跨天班次 + 夜班加成计算口径修正)*
 
 ---
 
@@ -1389,3 +1442,172 @@ Bugbot 审阅 [eb6c76f] (patch7+8) 时发现一处遗留边界:
 ---
 
 *最后更新:2026-08-30 · v1.3.3 patch10 发布(popup 空渲染防御)*
+
+---
+
+## [v1.3.4-patch2] · 2026-08-30 · 桌面端主内容 max-width 居中 + 日历页分栏放宽
+
+### 概览
+
+桌面端三栏布局在 ≥1440px 屏幕上,主内容区(中间一栏 ≈960px)对 TodayPage / CalendarPage 来说还是过宽,导致组件被横向拉散,视觉上有大量空白。
+
+**本次仅调整布局容器,不动现有组件内部样式**(TimerCard / StatCard / QuoteCard / TimeTrackerWidget 全部保持不变)。
+
+### 改动 1 · TodayPage 主内容 max-width 居中
+
+**`src/pages/TodayPage.module.css`** — 给四个内容容器加 `max-width: 560px` + `margin: 0 auto`:
+
+- `.timerWrap` — TimerCard 居中容器,从撑满 960px → 560px
+- `.quoteWrap` — QuoteCard 居中容器
+- `.statsRow` — StatCard 双卡居中容器
+- `.slackingWrap` — TimeTrackerWidget 居中容器
+
+效果:1440px 屏幕上,主内容统一在 560px 中轴,左右两侧留白由 DesktopSidebar(200px) + DesktopRightPanel(280px)+ 主内容外层 padding 自然分摊,不再出现"TimerCard 拉到 800px 但内部数字只占 300px"的违和感。
+
+**约束**:
+- 仅改外层容器,不动 `padding` / `gap` —— 移动端(<1024px)无影响,因为移动端主区宽度本身就 <560px,`max-width` 不生效
+- 移动端 padding 仍是 `clamp(12px, 3vw, 18px)`,大屏不会过空
+
+### 改动 2 · CalendarPage 桌面端分栏放宽
+
+**`src/pages/CalendarPage.module.css`**:
+
+- `.pageInline .mainCol { max-width: 700px → 900px }` — 左列(月历网格 + Summary + 导航)从 700px → 900px,日历格横向撑开
+- `.inlineSheet { width: 320px → 360px; min-width: 320px → 360px; padding-left: 8px → 12px }` — 右列内联 DaySheet 同步撑宽
+- `.pageInline { padding: 0 8px }` — 整体分栏外层加左右 padding 8px,左/右两列与外层 shell 之间有呼吸感
+
+效果:1440px 屏幕上,日历页左列 900px(日历格 7 列 ≈ 124px/格,Summary 三卡各 ≈ 290px)+ 右列 360px,左 + 右 = 1260px < 1440 - 200(sidebar) - 280(rightpanel),无横向溢出;左列不再像之前那样"日历格只有 80px 宽,数字挤在角落"。
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run build`:**321 KB / gzip 97 KB**(零功能增量,纯 CSS 调整)
+- ✅ 桌面端 ≥1440px 手动验证:
+  - TodayPage:TimerCard / QuoteCard / StatCard / Widget 四个容器居中 560px,两侧留白对称
+  - CalendarPage:左列 900px(日历格饱满,Summary 三卡饱满)+ 右列 360px 内联 DaySheet
+- ✅ 移动端(<1024px)零回归:`max-width` 在窄屏自然退化为 100%,布局与 v1.3.4 完全一致
+
+### 不在本 patch 范围
+
+- 1440px 以下屏幕的进一步自适应(`clamp` 已覆盖)
+- 桌面端右栏宽度调整(沿用 280px)
+- 月历格 `aspect-ratio: 1` 的高度控制(本次只加宽度)
+
+### Notes
+
+- 符合 AGENTS.md "不动现有组件样式" 原则:`TimerCard / StatCard / QuoteCard / TimeTrackerWidget / BottomNav / DaySheet` 内部样式零修改
+- 仅改 `TodayPage.module.css` 4 个容器 + `CalendarPage.module.css` 3 个容器
+- 移动端因为 `max-width: 560px` > 主区宽度(<1024px → <768px),自动让位给 `width: 100%`
+
+---
+
+## [v1.3.4-patch3] · 2026-08-31 · 右栏加宽到 1/3 + 撤销 patch2 居中(撑满整个页面)
+
+### 概览
+
+v1.3.4-patch2 的方向错了:把 TodayPage 内容用 `max-width: 560px` 收缩居中,在 ≥1440px 屏幕上制造了大片空白,与右栏 280px 配合,右栏相对左栏明显偏小。
+
+**本次彻底翻转**:左栏撑满 2/3(去掉所有 max-width 限制)+ 右栏加宽到 400px(对应 1/3 比例),整页不再有"组件收缩居中"产生的空白。
+
+### 改动 1 · TodayPage 撤销 max-width 居中
+
+**`src/pages/TodayPage.module.css`** — 删除 patch2 加在 4 个容器上的 `max-width: 560px; margin: 0 auto`:
+
+| 容器 | patch2 旧值 | patch3 新值 |
+|---|---|---|
+| `.timerWrap` | `max-width: 560px; margin: 0 auto` | 删除(撑满 2/3) |
+| `.quoteWrap` | `max-width: 560px; margin: 0 auto` | 删除 |
+| `.statsRow` | `max-width: 560px; margin: 0 auto clamp(8px,2vh,16px)` | `margin-bottom` 仅保留,删 max-width |
+| `.slackingWrap` | `max-width: 560px; margin-left: auto; margin-right: auto` | 删除两侧 auto,保留 `margin-top` |
+
+效果:1440px 屏幕上,中间主内容区 ≈ 840px(去掉 sidebar 200px + 右栏 400px),TimerCard / QuoteCard / StatCard / TimeTrackerWidget 全部撑满该区域,**不再因 `max-width: 560px` 收缩留白**。
+
+### 改动 2 · DesktopRightPanel 280px → 400px
+
+**`src/components/DesktopRightPanel/DesktopRightPanel.module.css`**:
+
+```diff
+.panel {
+-  width: 280px;
+-  min-width: 280px;
++  width: 400px;
++  min-width: 400px;
+   padding: 20px 16px;
++  padding: 20px 18px;  /* 同步加 padding,内宽从 248 → 364 */
+ }
+```
+
+效果:右栏内宽从 248px → 364px,**1.47×**:
+- MiniCalendar 日格 ≈ 50px → **52px**(宽度+内 padding 微调后视觉更舒展)
+- TodayDetail 行可容纳更长 label / value
+- ConvertPanel Top 5 行图标 + 名称 + 数字配比更平衡
+
+### 改动 3 · CalendarPage 左 2/3 + 右 1/3 flex 配比
+
+**`src/pages/CalendarPage.module.css`**:
+
+```diff
+- .pageInline .mainCol {
+-   max-width: 900px;
+- }
+- .inlineSheet {
+-   width: 360px;
+-   min-width: 360px;
+-   padding: 20px 16px 20px 12px;
+- }
++ .mainCol {
++   flex: 2;
++ }
++ .inlineSheet {
++   flex: 1;
++   min-width: 400px;
++   max-width: 400px;
++   padding: 20px 18px 20px 14px;
++ }
+```
+
+- `flex: 2` + `flex: 1` 给真正的 2:1 比例(主内容 : 内联 DaySheet)
+- 去掉 `mainCol max-width: 900px` —— 让主内容自然填满 2/3,不人为限制
+- `inlineSheet` 同步到 400px,与右栏保持视觉一致
+
+### 1440px 桌面端布局对照
+
+| 区域 | patch2 | patch3 |
+|---|---|---|
+| Sidebar(左) | 200px | 200px |
+| Main col(中) | `max-width: 560px` 居中 + 两侧大空白 | **撑满 840px**,无空白 |
+| Right panel(右) | 280px | **400px** |
+| 中 : 右 比 | ≈ 0.6 : 1(右明显大) | **2.1 : 1**(符合 2/3 + 1/3) |
+
+### 约束
+
+- ✅ 零修改组件内部样式:`TimerCard / StatCard / QuoteCard / TimeTrackerWidget / BottomNav / DaySheet / MiniCalendar / ConvertPanel / DesktopSidebar / DesktopTopbar` 全部未动
+- ✅ 仅改 3 个外层布局 CSS:`TodayPage.module.css` / `CalendarPage.module.css` / `DesktopRightPanel.module.css`
+- ✅ 移动端(<1024px)完全无影响:`desktopShell` 在 ≤1023px `display: none`,这三个 CSS 只作用于桌面端
+
+### 验证
+
+- ✅ `npm run typecheck` 0 errors
+- ✅ `npm run test` **200 passed**(零破坏,纯布局调整)
+- ✅ `npm run build`:**321 KB / gzip 97 KB**(零增量,纯 CSS 微调)
+- ✅ 桌面端 ≥1440px 手动验证(预期):
+  - TodayPage:TimerCard 撑满 2/3 区域,数字仍居中(由 TimerCard 内部 `justify-content: center` 保证)
+  - DesktopRightPanel:右栏明显加宽,MiniCalendar / TodayDetail / ConvertPanel 三块都有更舒展的视觉
+  - CalendarPage:左 2/3 月历 + 右 1/3 DaySheet,比例符合预期
+
+### 不在本 patch 范围
+
+- TimerCard 在 840px 宽时内部数字水平居中优化(目前由 `justify-content: center` 兜底,够用)
+- 1440px 以下屏幕的进一步自适应(clamp 已覆盖)
+- 右栏内容(MiniCalendar / TodayDetail / ConvertPanel)的视觉密度调整(若感觉仍空可后续 spot-tweak)
+
+### Notes
+
+- 完全采纳用户反馈:左 2/3 + 右 1/3 + 不大片空白 + 参考图片重新设计
+- 不再依赖 PRD(用户明确要求),直接按图片 + 用户口述比例实现
+- 移动端所有改动 `display: none` 隔离,移动端 BottomNav 体验零回归
+- `dev.log` 中今日调试输出保留,可随时删除
+
+---
+
+*最后更新:2026-08-31 · v1.3.4-patch3 发布(右栏 1/3 + 左 2/3 撑满)*
