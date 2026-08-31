@@ -532,13 +532,12 @@ export function SettingsPage() {
                           value={draft.lunchMinutes}
                           onChange={(e) => {
                             const val = Number(e.target.value);
-                            if (!isNaN(val)) {
-                              setDraft((d) => ({ ...d, lunchMinutes: Math.max(15, Math.min(240, val)) }));
+                            if (!isNaN(val) && val >= 0) {
+                              setDraft((d) => ({ ...d, lunchMinutes: val }));
                             }
                           }}
-                          min={15}
-                          max={240}
-                          step={15}
+                          min={0}
+                          step={1}
                           style={{ width: 70 }}
                         />
                         <span className={styles.suffix}>分钟</span>
