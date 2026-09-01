@@ -24,17 +24,16 @@
 .scaleSpacer {
   position: relative;
   flex-shrink: 0;
+  overflow: visible;
 }
 
-/* 缩放内层：固定为基准尺寸 1400×750，通过 transform scale 缩放 */
+/* 缩放内层：固定为基准尺寸 1400×770（28:15），通过 transform scale 缩放 */
 .desktopShell {
-  position: absolute;
-  top: 0;
-  left: 0;
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
-  width: 1500px;
-  height: 820px;
+  width: 1400px;
+  height: 770px;
   min-width: 0;
   transform-origin: top left;
 }
@@ -50,7 +49,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   height: 100%;
 }
 

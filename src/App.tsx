@@ -29,14 +29,16 @@ import styles from './App.module.css';
 function DesktopContent({
   activeTab,
   onPickedDate,
+  selectedDate,
 }: {
   activeTab: DesktopTabId;
   onPickedDate: (date: Date) => void;
+  selectedDate: Date | null;
 }) {
   if (activeTab === 'today') {
     return <TodayPage onOpenConvert={() => {}} />;
   }
-  return <CalendarPage isDesktopInline onPickDate={onPickedDate} />;
+  return <CalendarPage isDesktopInline onPickDate={onPickedDate} selectedDate={selectedDate} />;
 }
 
 function renderPage(tab: TabId, onOpenConvert: () => void) {
@@ -97,6 +99,7 @@ export function App() {
               <main className={styles.main}>
                 <DesktopContent
                   activeTab={desktopTab}
+                  selectedDate={pickedDate}
                   onPickedDate={(d) => {
                     setPickedDate(d);
                   }}

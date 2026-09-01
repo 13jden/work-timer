@@ -59,7 +59,6 @@ export function GenerateSheet({
       <div className={`${styles.sheet} ${open ? styles.sheetOpen : ''}`}>
         <div className={styles.handle} />
         <h3 className={styles.title}>生成 {label}</h3>
-        <p className={styles.sub}>按当前工作日历生成该月薪资</p>
 
         <div className={styles.field}>
           <label className={styles.label}>月薪</label>

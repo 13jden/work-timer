@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 
 // 基准设计尺寸（28:15）
-export const BASE_WIDTH = 1500;
+export const BASE_WIDTH = 1480;
 export const BASE_HEIGHT = 820;
 
 // 最小缩放比例

@@ -17,7 +17,7 @@ import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, to
 import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
-import { RestModeSheet } from '../components/RestModeSheet';
+
 import { CaretLeft, CaretRight, Crosshair } from '@phosphor-icons/react';
 import styles from './CalendarPage.module.css';
 
@@ -61,8 +61,6 @@ export function CalendarPage({
   const clearOverride = useCalendarStore((s) => s.clearOverride);
   const snapshots = useMonthlyStore((s) => s.snapshots);
   const monthlyRestModes = useCalendarStore((s) => s.monthlyRestModes);
-  const setMonthlyRestMode = useCalendarStore((s) => s.setMonthlyRestMode);
-  const setConfig = useConfigStore((s) => s.setConfig);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
 
   // 页面可见时刷新 now(秒级)
@@ -146,8 +144,6 @@ export function CalendarPage({
   // GenerateSheet
   const [genOpen, setGenOpen] = useState(false);
 
-  // RestModeSheet
-  const [restOpen, setRestOpen] = useState(false);
 
   function openDay(d: number) {
     const date = new Date(year, month, d);
@@ -155,6 +151,9 @@ export function CalendarPage({
     if (isDesktopInline && onPickDate) {
       // 桌面端:把选中日期抛给 App 层,DesktopRightPanel 接管渲染
       onPickDate(date);
+    } else {
+      // 移动端:打开 DaySheet 弹窗
+      setSheetOpen(true);
     }
   }
 
@@ -175,25 +174,6 @@ export function CalendarPage({
     }
   }
 
-  /**
-   * RestModeSheet 确认:切换月度休息模式
-   * - 当前月 → 全局 config.restMode 同步 + 清除月度覆盖
-   * - 历史月 → 仅写 monthlyRestModes 覆盖
-   * - null → 清除月度覆盖
-   */
-  function handleRestConfirm(mode: 0 | 1 | 2 | null) {
-    if (mode === null) {
-      // 清除月度覆盖,恢复全局
-      setMonthlyRestMode(currentKey, null);
-    } else if (isCurrentMonth) {
-      // 当前月 → 修改全局配置
-      setConfig({ restMode: mode });
-      setMonthlyRestMode(currentKey, null);
-    } else {
-      // 历史月 → 仅覆盖该月
-      setMonthlyRestMode(currentKey, mode);
-    }
-  }
 
   const monthLabel = `${MONTH_NAMES[month]}`;
   const yearLabel = `${year}`;
@@ -236,8 +216,7 @@ export function CalendarPage({
           <button
             type="button"
             className={`${styles.summaryCard} ${styles.green} ${styles.summaryRest}`}
-            onClick={() => setRestOpen(true)}
-            title="调整休息模式"
+            title="工作日"
           >
             <div className={styles.summaryNum}>{workdaysCount}</div>
             <div className={styles.summaryLbl}>工作日</div>
@@ -360,17 +339,6 @@ export function CalendarPage({
           onReset={(key) => clearOverride(key)}
         />
       )}
-
-      {/* RestModeSheet:点击工作日 → 切换休息模式 */}
-      <RestModeSheet
-        open={restOpen}
-        year={year}
-        month={month}
-        currentMode={effectiveRestMode}
-        isCurrentMonth={isCurrentMonth}
-        onClose={() => setRestOpen(false)}
-        onConfirm={handleRestConfirm}
-      />
 
       {/* GenerateSheet:点击月份 / 已赚 → 设置 / 调整月薪 */}
       <GenerateSheet
