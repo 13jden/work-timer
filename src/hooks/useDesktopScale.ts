@@ -14,11 +14,11 @@
 import { useEffect, useState } from 'react';
 
 // 基准设计尺寸（28:15）
-export const BASE_WIDTH = 1400;
-export const BASE_HEIGHT = 800;
+export const BASE_WIDTH = 1500;
+export const BASE_HEIGHT = 820;
 
 // 最小缩放比例
-const MIN_SCALE = 0.75;
+const MIN_SCALE = 0.65;
 
 export function useDesktopScale(): number {
   const [scale, setScale] = useState(() => calcScale());
