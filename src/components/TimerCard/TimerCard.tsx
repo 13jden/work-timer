@@ -6,7 +6,7 @@
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
 import { HOLIDAYS } from '../../lib/constants';
-import { dayState, progressPct, getDayOverride } from '../../lib/compute';
+import { dayState, progressPct, getDayOverride, getEffectiveSegments } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
 import { formatDateKey } from '../../lib/time';
 import { Clock, Lightning } from '@phosphor-icons/react';
@@ -25,6 +25,11 @@ export function TimerCard() {
   const entry = getDayOverride(overrides, dateKey);
   const isOvertime = entry?.type === 'paid_overtime';
   const mult = entry?.multiplier ?? 1;
+
+  // 显示的上下班时间:与计时器一致,用今日有效工时段(override > 全局多段 > 默认)
+  const segs = getEffectiveSegments(config, entry ?? null);
+  const rangeStart = segs[0]?.start ?? config.startTime;
+  const rangeEnd = segs[segs.length - 1]?.end ?? config.endTime;
 
   // ===== REST MODE: 匹配参考图 & index.html —— 显示 "REST" 衬线大字体 =====
   if (ds.mode === 'rest') {
@@ -53,8 +58,8 @@ export function TimerCard() {
           <div className={styles.fill} style={{ width: `${pct}%` }} />
         </div>
         <div className={styles.range}>
-          <span>{config.startTime}</span>
-          <span>{config.endTime}</span>
+          <span>{rangeStart}</span>
+          <span>{rangeEnd}</span>
         </div>
       </div>
     );
@@ -88,8 +93,8 @@ export function TimerCard() {
         <div className={styles.fill} style={{ width: `${pct}%` }} />
       </div>
       <div className={styles.range}>
-        <span>{config.startTime}</span>
-        <span>{config.endTime}</span>
+        <span>{rangeStart}</span>
+        <span>{rangeEnd}</span>
       </div>
     </div>
   );
