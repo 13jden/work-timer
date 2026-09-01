@@ -130,7 +130,7 @@
   margin-bottom: clamp(8px, 1.5vh, 14px);
 }
 
-.timerWrap {
+.desktopPage .timerWrap {
   flex: 1.4 1 0;
   min-width: 0;
   padding: 0;
@@ -170,7 +170,7 @@
 }
 
 /* Widget 全宽 */
-.slackingWrap {
+.desktopPage .slackingWrap {
   padding: 0;
   margin-top: 0;
   margin-bottom: clamp(8px, 1.5vh, 14px);
@@ -179,7 +179,7 @@
 }
 
 /* Dashboard 全宽 */
-.dashboardWrap {
+.desktopPage .dashboardWrap {
   padding: 0;
   margin-bottom: clamp(20px, 3vh, 32px);
   width: 100%;
