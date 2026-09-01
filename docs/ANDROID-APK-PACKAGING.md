@@ -1,7 +1,7 @@
 # Android APK 打包指南 · Salary Timer
 
 > 环境: Windows 11 · Tauri 2.x · Rust 1.82+ · Android SDK build-tools 35 · JDK 17
-> 当前版本: 0.1.0 (参见 tauri.conf.json 的 version)
+> 当前版本: 1.3.4 (参见 tauri.conf.json 的 version)
 
 ---
 
@@ -235,13 +235,37 @@ Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk
 
 | 文件 | 大小 | 说明 |
 |------|------|------|
-| **SalaryTimer-0.1.0-arm64.apk** | **11.86 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
-| SalaryTimer-0.1.0-universal.apk | 35.38 MB     | 全架构版 / x86 模拟器 / 收藏备用 |
+| **SalaryTimer-1.3.4-arm64.apk** | **11.59 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
+
+> 产物命名规则:`SalaryTimer-<version>-arm64.apk`，version 与 tauri.conf.json 一致。
 
 ### 发版前检查清单 (每次必做)
-1. `package.json` 的 `version` (格式 x.y.z)
-2. `src-tauri/tauri.conf.json` 的 `version` (Gradle versionName 来源)
-3. `src-tauri/tauri.conf.json` 的 `versionCode` (Android 版本号，每次发版必须 **+1**)
+1. `src-tauri/tauri.conf.json` 的 `version` (Gradle versionName 来源，格式 x.y.z)
+2. 产物文件名同步更新版本号
+3. 桌面窗口尺寸如需调整，保持宽高比 ≥ 1.5 (见下文桌面端 EXE 打包)
+
+---
+
+## 桌面端 EXE 打包 (v1.3.4 实测)
+
+> **注意**:沙箱环境下 `npx tauri build` 的 WiX 打包步骤会报「拒绝访问」
+> (需写 `C:\Users\admin\AppData\Local\tauri`)，因此用 `--no-bundle` 只产出 exe，
+> Rust 编译完成后手动复制即可。
+
+```powershell
+npx tauri build --no-bundle
+Copy-Item src-tauri\target\release\app.exe dist-desktop\SalaryTimer.exe -Force
+```
+
+### 窗口默认配置 (tauri.conf.json)
+
+| 字段 | 值 | 说明 |
+|------|-----|------|
+| width × height | 1120 × 720 | 比例 1.56 ≥ 1.5，打开即桌面端布局 |
+| minWidth × minHeight | 900 × 600 | 比例下限 1.5，缩到最小也不进移动端布局 |
+
+> 桌面/移动端布局由 JS `useIsDesktop()` 按宽高比 ≥ 3/2 判断，
+> 窗口配置必须保证默认与最小尺寸都 ≥ 1.5，否则 EXE 打开会是移动端界面。
 
 ---
 
