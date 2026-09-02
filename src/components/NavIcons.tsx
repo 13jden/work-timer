@@ -36,6 +36,13 @@ export const NavIcons: Record<string, ReactNode> = {
       <path d="M3 9h16M7 3v4M15 3v4" />
     </svg>
   ),
+  fish: (
+    <svg {...COMMON}>
+      <path d="M3 11c3-5 10-6 16-1-6 5-13 4-16-1Z" />
+      <path d="M5 8 3 5M5 14l-2 3M17 9l2-2" />
+      <circle cx="14" cy="10" r=".8" fill="currentColor" stroke="none" />
+    </svg>
+  ),
   settings: (
     <svg {...COMMON}>
       <circle cx="11" cy="11" r="3" />

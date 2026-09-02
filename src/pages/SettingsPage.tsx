@@ -1,39 +1,34 @@
 /**
  * SettingsPage — 设置页(Mine)
  *
- * v1.3.2 重构(frontend-design):
- *   - 页面极简:只展示 薪资 / 休息模式 / 工作时间
- *   - 模板库 / 午休 / 换算 / 主题 / 月度记录 → 全部进「高级」抽屉,默认折叠
- *   - 休息模式独立成行(在薪资卡下方),不再嵌套在薪资卡内
- *   - 「工作时间」只显示摘要(第一模板名 + 时段),无弹窗;模板管理在高级面板内
- *   - 删除 v1.3.1 残留的 freelanceStore 引用
+ * v1.3.5 重构:
+ *   - 删除旧的 SegmentTemplate（多时段）系统
+ *   - 改用 WorkTemplate（单时段）作为工时模板
+ *   - 工时模板编辑用弹窗形式
+ *   - 自定义排班入口保留，供后续日历编辑页使用
  */
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { useMonthlyGoalStore } from '../store/monthlyGoalStore';
-import { HOLIDAYS } from '../lib/constants';
-import { workdaysInMonth } from '../lib/compute';
+import { HOLIDAYS, TEMPLATE_COLORS } from '../lib/constants';
+import { workdaysInMonth, daysInMonthCalc } from '../lib/compute';
+import { formatDateKey } from '../lib/time';
 import { useNow } from '../hooks/useNow';
-import type { Config, WorkSegment, SalaryMode, SegmentTemplate } from '../lib/types';
+import type { Config, WorkSegment, SalaryMode, WorkTemplate } from '../lib/types';
 import type { ThemeMeta } from '../lib/constants';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { SegmentsEditor } from '../components/SegmentsEditor';
+import { TemplateEditor } from '../components/TemplateEditor';
 import {
-  Plus,
-  Trash,
   CaretRight,
-  Pencil,
-  Check,
   X,
   CaretDown,
   Gear,
   Coffee,
   Palette,
   ClockCounterClockwise,
-  PencilSimple,
   Target,
 } from '@phosphor-icons/react';
 import styles from './SettingsPage.module.css';
@@ -45,24 +40,6 @@ const MONTH_NAMES_CN = [
 
 function uuid(): string {
   return 'tpl_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
-
-/** 把 segments 拼成 "HH:MM-HH:MM, ..." 用于摘要行 */
-function summarizeSegments(segs: WorkSegment[]): string {
-  if (segs.length === 0) return '未设置';
-  return segs
-    .map((s) => `${s.start}-${parseEndLabel(s.start, s.end)}`)
-    .join(' · ');
-}
-
-/** 跨天段(end <= start)把 end 加 +1d 角标 */
-function parseEndLabel(start: string, end: string): string {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  if ((eh ?? 0) * 60 + (em ?? 0) <= (sh ?? 0) * 60 + (sm ?? 0)) {
-    return `${end}+1`;
-  }
-  return end;
 }
 
 export function SettingsPage() {
@@ -83,16 +60,17 @@ export function SettingsPage() {
     startTime: string;
     endTime: string;
     coffeePrice: number;
-    restMode: 0 | 1 | 2;
+    restMode: 0 | 1 | 2 | 'custom';
     theme: ThemeMeta['id'];
     salaryMode: SalaryMode;
     manualHourlyRate: number;
     manualDailyRate: number;
-    segmentTemplates: SegmentTemplate[];
     lunchEnabled: boolean;
     lunchStart: string;
     lunchMinutes: number;
     monthlyGoal: number | null;
+    customRestSchedule: Config['customRestSchedule'];
+    workTemplates: WorkTemplate[];
   };
 
   const [draft, setDraft] = useState<Draft>(() => ({
@@ -105,15 +83,28 @@ export function SettingsPage() {
     salaryMode: config.salaryMode,
     manualHourlyRate: config.manualHourlyRate,
     manualDailyRate: config.manualDailyRate,
-    segmentTemplates: config.segmentTemplates,
     lunchEnabled: config.lunchEnabled,
     lunchStart: config.lunchStart,
     lunchMinutes: config.lunchMinutes,
     monthlyGoal,
+    customRestSchedule: config.customRestSchedule ?? null,
+    workTemplates: config.workTemplates ?? [],
   }));
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [restCalendarOpen, setRestCalendarOpen] = useState(false);
+  const [restCalendarMonth, setRestCalendarMonth] = useState(() => new Date());
+  // v1.3.5:第一个模板就是默认/全局工时。跟随 workTemplates[0] 重新计算,
+  // 用户增删模板后仍指向有效 id（且不会被「继承全局」这种哑选项污染）。
+  const firstTemplateId = draft.workTemplates[0]?.id ?? '';
+  const [restTemplateId, setRestTemplateId] = useState<string>(firstTemplateId);
+
+  // workTemplates[0] 切换（新建/删除首个）时把选中 id 同步过去
+  useEffect(() => {
+    if (!draft.workTemplates.some((t) => t.id === restTemplateId)) {
+      setRestTemplateId(firstTemplateId);
+    }
+  }, [draft.workTemplates, restTemplateId, firstTemplateId]);
 
   const isDirty = useMemo<boolean>(() => (
     draft.monthlySalary !== config.monthlySalary ||
@@ -125,26 +116,37 @@ export function SettingsPage() {
     draft.salaryMode !== config.salaryMode ||
     draft.manualHourlyRate !== config.manualHourlyRate ||
     draft.manualDailyRate !== config.manualDailyRate ||
-    JSON.stringify(draft.segmentTemplates) !== JSON.stringify(config.segmentTemplates) ||
     draft.lunchEnabled !== config.lunchEnabled ||
     draft.lunchStart !== config.lunchStart ||
     draft.lunchMinutes !== config.lunchMinutes ||
     draft.monthlyGoal !== monthlyGoal
+    || JSON.stringify(draft.customRestSchedule) !== JSON.stringify(config.customRestSchedule ?? null)
+    || JSON.stringify(draft.workTemplates) !== JSON.stringify(config.workTemplates ?? [])
   ), [draft, config, currentTheme, monthlyGoal]);
 
-  // 当月工作日预览
-  const firstTemplate = draft.segmentTemplates[0];
+  // 当月工作日预览（使用 workTemplates）
+  const firstTemplate = draft.workTemplates[0];
   const fallbackSegments: WorkSegment[] = firstTemplate
-    ? firstTemplate.segments
+    ? [firstTemplate.workSegment]
     : [{ start: draft.startTime, end: draft.endTime }];
 
+  // v1.3.5:workdays 必须跟随 draft.customRestSchedule 重算,否则「完成」后当月工作日不更新。
+  // 原因:用户在日历编辑弹窗里改了 customRestSchedule 但没点「保存配置」,需要 workdays
+  //       响应 draft 的变化才能让用户立即看到新计数。
   const workdays = useMemo(
     () => workdaysInMonth(
       now.getFullYear(), now.getMonth(),
-      { ...config, restMode: draft.restMode, segments: fallbackSegments, salaryMode: draft.salaryMode } as Config,
-      overrides, HOLIDAYS,
+      {
+        ...config,
+        restMode: draft.restMode,
+        segments: fallbackSegments,
+        salaryMode: draft.salaryMode,
+        customRestSchedule: draft.customRestSchedule,
+      } as Config,
+      overrides,
+      HOLIDAYS,
     ),
-    [now, config, draft.restMode, draft.salaryMode, fallbackSegments, overrides],
+    [now, config, draft.restMode, draft.salaryMode, fallbackSegments, draft.customRestSchedule, overrides],
   );
 
   const snapshots = useMemo(() => {
@@ -154,53 +156,83 @@ export function SettingsPage() {
 
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // ── 模板库 CRUD ──
-  const updateTemplate = (id: string, patch: Partial<SegmentTemplate>) => {
+  const restCalendarDays = daysInMonthCalc(restCalendarMonth.getFullYear(), restCalendarMonth.getMonth());
+  const restCalendarOffset = new Date(restCalendarMonth.getFullYear(), restCalendarMonth.getMonth(), 1).getDay();
+
+  /**
+   * v1.3.5:已标记 N 天统计 ——「完成」后就会并入当月工作日
+   *  - markedTotal:customRestSchedule 全部日期数
+   *  - markedThisMonth:当前月视图里的日期数
+   */
+  const markedTotal = useMemo(
+    () => Object.keys(draft.customRestSchedule?.workDays ?? {}).length,
+    [draft.customRestSchedule],
+  );
+
+  const markedThisMonth = useMemo(() => {
+    const y = restCalendarMonth.getFullYear();
+    const m = String(restCalendarMonth.getMonth() + 1).padStart(2, '0');
+    return Object.keys(draft.customRestSchedule?.workDays ?? {})
+      .filter((key) => key.startsWith(`${y}-${m}`)).length;
+  }, [draft.customRestSchedule, restCalendarMonth]);
+
+  function applyRestTemplate(date: Date) {
+    const key = formatDateKey(date);
+    // 防御:workTemplates 为空时(restore 失败/全删)跳过写入,避免存 [''] 脏数据
+    if (!restTemplateId) return;
+    setDraft((current) => {
+      const schedule = current.customRestSchedule ?? { workDays: {}, updatedAt: Date.now() };
+      const currentIds = schedule.workDays[key] ?? [];
+      const ids = currentIds.includes(restTemplateId)
+        ? currentIds.filter((id) => id !== restTemplateId)
+        : [...currentIds, restTemplateId];
+      const workDays = { ...schedule.workDays };
+      if (ids.length === 0) delete workDays[key];
+      else workDays[key] = ids;
+      return { ...current, customRestSchedule: { workDays, updatedAt: Date.now() } };
+    });
+  }
+
+  // ── 工时模板 CRUD (WorkTemplate - v1.3.5) ──
+  const updateWorkTemplate = (id: string, patch: Partial<WorkTemplate>) => {
     setDraft((d) => ({
       ...d,
-      segmentTemplates: d.segmentTemplates.map((t) =>
+      workTemplates: (d.workTemplates ?? []).map((t) =>
         t.id === id ? { ...t, ...patch } : t,
       ),
     }));
   };
 
-  const removeTemplate = (id: string) => {
+  const removeWorkTemplate = (id: string) => {
     setDraft((d) => ({
       ...d,
-      segmentTemplates: d.segmentTemplates.filter((t) => t.id !== id),
+      workTemplates: (d.workTemplates ?? []).filter((t) => t.id !== id),
     }));
   };
 
-  const addTemplate = () => {
-    const newTpl: SegmentTemplate = {
+  const addWorkTemplate = () => {
+    const newTpl: WorkTemplate = {
       id: uuid(),
-      label: `新模板 ${draft.segmentTemplates.length + 1}`,
-      segments: [{ start: '09:00', end: '18:00' }],
+      name: `模板 ${(draft.workTemplates ?? []).length + 1}`,
+      workSegment: { start: '09:00', end: '18:00' },
+      color: TEMPLATE_COLORS[(draft.workTemplates ?? []).length % TEMPLATE_COLORS.length]!,
     };
     setDraft((d) => ({
       ...d,
-      segmentTemplates: [...d.segmentTemplates, newTpl],
+      workTemplates: [...(d.workTemplates ?? []), newTpl],
     }));
   };
 
   const handleSave = () => {
     // 默认工时模板与全局默认工时一致:
-    // 1. segments = draft.segmentTemplates[0]?.segments(否则 fallback 到 startTime/endTime)
-    // 2. startTime / endTime = draft.segmentTemplates[0]?.segments[0] 的首段(否则保留 draft 旧值)
-    // 原因:
-    //   - config.segments(全局默认工时)和 config.segmentTemplates[0](默认模板)
-    //     在历史版本里是两个独立字段,保存模板时未同步,
-    //     导致 getEffectiveSegments 读 config.segments 看到的是旧值,与默认模板不一致。
-    //   - TimerCard 直接读 config.startTime / config.endTime(老单段字段),
-    //     若模板首段和 startTime/endTime 不一致,首页显示的还是旧时间。
-    const firstTpl = draft.segmentTemplates[0];
-    const firstSeg = firstTpl?.segments?.[0];
-    const globalSegments: WorkSegment[] =
-      firstTpl && firstTpl.segments.length > 0
-        ? firstTpl.segments
-        : [{ start: draft.startTime, end: draft.endTime }];
-    const nextStartTime = firstSeg?.start ?? draft.startTime;
-    const nextEndTime = firstSeg?.end ?? draft.endTime;
+    // - 使用第一个 workTemplate 的 workSegment
+    // - startTime / endTime 与 segments 同步
+    const firstTpl = draft.workTemplates[0];
+    const nextStartTime = firstTpl?.workSegment.start ?? draft.startTime;
+    const nextEndTime = firstTpl?.workSegment.end ?? draft.endTime;
+    const globalSegments: WorkSegment[] = firstTpl
+      ? [firstTpl.workSegment]
+      : [{ start: draft.startTime, end: draft.endTime }];
 
     setConfig({
       monthlySalary: draft.monthlySalary,
@@ -211,11 +243,12 @@ export function SettingsPage() {
       salaryMode: draft.salaryMode,
       manualHourlyRate: draft.manualHourlyRate,
       manualDailyRate: draft.manualDailyRate,
-      segmentTemplates: draft.segmentTemplates,
       segments: globalSegments,
       lunchEnabled: draft.lunchEnabled,
       lunchStart: draft.lunchStart,
       lunchMinutes: draft.lunchMinutes,
+      customRestSchedule: draft.customRestSchedule,
+      workTemplates: draft.workTemplates,
     });
     if (draft.theme !== currentTheme) {
       setTheme(draft.theme);
@@ -236,7 +269,7 @@ export function SettingsPage() {
   // ── 「高级」抽屉已配置项统计 ──
   const configuredCount = useMemo(() => {
     let n = 0;
-    if (draft.segmentTemplates.length > 1) n++;
+    if (draft.workTemplates.length > 1) n++;
     if (draft.lunchEnabled) n++;
     if (draft.coffeePrice !== 15) n++;
     if (draft.theme !== 'paper') n++;
@@ -245,16 +278,8 @@ export function SettingsPage() {
   }, [draft, snapshots]);
 
   // 模板预览摘要(用于主页面 工作时间 卡)
-  const previewLabel = firstTemplate?.label ?? '默认';
-  const previewTime = summarizeSegments(fallbackSegments);
-
-  // 弹窗打开时锁定背景滚动
-  useEffect(() => {
-    if (templateModalOpen) {
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = ''; };
-    }
-  }, [templateModalOpen]);
+  const previewLabel = firstTemplate?.name ?? '默认';
+  const previewTime = `${fallbackSegments[0]?.start ?? '09:00'}–${fallbackSegments[0]?.end ?? '18:00'}`;
 
   return (
     <div className={styles.wrap}>
@@ -344,21 +369,42 @@ export function SettingsPage() {
         <div className={styles.groupEyebrow}>休息模式 · Rest</div>
         <div className={styles.card}>
           {draft.salaryMode === 'monthly' ? (
-            <div className={styles.row}>
-              <span className={styles.label}>每周休息</span>
-              <span className={styles.value}>
+            <>
+              <div className={styles.row}>
+                <span className={styles.label}>每周休息</span>
+                <span className={styles.value}>
                 <select
                   className={styles.select}
                   value={draft.restMode}
-                  onChange={(e) => setDraft((d) => ({ ...d, restMode: Number(e.target.value) as 0 | 1 | 2 }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === 'custom') {
+                      setDraft((d) => ({
+                        ...d,
+                        restMode: 'custom',
+                        customRestSchedule: d.customRestSchedule ?? { workDays: {}, updatedAt: Date.now() },
+                      }));
+                      setRestCalendarOpen(true);
+                    } else {
+                      setDraft((d) => ({ ...d, restMode: Number(value) as 0 | 1 | 2 }));
+                    }
+                  }}
                 >
                   <option value={0}>无休</option>
                   <option value={1}>单休</option>
                   <option value={2}>双休</option>
+                  <option value="custom">自定义排班</option>
                 </select>
                 <CaretRight size={14} weight="bold" className={styles.chevron} />
-              </span>
-            </div>
+                </span>
+              </div>
+              {draft.restMode === 'custom' && (
+                <button type="button" className={styles.templateModalBtn} onClick={() => setRestCalendarOpen(true)}>
+                  <Palette size={13} weight="regular" />
+                  编辑自定义排班
+                </button>
+              )}
+            </>
           ) : (
             <div className={styles.disabledHintRow}>
               非月薪模式,休息由日历页当日类型决定
@@ -379,9 +425,9 @@ export function SettingsPage() {
               </div>
               <div className={styles.hoursTime}>{previewTime}</div>
             </div>
-            {draft.segmentTemplates.length > 1 && (
+            {draft.workTemplates.length > 1 && (
               <span className={styles.hoursTemplateCount}>
-                +{draft.segmentTemplates.length - 1} 个模板
+                +{draft.workTemplates.length - 1} 个模板
               </span>
             )}
           </div>
@@ -458,42 +504,16 @@ export function SettingsPage() {
               </div>
             </div>
 
-            {/* ── 工作时间模板(第一个 subGroup,带自定义模板按钮) ── */}
+            {/* ── 工时模板 (WorkTemplate - v1.3.5) ── */}
             <div className={styles.subGroup}>
-              <div className={styles.subGroupEyebrow}>工作时间模板 · Templates</div>
+              <div className={styles.subGroupEyebrow}>工时模板 · Templates</div>
               <div className={styles.card}>
-                {/* 自定义模板按钮(独立一行) */}
-                <button
-                  type="button"
-                  className={styles.templateModalBtn}
-                  onClick={() => setTemplateModalOpen(true)}
-                >
-                  <PencilSimple size={13} weight="regular" />
-                  自定义模板
-                </button>
-
-                {/* 模板列表(内联,带时段) */}
-                {draft.segmentTemplates.map((tpl, idx) => (
-                  <div key={tpl.id} className={styles.templateListItem}>
-                    <span className={styles.templateListNum}>{idx + 1}</span>
-                    <div className={styles.templateListInfo}>
-                      <span className={styles.templateListLabel}>{tpl.label}</span>
-                      <span className={styles.templateListTime}>
-                        {summarizeSegments(tpl.segments)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.templateListEdit}
-                      onClick={() => {
-                        setTemplateModalOpen(true);
-                      }}
-                      aria-label="编辑模板"
-                    >
-                      <Pencil size={12} weight="regular" />
-                    </button>
-                  </div>
-                ))}
+                <TemplateEditor
+                  templates={draft.workTemplates ?? []}
+                  onUpdate={updateWorkTemplate}
+                  onRemove={removeWorkTemplate}
+                  onAdd={addWorkTemplate}
+                />
               </div>
             </div>
 
@@ -663,71 +683,88 @@ export function SettingsPage() {
         保存配置
       </button>
 
-      <div className={styles.footer}>v1.3.2 · 本地存储</div>
+      <div className={styles.footer}>v1.3.5 · 本地存储</div>
 
-      {/* ═══ 自定义模板弹窗 ═══ */}
-      {templateModalOpen && (
+      {restCalendarOpen && (
         <>
-          <div
-            className={styles.modalBackdrop}
-            onClick={() => setTemplateModalOpen(false)}
-          />
+          <div className={styles.modalBackdrop} onClick={() => setRestCalendarOpen(false)} />
           <div className={styles.modalCard}>
             <div className={styles.modalHeader}>
-              <div className={styles.modalTitle}>
-                <PencilSimple size={14} weight="regular" className={styles.modalTitleIcon} />
-                自定义工时模板
-              </div>
-              <div className={styles.modalHint}>
-                模板在「日历」页点击日期 → 自定义时勾选使用
-              </div>
-              <button
-                type="button"
-                className={styles.modalClose}
-                onClick={() => setTemplateModalOpen(false)}
-                aria-label="关闭"
-              >
+              <div className={styles.modalTitle}>自定义排班</div>
+              <div className={styles.modalHint}>先选工时模板，再点日期添加/移除该模板的标记。同一日期可叠加多个模板。</div>
+              <button type="button" className={styles.modalClose} onClick={() => setRestCalendarOpen(false)} aria-label="关闭">
                 <X size={16} weight="bold" />
               </button>
             </div>
-
             <div className={styles.modalBody}>
-              {draft.segmentTemplates.length === 0 ? (
-                <div className={styles.historyEmpty}>
-                  暂无模板
-                  <span>点击下方添加你的第一个工时模板</span>
-                </div>
-              ) : (
-                draft.segmentTemplates.map((tpl, idx) => (
-                  <TemplateEditor
-                    key={tpl.id}
-                    index={idx}
-                    template={tpl}
-                    onUpdate={(patch) => updateTemplate(tpl.id, patch)}
-                    onRemove={() => removeTemplate(tpl.id)}
-                    removable={draft.segmentTemplates.length > 1}
-                  />
-                ))
-              )}
-              <button
-                type="button"
-                className={styles.templateAddBtn}
-                onClick={addTemplate}
-              >
-                <Plus size={14} weight="bold" />
-                新增模板
-              </button>
-            </div>
+              <div className={styles.restTemplateList}>
+                {draft.workTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    className={restTemplateId === template.id ? styles.restTemplateActive : ''}
+                    onClick={() => setRestTemplateId(template.id)}
+                  >
+                    <span className={styles.templateColorDot} style={{ backgroundColor: template.color }} />
+                    {template.name} · {template.workSegment.start}–{template.workSegment.end}
+                    {template.id === firstTemplateId && (
+                      <span className={styles.restTemplateDefaultTag}>默认</span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-            <div className={styles.modalFooter}>
-              <button
-                type="button"
-                className={styles.modalDoneBtn}
-                onClick={() => setTemplateModalOpen(false)}
-              >
-                完成
-              </button>
+              {/* v1.3.5:已标记 N 天 —— 整个 customRestSchedule 跨月汇总 */}
+              <div className={styles.markedSummary}>
+                全局已标记
+                <strong>{markedTotal}</strong>
+                天 · {restCalendarMonth.getFullYear()}年{restCalendarMonth.getMonth() + 1}月 当月{' '}
+                <strong>{markedThisMonth}</strong> 天
+              </div>
+              <div className={styles.restCalendarNav}>
+                <button type="button" onClick={() => setRestCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>‹</button>
+                <strong>{restCalendarMonth.getFullYear()}年{restCalendarMonth.getMonth() + 1}月</strong>
+                <button type="button" onClick={() => setRestCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>›</button>
+              </div>
+              <div className={styles.restWeekdays}>{['日', '一', '二', '三', '四', '五', '六'].map((day) => <span key={day}>{day}</span>)}</div>
+              <div className={styles.restCalendarGrid}>
+                {Array.from({ length: restCalendarOffset }).map((_, index) => <span key={`empty-${index}`} />)}
+                {Array.from({ length: restCalendarDays }, (_, index) => {
+                  const date = new Date(restCalendarMonth.getFullYear(), restCalendarMonth.getMonth(), index + 1);
+                  const ids = draft.customRestSchedule?.workDays[formatDateKey(date)] ?? [];
+                  const appliedTemplates = ids
+                    .map((id) => draft.workTemplates.find((t) => t.id === id))
+                    .filter((t): t is WorkTemplate => Boolean(t));
+                  const active = ids.length > 0;
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`${styles.restDay} ${active ? styles.restDayActive : ''}`}
+                      onClick={() => applyRestTemplate(date)}
+                    >
+                      <span className={styles.restDayNum}>{index + 1}</span>
+                      {appliedTemplates.length > 0 && (
+                        <span className={styles.restDayDots}>
+                          {appliedTemplates.slice(0, 4).map((tpl) => (
+                            <span
+                              key={tpl.id}
+                              className={styles.restDayDot}
+                              style={{ backgroundColor: tpl.color }}
+                            />
+                          ))}
+                          {appliedTemplates.length > 4 && (
+                            <span className={styles.restDayDotMore}>+{appliedTemplates.length - 4}</span>
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={styles.restCalendarNote}>已排日期是工作日；未排日期为休息日。多个模板可追加到同一天。</p>
             </div>
+            <div className={styles.modalFooter}><button type="button" className={styles.modalDoneBtn} onClick={() => setRestCalendarOpen(false)}>完成</button></div>
           </div>
         </>
       )}
@@ -739,108 +776,4 @@ export function SettingsPage() {
 // TemplateEditor — 单个模板的内联编辑器(在「自定义模板」弹窗中渲染)
 // ─────────────────────────────────────────────────────────────
 
-interface TemplateEditorProps {
-  index: number;
-  template: SegmentTemplate;
-  onUpdate: (patch: Partial<SegmentTemplate>) => void;
-  onRemove: () => void;
-  removable: boolean;
-}
 
-function TemplateEditor({ index, template, onUpdate, onRemove, removable }: TemplateEditorProps) {
-  const [editing, setEditing] = useState(false);
-  const [labelDraft, setLabelDraft] = useState(template.label);
-
-  const commitLabel = () => {
-    const trimmed = labelDraft.trim();
-    if (trimmed.length > 0) {
-      onUpdate({ label: trimmed });
-    } else {
-      setLabelDraft(template.label);
-    }
-    setEditing(false);
-  };
-
-  return (
-    <div className={styles.templateCard}>
-      <div className={styles.templateHeader}>
-        <span className={styles.templateNum}>{index + 1}</span>
-        {editing ? (
-          <>
-            <input
-              type="text"
-              className={styles.templateLabelInput}
-              value={labelDraft}
-              onChange={(e) => setLabelDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitLabel();
-                if (e.key === 'Escape') {
-                  setLabelDraft(template.label);
-                  setEditing(false);
-                }
-              }}
-              autoFocus
-              maxLength={20}
-            />
-            <button
-              type="button"
-              className={styles.templateAction}
-              onClick={commitLabel}
-              aria-label="确认"
-            >
-              <Check size={14} weight="bold" />
-            </button>
-            <button
-              type="button"
-              className={styles.templateAction}
-              onClick={() => {
-                setLabelDraft(template.label);
-                setEditing(false);
-              }}
-              aria-label="取消"
-            >
-              <X size={14} weight="bold" />
-            </button>
-          </>
-        ) : (
-          <>
-            <span
-              className={styles.templateLabel}
-              onDoubleClick={() => setEditing(true)}
-              title="双击重命名"
-            >
-              {template.label}
-            </span>
-            <div className={styles.templateActions}>
-              <button
-                type="button"
-                className={styles.templateAction}
-                onClick={() => setEditing(true)}
-                aria-label="重命名"
-              >
-                <Pencil size={12} weight="regular" />
-              </button>
-              {removable && (
-                <button
-                  type="button"
-                  className={`${styles.templateAction} ${styles.templateActionDanger}`}
-                  onClick={onRemove}
-                  aria-label="删除模板"
-                >
-                  <Trash size={12} weight="regular" />
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-      <div style={{ padding: '4px 14px 14px' }}>
-        <SegmentsEditor
-          segments={template.segments}
-          onChange={(segs) => onUpdate({ segments: segs })}
-          showTotal
-        />
-      </div>
-    </div>
-  );
-}

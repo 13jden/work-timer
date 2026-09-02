@@ -63,15 +63,26 @@ export const DEFAULT_CONFIG: Config = {
   lunchEnabled:    false,
   lunchStart:      '12:00',
   lunchMinutes:    60,
+  customRestSchedule: null,
+  // ── v1.3.5 新增字段默认值 ──
+  workTemplates:   [        // 默认初始化 1 个常规班模板
+    {
+      id: 'tpl-default',
+      name: '常规班',
+      color: '#4ADE80',
+      workSegment: { start: '09:00', end: '18:00' },
+    },
+  ],
 };
 
 // ── 静态数据 ────────────────────────────────────────────────
 
 /** 休息模式文案 */
-export const REST_MODE_LABELS: Record<0 | 1 | 2, string> = {
+export const REST_MODE_LABELS: Record<0 | 1 | 2 | 'custom', string> = {
   0: '无休',
   1: '单休',
   2: '双休',
+  custom: '自定义排班',
 };
 
 /**
@@ -160,26 +171,41 @@ export const NIGHT_SHIFT_START_MIN = 22 * 60;
 export const NIGHT_SHIFT_END_MIN = 6 * 60;
 
 /**
- * 时间记录标签文案(v1.3.3 重命名)
+ * 时间记录标签文案(v1.3.3 重命名, v1.3.5 新增 parttime)
  * - slack:摸鱼(开小差)
  * - overtime:加班
+ * - parttime:兼职(v1.3.5 新增)
  * - other:其他(customLabel)
  *
  * 注意:旧 toilet/meal 已合并到 other,通过 customLabel 区分
  * (常量中保留 keys 字面量,运行时旧数据由 store 端做迁移)
  */
-export const SLACKING_LABEL_TEXT: Record<'slack' | 'overtime' | 'other', string> = {
+export const SLACKING_LABEL_TEXT: Record<'slack' | 'overtime' | 'parttime' | 'other', string> = {
   slack: '摸鱼',
   overtime: '加班',
+  parttime: '兼职',
   other: '其他',
 };
 
-/** 时间记录标签 emoji(v1.3.3 重命名) */
-export const SLACKING_LABEL_ICON: Record<'slack' | 'overtime' | 'other', string> = {
+/** 时间记录标签 emoji(v1.3.3 重命名, v1.3.5 新增 parttime) */
+export const SLACKING_LABEL_ICON: Record<'slack' | 'overtime' | 'parttime' | 'other', string> = {
   slack: '🐟',
   overtime: '⚡',
+  parttime: '🎯',
   other: '✨',
 };
 
 /** SegmentsEditor 段数上限 */
 export const SEGMENTS_MAX = 10;
+
+/**
+ * v1.3.5 工作日模板颜色池（4 色循环）
+ * 
+ * 按顺序分配给新建模板：
+ *   - 模板 1 → #4ADE80 (绿)
+ *   - 模板 2 → #FBBF24 (黄)
+ *   - 模板 3 → #60A5FA (蓝)
+ *   - 模板 4 → #A78BFA (紫)
+ *   - 模板 5 → colors[4 % 4] = #4ADE80 (循环)
+ */
+export const TEMPLATE_COLORS = ['#4ADE80', '#FBBF24', '#60A5FA', '#A78BFA'];

@@ -13,7 +13,7 @@ import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { HOLIDAYS } from '../lib/constants';
-import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, todayEarned } from '../lib/compute';
+import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
@@ -84,7 +84,7 @@ export function CalendarPage({
   const snapshot = hasSnapshot ? snapshots[currentKey] : null;
 
   // effectiveConfig:若该月有月度休息模式覆盖,则覆盖 config.restMode
-  const effectiveRestMode: 0 | 1 | 2 = monthlyRestModes[currentKey] ?? config.restMode;
+  const effectiveRestMode = monthlyRestModes[currentKey] ?? config.restMode;
   const effectiveConfig = { ...config, restMode: effectiveRestMode };
 
   // 是否当前月
@@ -143,10 +143,24 @@ export function CalendarPage({
 
   // GenerateSheet
   const [genOpen, setGenOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState<'generate' | 'cancel' | null>(null);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
 
   function openDay(d: number) {
     const date = new Date(year, month, d);
+    const key = formatDateKey(date);
+    const todayKey = formatDateKey(now);
+    const past = key < todayKey;
+    if (selectMode) {
+      const eligible = selectMode === 'generate'
+        ? past && isWorkday(date, effectiveConfig, overrides, HOLIDAYS)
+        : past && Boolean(overrides[key]?.earnedGenerated);
+      if (eligible) {
+        setSelectedDays((days) => days.includes(key) ? days.filter((item) => item !== key) : [...days, key]);
+      }
+      return;
+    }
     setPickedDate(date);
     if (isDesktopInline && onPickDate) {
       // 桌面端:把选中日期抛给 App 层,DesktopRightPanel 接管渲染
@@ -156,6 +170,44 @@ export function CalendarPage({
       setSheetOpen(true);
     }
   }
+
+  function startSelection(mode: 'generate' | 'cancel') {
+    setSelectMode(mode);
+    setSelectedDays([]);
+  }
+
+  function selectAllEligible() {
+    const todayKey = formatDateKey(now);
+    const eligible = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1))
+      .filter((date) => {
+        const key = formatDateKey(date);
+        return key < todayKey && (selectMode === 'generate'
+          ? isWorkday(date, effectiveConfig, overrides, HOLIDAYS)
+          : Boolean(overrides[key]?.earnedGenerated));
+      })
+      .map(formatDateKey);
+    setSelectedDays(eligible);
+  }
+
+  function confirmBatch() {
+    if (!selectMode || selectedDays.length === 0) return;
+    const dates = selectedDays.map((key) => {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y ?? year, (m ?? month + 1) - 1, d ?? 1);
+    });
+    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel');
+    const keys = new Set([...Object.keys(overrides), ...Object.keys(next)]);
+    keys.forEach((key) => setDayOverride(key, next[key] ?? null));
+    setSelectMode(null);
+    setSelectedDays([]);
+  }
+
+  const selectedTotal = selectedDays.reduce((sum, key) => {
+    const existing = overrides[key]?.earnedAmount;
+    if (selectMode === 'cancel') return sum + (existing ?? 0);
+    const [y, m, d] = key.split('-').map(Number);
+    return sum + effectiveDailyRate(new Date(y ?? year, (m ?? month + 1) - 1, d ?? 1), effectiveConfig, overrides, HOLIDAYS);
+  }, 0);
 
   const pickedKey = pickedDate ? formatDateKey(pickedDate) : '';
   const pickedEntry = pickedKey ? (overrides[pickedKey] ?? null) : null;
@@ -174,6 +226,20 @@ export function CalendarPage({
     }
   }
 
+  /**
+   * 已赚卡片点击:进入/退出批量生成模式
+   */
+  function handleEarnedClick() {
+    if (selectMode) {
+      // 已在多选模式 → 退出
+      setSelectMode(null);
+      setSelectedDays([]);
+    } else {
+      // 进入生成模式
+      startSelection('generate');
+    }
+  }
+
 
   const monthLabel = `${MONTH_NAMES[month]}`;
   const yearLabel = `${year}`;
@@ -185,6 +251,17 @@ export function CalendarPage({
   //   mobile         → DaySheet 走弹窗遮罩(原行为)
   // 当前选中日期 key(用于网格高亮,即便 DaySheet 在 DesktopRightPanel 渲染)
   const selectedKey = selectedDate ? formatDateKey(selectedDate) : null;
+
+  // v1.3.5:从 customRestSchedule 取每个日期的模板色(用于格子左上角色点)
+  function templateColorForDate(key: string): string | null {
+    const ids = config.customRestSchedule?.workDays[key];
+    if (!ids || ids.length === 0) return null;
+    // 取第一个模板的颜色
+    const firstId = ids[0];
+    if (!firstId || firstId === 'inherit') return null;
+    const tpl = (config.workTemplates ?? []).find((t) => t.id === firstId);
+    return tpl?.color ?? null;
+  }
 
   return (
     <div className={`${styles.pageWrap} ${isDesktopInline ? styles.pageInline : ''}`}>
@@ -230,18 +307,32 @@ export function CalendarPage({
           <button
             type="button"
             className={`${styles.summaryCard} ${styles.white} ${styles.summaryEarn}`}
-            onClick={() => setGenOpen(true)}
-            title={hasSnapshot ? '调整月薪' : '生成当月薪资'}
+            onClick={handleEarnedClick}
+            title={selectMode ? '退出多选模式' : '批量生成已赚'}
           >
             <div className={styles.summaryNum}>
               ¥{Math.round(monthEarned).toLocaleString('en-US')}
             </div>
             <div className={styles.summaryLbl}>已赚</div>
-            {!hasSnapshot && !isFutureMonth && (
+            {!hasSnapshot && !isFutureMonth && !selectMode && (
               <span className={styles.earnDot} aria-label="可点击生成薪资" />
             )}
           </button>
         </div>
+
+        {selectMode && (
+          <div className={styles.earnedActions}>
+            <div className={styles.selectionModeTabs}>
+              <button type="button" className={selectMode === 'generate' ? styles.selectionActive : ''} onClick={() => startSelection('generate')}>生成</button>
+              <button type="button" className={selectMode === 'cancel' ? styles.selectionActive : ''} onClick={() => startSelection('cancel')}>取消</button>
+            </div>
+            <div className={styles.selectionTools}>
+              <button type="button" onClick={selectAllEligible}>全选可用</button>
+              <button type="button" onClick={() => setSelectedDays([])}>清空</button>
+            </div>
+            <div className={styles.selectionHint}>已选 {selectedDays.length} 天 · ¥{selectedTotal.toFixed(2)}</div>
+          </div>
+        )}
 
         {/* 月份导航:‹  [now]  › (now 仅非当月显示,颜色用主题 accent) */}
         <div className={styles.nav}>
@@ -285,7 +376,9 @@ export function CalendarPage({
                 (year === now.getFullYear() && month === now.getMonth() && d < now.getDate());
               const key = formatDateKey(date);
               const hasOv = key in overrides;
+              const tplColor = templateColorForDate(key);
               const isPicked = selectedKey === key;
+              const isBatchSelected = selectedDays.includes(key);
 
               const classes = [
                 styles.day,
@@ -293,6 +386,7 @@ export function CalendarPage({
                 isToday ? styles.dayToday : '',
                 hasOv ? styles.dayOverride : '',
                 isPicked ? styles.daySelected : '',
+                isBatchSelected ? styles.dayBatchSelected : '',
               ].filter(Boolean).join(' ');
 
               let earnText = '';
@@ -311,8 +405,12 @@ export function CalendarPage({
                   type="button"
                   className={classes}
                   onClick={() => openDay(d)}
+                  aria-pressed={isBatchSelected}
                 >
                   <span className={styles.dayNum}>{d}</span>
+                  {tplColor && (
+                    <span className={styles.dayTemplateDot} style={{ backgroundColor: tplColor }} />
+                  )}
                   {earnText && <span className={styles.earn}>{earnText}</span>}
                 </button>
               );
@@ -352,6 +450,12 @@ export function CalendarPage({
         onClose={() => setGenOpen(false)}
         onConfirm={handleGenerate}
       />
+      {selectMode && selectedDays.length > 0 && (
+        <div className={styles.selectionFooter}>
+          <span>{selectMode === 'generate' ? '生成' : '取消'} {selectedDays.length} 天 · ¥{selectedTotal.toFixed(2)}</span>
+          <button type="button" onClick={confirmBatch}>{selectMode === 'generate' ? '确认生成' : '确认取消'}</button>
+        </div>
+      )}
     </div>
   );
 }

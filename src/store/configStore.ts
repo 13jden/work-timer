@@ -66,6 +66,9 @@ function migrateToV3(raw: Partial<Config> | undefined): Config {
     lunchEnabled:  raw?.lunchEnabled ?? DEFAULT_CONFIG.lunchEnabled,
     lunchStart:    raw?.lunchStart ?? DEFAULT_CONFIG.lunchStart,
     lunchMinutes:  raw?.lunchMinutes ?? DEFAULT_CONFIG.lunchMinutes,
+    customRestSchedule: raw?.customRestSchedule ?? DEFAULT_CONFIG.customRestSchedule,
+    // v1.3.5 新增字段:工作日模板列表
+    workTemplates: raw?.workTemplates ?? DEFAULT_CONFIG.workTemplates,
   };
 }
 

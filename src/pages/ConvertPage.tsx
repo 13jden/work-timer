@@ -11,9 +11,10 @@
 import { ConvertPanel } from '../components/ConvertPanel';
 import styles from './ConvertPage.module.css';
 
-export function ConvertPage() {
+export function ConvertPage({ onBack }: { onBack?: () => void }) {
   return (
     <div className={styles.pageHead} style={{ paddingBottom: 24 }}>
+      {onBack && <button type="button" className={styles.back} onClick={onBack}>← 返回</button>}
       <div className={styles.eyebrow}>What does it cost</div>
       <h2 className={styles.title}>等价换算</h2>
       <ConvertPanel mode="full" />

@@ -144,3 +144,4 @@
   font-size: 18px;
   line-height: 1;
 }
+.back { border: 0; background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 4px 0 12px; cursor: pointer; }

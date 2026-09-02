@@ -81,13 +81,20 @@ function normalizeEntry(raw: unknown): DayOverrideEntry | null {
     const freelanceHourly = typeof freelanceHourlyRaw === 'number' && Number.isFinite(freelanceHourlyRaw)
       ? freelanceHourlyRaw
       : null;
+    // v1.3.5:模板标记列表,缺省时 undefined
+    const templateMarks = Array.isArray(obj.templateMarks)
+      ? (obj.templateMarks as string[]).filter((id) => typeof id === 'string')
+      : undefined;
     return {
       type: type as DayOverrideEntry['type'],
       multiplier: safeMultiplier,
       segments,
       nightShift,
+      earnedGenerated: obj.earnedGenerated === true,
+      earnedAmount: typeof obj.earnedAmount === 'number' && Number.isFinite(obj.earnedAmount) ? obj.earnedAmount : null,
       freelanceDaily,
       freelanceHourly,
+      templateMarks: templateMarks && templateMarks.length > 0 ? templateMarks : undefined,
     };
   }
   return null;
@@ -178,6 +185,35 @@ export function totalSegmentsMinutes(segments: WorkSegment[]): number {
   return total;
 }
 
+/**
+ * 找到「当前时间 now」落在的工时段
+ *
+ * 用途：首页 TimerCard 应当显示当前所处的时段
+ *   - 9–12 / 14–18 现在 13:00 → 落在间隙，无匹配 → 返回 null
+ *   - 9–12 / 14–18 现在 10:00 → 返回 9-12
+ *   - 跨天段 22-06 现在 23:30 → 返回 22-06
+ *   - 跨天段 22-06 现在 01:00 → 返回 22-06
+ */
+export function findCurrentSegment(
+  segments: WorkSegment[],
+  now: Date,
+): WorkSegment | null {
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const seg of segments) {
+    const startMin = toMinutes(seg.start);
+    const endMin = seg.end === '24:00' ? 24 * 60 : toMinutes(seg.end);
+    // 单天段
+    if (endMin > startMin) {
+      if (nowMin >= startMin && nowMin < endMin) return seg;
+    } else if (endMin < startMin) {
+      // 跨天段:nowMin >= startMin 或 nowMin < endMin
+      if (nowMin >= startMin || nowMin < endMin) return seg;
+    }
+    // startMin === endMin 的退化段(整 24h)跳过
+  }
+  return null;
+}
+
 /** 段落在夜间窗口(22:00–06:00)的分钟数 */
 export function nightShiftMinutes(segments: WorkSegment[]): number {
   const merged = unionSegments(segments);
@@ -220,16 +256,29 @@ export function lunchOverlapMinutes(
 export function getEffectiveSegments(
   config: Config,
   override: DayOverrideEntry | null,
+  date?: Date,
 ): WorkSegment[] {
   // 1) override.segments 非空 → 完全覆盖全局
   if (override && override.segments && override.segments.length > 0) {
     return override.segments;
   }
-  // 2) 全局 config.segments 非空
+  // 2) v1.3.5 自定义排班:对应日期可应用多个单段模板
+  if (date && config.restMode === 'custom' && config.customRestSchedule) {
+    const ids = config.customRestSchedule.workDays[formatDateKey(date)];
+    if (ids && ids.length > 0 && !ids.includes('inherit')) {
+      const scheduled = ids.flatMap((id) => {
+        const template = config.workTemplates?.find((item) => item.id === id);
+        if (!template) return [];
+        return [template.workSegment];
+      });
+      if (scheduled.length > 0) return unionSegments(scheduled);
+    }
+  }
+  // 3) 全局 config.segments 非空
   if (config.segments && config.segments.length > 0) {
     return config.segments;
   }
-  // 3) fallback 单段
+  // 4) fallback 单段
   return [{ start: config.startTime, end: config.endTime }];
 }
 
@@ -315,6 +364,12 @@ export function isWorkday(
     );
   }
   if (isHoliday(date, holidays)) return false;
+
+  if (config.restMode === 'custom') {
+    const assigned = config.customRestSchedule?.workDays[formatDateKey(date)];
+    if (assigned?.includes('inherit')) return date.getDay() !== 0 && date.getDay() !== 6;
+    return Boolean(assigned && assigned.length > 0);
+  }
 
   // hourly/daily 模式没有 restMode 概念 → 所有非节假日都算工作日
   if (config.salaryMode === 'hourly' || config.salaryMode === 'daily') {
@@ -426,7 +481,7 @@ export function effectiveHourlyRate(
 ): number {
   if (!isWorkday(date, config, overrides, holidays)) return 0;
   const entry = getDayOverride(overrides, formatDateKey(date));
-  const segs = getEffectiveSegments(config, entry);
+  const segs = getEffectiveSegments(config, entry, date);
   const hours = Math.max(totalSegmentsMinutes(segs) / 60, 0.01);
   return effectiveDailyRate(date, config, overrides, holidays) / hours;
 }
@@ -513,7 +568,7 @@ export function todayEarned(
 
   const dateKey = formatDateKey(now);
   const entry = getDayOverride(overrides, dateKey);
-  const segs = getEffectiveSegments(config, entry);
+  const segs = getEffectiveSegments(config, entry, now);
   const merged = unionSegments(segs);
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 
@@ -593,7 +648,7 @@ export function dayState(
 
   const dateKey = formatDateKey(now);
   const entry = getDayOverride(overrides, dateKey);
-  const segs = getEffectiveSegments(config, entry);
+  const segs = getEffectiveSegments(config, entry, now);
   const merged = unionSegments(segs);
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 
@@ -680,19 +735,28 @@ export function monthEarnedSoFar(
 ): number {
   const days = daysInMonthCalc(year, month);
   let earned = 0;
+  const hasGeneratedEntries = Object.keys(overrides).some((key) => {
+    const [entryYear, entryMonth] = key.split('-').map(Number);
+    return entryYear === year && entryMonth === month + 1 && getDayOverride(overrides, key)?.earnedGenerated === true;
+  });
 
   for (let d = 1; d <= days; d++) {
     const date = new Date(year, month, d);
     if (date > now) break;
-    const units = dayUnits(date, config, overrides, holidays);
-    if (units === 0) continue;
-
-    const dailyRate = effectiveDailyRate(date, config, overrides, holidays);
+    const entry = getDayOverride(overrides, formatDateKey(date));
     const isToday =
       date.getFullYear() === now.getFullYear() &&
       date.getMonth() === now.getMonth() &&
       date.getDate() === now.getDate();
 
+    if (hasGeneratedEntries && !isToday) {
+      if (entry?.earnedGenerated) earned += entry.earnedAmount ?? effectiveDailyRate(date, config, overrides, holidays);
+      continue;
+    }
+    const units = dayUnits(date, config, overrides, holidays);
+    if (units === 0) continue;
+
+    const dailyRate = effectiveDailyRate(date, config, overrides, holidays);
     if (isToday) {
       earned += todayEarned(now, config, overrides, holidays);
     } else {
@@ -1339,6 +1403,118 @@ export function liveMinutesByLabel(
 }
 
 // ════════════════════════════════════════════════════════════
+// v1.3.5 · 已赚批量生成 / Fish 区间统计
+// ════════════════════════════════════════════════════════════
+
+/** 自定义排班下，日期未排班即休息；inherit 表示使用全局工时。 */
+export function isRestDayCustom(date: Date, config: Config): boolean {
+  if (config.restMode !== 'custom') return false;
+  const assigned = config.customRestSchedule?.workDays[formatDateKey(date)];
+  if (assigned?.includes('inherit')) return date.getDay() === 0 || date.getDay() === 6;
+  return !assigned || assigned.length === 0;
+}
+
+/**
+ * 批量标记已赚。保留已有 DaySheet 的 type、segments、nightShift 等手工设置。
+ * cancel=true 时只移除由该功能生成的标记，手工 DaySheet 配置保持不变。
+ */
+export function batchGenerateEarned(
+  dates: Date[],
+  config: Config,
+  overrides: DayOverrides,
+  holidays: HolidayMap,
+  cancel = false,
+): DayOverrides {
+  const next = { ...overrides };
+  for (const date of dates) {
+    const key = formatDateKey(date);
+    const previous = getDayOverride(overrides, key);
+    if (cancel) {
+      if (!previous?.earnedGenerated) continue;
+      const { earnedGenerated: _generated, earnedAmount: _amount, ...manual } = previous;
+      if (previous.type === 'work' && previous.segments === null && !previous.nightShift &&
+          previous.freelanceDaily == null && previous.freelanceHourly == null) {
+        delete next[key];
+      } else {
+        next[key] = manual;
+      }
+      continue;
+    }
+    if (!isWorkday(date, config, overrides, holidays)) continue;
+    next[key] = {
+      ...(previous ?? { type: 'work', multiplier: 1, segments: null, nightShift: false }),
+      earnedGenerated: true,
+      earnedAmount: effectiveDailyRate(date, config, overrides, holidays),
+    };
+  }
+  return next;
+}
+
+export interface RangeDayStat {
+  date: Date;
+  dateKey: string;
+  netMinutes: number;
+  earned: number;
+  slackMinutes: number;
+  compMinutes: number;
+  isRest: boolean;
+}
+
+export interface RangeStats {
+  totalNetMinutes: number;
+  avgNetHourly: number;
+  totalSlackMinutes: number;
+  totalCompMinutes: number;
+  perDay: RangeDayStat[];
+}
+
+/** 聚合闭区间内每天完整日的净工时、工资和时间记录。 */
+export function computeRangeStats(
+  start: Date,
+  end: Date,
+  config: Config,
+  overrides: DayOverrides,
+  holidays: HolidayMap,
+  sessions: Record<string, SlackingSession[]>,
+): RangeStats {
+  const perDay: RangeDayStat[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (cursor <= last) {
+    const date = new Date(cursor);
+    const key = formatDateKey(date);
+    const isRest = !isWorkday(date, config, overrides, holidays);
+    const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    const breakdown = computeNetHours({
+      date: atDayEnd,
+      config,
+      overrides,
+      holidays,
+      slackingSessions: sessions[key] ?? [],
+    });
+    perDay.push({
+      date,
+      dateKey: key,
+      netMinutes: isRest ? 0 : Math.max(0, breakdown.netMinutes),
+      earned: isRest ? 0 : effectiveDailyRate(date, config, overrides, holidays),
+      slackMinutes: breakdown.slackingMinutes,
+      compMinutes: breakdown.overtimeBonus + breakdown.nightBonus,
+      isRest,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const totalNetMinutes = perDay.reduce((sum, day) => sum + day.netMinutes, 0);
+  const totalEarned = perDay.reduce((sum, day) => sum + day.earned, 0);
+  return {
+    totalNetMinutes,
+    avgNetHourly: totalNetMinutes > 0 ? totalEarned / (totalNetMinutes / 60) : 0,
+    totalSlackMinutes: perDay.reduce((sum, day) => sum + day.slackMinutes, 0),
+    totalCompMinutes: perDay.reduce((sum, day) => sum + day.compMinutes, 0),
+    perDay,
+  };
+}
+
+// ════════════════════════════════════════════════════════════
 // Helpers
 // ════════════════════════════════════════════════════════════
 
@@ -1347,4 +1523,222 @@ function minutesToHHMM(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// ════════════════════════════════════════════════════════════
+// v1.3.5 · 多模板工作日标记系统 + 兼职类型
+// ════════════════════════════════════════════════════════════
+
+/**
+ * 获取某日期被标记的所有模板 ID 列表
+ * 
+ * @returns 模板 ID 数组，未标记时返回空数组
+ */
+export function getDateTemplateMarks(
+  date: Date,
+  overrides: DayOverrides,
+): string[] {
+  const key = formatDateKey(date);
+  const entry = getDayOverride(overrides, key);
+  return entry?.templateMarks ?? [];
+}
+
+/**
+ * 检测模板时间段是否与该日期已有模板冲突
+ * 
+ * @param date 目标日期
+ * @param templateId 待添加的模板 ID
+ * @param newSegment 待添加的时间段
+ * @param config 配置（包含 workTemplates）
+ * @param overrides 日期覆盖配置
+ * @returns true = 冲突，false = 无冲突
+ */
+export function hasTemplateConflict(
+  date: Date,
+  templateId: string,
+  newSegment: WorkSegment,
+  config: Config,
+  overrides: DayOverrides,
+): boolean {
+  const marks = getDateTemplateMarks(date, overrides);
+  if (marks.length === 0) return false;
+
+  const existingSegments: WorkSegment[] = [];
+  for (const markId of marks) {
+    if (markId === templateId) continue; // 跳过自己
+    const template = (config.workTemplates ?? []).find((t) => t.id === markId);
+    if (template) {
+      existingSegments.push(template.workSegment);
+    }
+  }
+
+  if (existingSegments.length === 0) return false;
+
+  // 检测 newSegment 与 existingSegments 是否有重叠
+  // 算法：newSegment 展开成分钟区间，与所有已存在段求交集
+  const newFlat = flattenSegments([newSegment]);
+  const existingFlat = flattenSegments(existingSegments);
+
+  for (const n of newFlat) {
+    for (const e of existingFlat) {
+      // 两区间有交集：[n.start, n.end) ∩ [e.start, e.end) ≠ ∅
+      // 等价于 max(n.start, e.start) < min(n.end, e.end)
+      const overlapStart = Math.max(n.startMin, e.startMin);
+      const overlapEnd = Math.min(n.endMin, e.endMin);
+      if (overlapEnd > overlapStart) return true; // 有重叠
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 添加模板标记到指定日期
+ * 
+ * @returns 新的 DayOverrides（不会冲突时才添加）
+ */
+export function addTemplateMarkToDate(
+  date: Date,
+  templateId: string,
+  config: Config,
+  overrides: DayOverrides,
+): { success: boolean; overrides: DayOverrides; reason?: string } {
+  const template = (config.workTemplates ?? []).find((t) => t.id === templateId);
+  if (!template) {
+    return { success: false, overrides, reason: '模板不存在' };
+  }
+
+  // 检测冲突
+  if (hasTemplateConflict(date, templateId, template.workSegment, config, overrides)) {
+    return { success: false, overrides, reason: '时间段与已有模板冲突' };
+  }
+
+  const key = formatDateKey(date);
+  const entry = getDayOverride(overrides, key);
+  const existingMarks = entry?.templateMarks ?? [];
+
+  // 已标记则不重复添加
+  if (existingMarks.includes(templateId)) {
+    return { success: true, overrides };
+  }
+
+  const next = { ...overrides };
+  next[key] = {
+    ...(entry ?? { type: 'work', multiplier: 1, segments: null, nightShift: false }),
+    templateMarks: [...existingMarks, templateId],
+  };
+
+  return { success: true, overrides: next };
+}
+
+/**
+ * 从指定日期移除模板标记
+ * 
+ * @returns 新的 DayOverrides
+ */
+export function removeTemplateMarkFromDate(
+  date: Date,
+  templateId: string,
+  overrides: DayOverrides,
+): DayOverrides {
+  const key = formatDateKey(date);
+  const entry = getDayOverride(overrides, key);
+  if (!entry || !entry.templateMarks || entry.templateMarks.length === 0) {
+    return overrides;
+  }
+
+  const newMarks = entry.templateMarks.filter((id) => id !== templateId);
+
+  const next = { ...overrides };
+  if (newMarks.length === 0) {
+    // 清空所有标记后，如果该 entry 无其他自定义配置，则删除整个 entry
+    if (
+      entry.type === 'work' &&
+      entry.multiplier === 1 &&
+      entry.segments === null &&
+      !entry.nightShift &&
+      !entry.earnedGenerated &&
+      entry.freelanceDaily == null &&
+      entry.freelanceHourly == null
+    ) {
+      delete next[key];
+    } else {
+      next[key] = { ...entry, templateMarks: undefined };
+    }
+  } else {
+    next[key] = { ...entry, templateMarks: newMarks };
+  }
+
+  return next;
+}
+
+/**
+ * 合并某日期所有模板标记的工时段（去重叠）
+ * 
+ * @returns 合并后的工时段数组
+ */
+export function mergeTemplateSegmentsForDate(
+  date: Date,
+  config: Config,
+  overrides: DayOverrides,
+): WorkSegment[] {
+  const marks = getDateTemplateMarks(date, overrides);
+  if (marks.length === 0) return [];
+
+  const segments: WorkSegment[] = [];
+  for (const markId of marks) {
+    const template = (config.workTemplates ?? []).find((t) => t.id === markId);
+    if (template) {
+      segments.push(template.workSegment);
+    }
+  }
+
+  return unionSegments(segments);
+}
+
+/**
+ * 判断日期是否被任意模板标记（即为工作日）
+ * 
+ * 优先级：templateMarks > DaySheet override > restMode
+ */
+export function isDateMarkedByTemplate(
+  date: Date,
+  overrides: DayOverrides,
+): boolean {
+  const marks = getDateTemplateMarks(date, overrides);
+  return marks.length > 0;
+}
+
+/**
+ * 计算兼职类型时间记录的收入
+ * 
+ * @param sessions 该日期的所有时间记录
+ * @returns 兼职总收入（¥）
+ */
+export function parttimeEarnings(
+  sessions: SlackingSession[],
+): number {
+  let total = 0;
+  for (const s of sessions) {
+    if (s.label !== 'parttime') continue;
+    // 使用自定义收入金额（如果有）
+    if (s.parttimeEarned != null && s.parttimeEarned > 0) {
+      total += s.parttimeEarned;
+    }
+  }
+  return total;
+}
+
+/**
+ * 计算兼职类型时间记录的总时长（分钟）
+ * 
+ * @param sessions 该日期的所有时间记录
+ * @param nowTs 当前时间戳（用于计算进行中的 session）
+ * @returns 兼职总时长（分钟）
+ */
+export function parttimeMinutes(
+  sessions: SlackingSession[],
+  nowTs: number = Date.now(),
+): number {
+  return liveMinutesByLabel(sessions, 'parttime', nowTs);
 }

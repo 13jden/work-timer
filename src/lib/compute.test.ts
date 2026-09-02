@@ -18,8 +18,20 @@ import {
   todayEarned,
   workSeconds,
   workdaysInMonth,
+  isRestDayCustom,
+  batchGenerateEarned,
+  computeRangeStats,
+  // v1.3.5 新增
+  getDateTemplateMarks,
+  hasTemplateConflict,
+  addTemplateMarkToDate,
+  removeTemplateMarkFromDate,
+  mergeTemplateSegmentsForDate,
+  isDateMarkedByTemplate,
+  parttimeEarnings,
+  parttimeMinutes,
 } from './compute';
-import type { Config, DayOverrides, HolidayMap } from './types';
+import type { Config, DayOverrides, HolidayMap, WorkTemplate } from './types';
 
 // ── Test Fixtures ─────────────────────────────────────────────
 const baseConfig: Config = {
@@ -495,6 +507,7 @@ import {
   splitSegment,
   unionSegments,
   totalSegmentsMinutes,
+  findCurrentSegment,
   nightShiftMinutes,
   lunchOverlapMinutes,
   getEffectiveSegments,
@@ -569,6 +582,75 @@ describe('totalSegmentsMinutes · 跨天段', () => {
   it('非跨天段 9h = 540 min', () => {
     const t = totalSegmentsMinutes([{ start: '09:00', end: '18:00' }]);
     expect(t).toBe(540);
+  });
+});
+
+describe('findCurrentSegment · 当前时段', () => {
+  function atTime(h: number, m: number): Date {
+    const d = new Date(2026, 8, 2, h, m, 0);
+    return d;
+  }
+
+  it('多段 9-12/14-18，10:30 → 9-12', () => {
+    const seg = findCurrentSegment(
+      [
+        { start: '09:00', end: '12:00' },
+        { start: '14:00', end: '18:00' },
+      ],
+      atTime(10, 30),
+    );
+    expect(seg).toEqual({ start: '09:00', end: '12:00' });
+  });
+
+  it('多段 9-12/14-18，14:30 → 14-18', () => {
+    const seg = findCurrentSegment(
+      [
+        { start: '09:00', end: '12:00' },
+        { start: '14:00', end: '18:00' },
+      ],
+      atTime(14, 30),
+    );
+    expect(seg).toEqual({ start: '14:00', end: '18:00' });
+  });
+
+  it('午休间隙 13:00 → null', () => {
+    const seg = findCurrentSegment(
+      [
+        { start: '09:00', end: '12:00' },
+        { start: '14:00', end: '18:00' },
+      ],
+      atTime(13, 0),
+    );
+    expect(seg).toBeNull();
+  });
+
+  it('跨天段 22-06，01:00 → 22-06', () => {
+    const seg = findCurrentSegment(
+      [{ start: '22:00', end: '06:00' }],
+      atTime(1, 0),
+    );
+    expect(seg).toEqual({ start: '22:00', end: '06:00' });
+  });
+
+  it('跨天段 22-06，23:30 → 22-06', () => {
+    const seg = findCurrentSegment(
+      [{ start: '22:00', end: '06:00' }],
+      atTime(23, 30),
+    );
+    expect(seg).toEqual({ start: '22:00', end: '06:00' });
+  });
+
+  it('没有任何段 → null', () => {
+    expect(findCurrentSegment([], atTime(10, 0))).toBeNull();
+  });
+
+  it('单段 9-18，18:00 整 → null（end 不含）', () => {
+    expect(findCurrentSegment([{ start: '09:00', end: '18:00' }], atTime(18, 0))).toBeNull();
+  });
+
+  it('单段 9-18，17:59 → 9-18', () => {
+    const seg = findCurrentSegment([{ start: '09:00', end: '18:00' }], atTime(17, 59));
+    expect(seg).toEqual({ start: '09:00', end: '18:00' });
   });
 });
 
@@ -2062,5 +2144,180 @@ describe('computeNetHours · v1.3.4-patch4 多段工时 + 午餐在间隙', () =
     });
     expect(r.lunchElapsed).toBe(0);
     expect(r.netMinutes).toBe(300);
+  });
+});
+
+describe('v1.3.5 custom schedule and earned batches', () => {
+  it('uses inherit as the standard weekday fallback', () => {
+    const config = {
+      ...baseConfig,
+      restMode: 'custom' as const,
+      customRestSchedule: { workDays: { '2026-08-28': ['inherit'] }, updatedAt: 0 },
+    };
+    expect(isRestDayCustom(date(2026, 7, 28), config)).toBe(false);
+    expect(isRestDayCustom(date(2026, 7, 29), config)).toBe(true);
+    expect(isWorkday(date(2026, 7, 28), config, noOverrides, emptyHolidays)).toBe(true);
+  });
+
+  it('generates snapshots without replacing manual day settings', () => {
+    const manual: DayOverrides = {
+      '2026-08-28': { type: 'paid_overtime', multiplier: 1.5, segments: [{ start: '10:00', end: '18:00' }], nightShift: true },
+    };
+    const next = batchGenerateEarned([date(2026, 7, 28)], baseConfig, manual, emptyHolidays);
+    expect(next['2026-08-28']?.type).toBe('paid_overtime');
+    expect(next['2026-08-28']?.segments?.[0]?.start).toBe('10:00');
+    expect(next['2026-08-28']?.earnedGenerated).toBe(true);
+    expect(next['2026-08-28']?.earnedAmount).toBeGreaterThan(0);
+  });
+
+  it('cancels generated entries while retaining manual fields', () => {
+    const generated: DayOverrides = {
+      '2026-08-28': { type: 'work', multiplier: 1, segments: [{ start: '10:00', end: '18:00' }], nightShift: false, earnedGenerated: true, earnedAmount: 123 },
+    };
+    const next = batchGenerateEarned([date(2026, 7, 28)], baseConfig, generated, emptyHolidays, true);
+    expect(next['2026-08-28']?.earnedGenerated).toBeUndefined();
+    expect(next['2026-08-28']?.segments?.[0]?.start).toBe('10:00');
+  });
+
+  it('aggregates range stats by day', () => {
+    const sessions = {
+      '2026-08-28': [{ id: 's', dateKey: '2026-08-28', label: 'slack' as const, startTs: date(2026, 7, 28, 10).getTime(), endTs: date(2026, 7, 28, 11).getTime(), nightShift: false }],
+    };
+    const stats = computeRangeStats(date(2026, 7, 28), date(2026, 7, 30), baseConfig, noOverrides, emptyHolidays, sessions);
+    expect(stats.perDay).toHaveLength(3);
+    expect(stats.totalSlackMinutes).toBe(60);
+    expect(stats.totalNetMinutes).toBeGreaterThan(0);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.5 · 多模板工作日标记系统
+// ══════════════════════════════════════════════════════════════
+describe('v1.3.5 multi-template system', () => {
+  const templates: WorkTemplate[] = [
+    { id: 'tpl-1', name: '早班', color: '#4ADE80', workSegment: { start: '08:00', end: '16:00' } },
+    { id: 'tpl-2', name: '晚班', color: '#FBBF24', workSegment: { start: '16:00', end: '00:00' } },
+    { id: 'tpl-3', name: '夜班', color: '#60A5FA', workSegment: { start: '22:00', end: '06:00' } },
+  ];
+
+  const configWithTemplates: Config = {
+    ...baseConfig,
+    workTemplates: templates,
+  };
+
+  it('getDateTemplateMarks returns empty for unmarked date', () => {
+    expect(getDateTemplateMarks(date(2026, 8, 1), noOverrides)).toEqual([]);
+  });
+
+  it('getDateTemplateMarks returns marks array', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1', 'tpl-2'] },
+    };
+    expect(getDateTemplateMarks(date(2026, 8, 1), ov)).toEqual(['tpl-1', 'tpl-2']);
+  });
+
+  it('hasTemplateConflict detects overlap', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1'] },
+    };
+    // tpl-1: 08:00-16:00, tpl-2: 16:00-00:00 → 无冲突
+    expect(hasTemplateConflict(date(2026, 8, 1), 'tpl-2', { start: '16:00', end: '00:00' }, configWithTemplates, ov)).toBe(false);
+    // tpl-1: 08:00-16:00, 新段: 12:00-18:00 → 冲突
+    expect(hasTemplateConflict(date(2026, 8, 1), 'tpl-new', { start: '12:00', end: '18:00' }, configWithTemplates, ov)).toBe(true);
+  });
+
+  it('addTemplateMarkToDate success without conflict', () => {
+    const result = addTemplateMarkToDate(date(2026, 8, 1), 'tpl-1', configWithTemplates, noOverrides);
+    expect(result.success).toBe(true);
+    expect(result.overrides['2026-09-01']?.templateMarks).toEqual(['tpl-1']);
+  });
+
+  it('addTemplateMarkToDate fails on conflict', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1'] },
+    };
+    // 尝试添加 tpl-3 (22:00-06:00)，与 tpl-1 (08:00-16:00) 无冲突
+    const result1 = addTemplateMarkToDate(date(2026, 8, 1), 'tpl-3', configWithTemplates, ov);
+    expect(result1.success).toBe(true);
+
+    // 创建冲突模板
+    const conflictTemplate: WorkTemplate = { id: 'tpl-conflict', name: '冲突', color: '#FF0000', workSegment: { start: '10:00', end: '14:00' } };
+    const cfg = { ...configWithTemplates, workTemplates: [...templates, conflictTemplate] };
+    const result2 = addTemplateMarkToDate(date(2026, 8, 1), 'tpl-conflict', cfg, ov);
+    expect(result2.success).toBe(false);
+    expect(result2.reason).toContain('冲突');
+  });
+
+  it('removeTemplateMarkFromDate removes mark', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1', 'tpl-2'] },
+    };
+    const next = removeTemplateMarkFromDate(date(2026, 8, 1), 'tpl-1', ov);
+    expect(next['2026-09-01']?.templateMarks).toEqual(['tpl-2']);
+  });
+
+  it('removeTemplateMarkFromDate cleans empty entry', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1'] },
+    };
+    const next = removeTemplateMarkFromDate(date(2026, 8, 1), 'tpl-1', ov);
+    expect(next['2026-09-01']).toBeUndefined();
+  });
+
+  it('mergeTemplateSegmentsForDate merges segments', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1', 'tpl-2'] },
+    };
+    const merged = mergeTemplateSegmentsForDate(date(2026, 8, 1), configWithTemplates, ov);
+    // tpl-1: 08:00-16:00, tpl-2: 16:00-00:00 → 合并为 08:00-00:00
+    expect(merged.length).toBeGreaterThan(0);
+    expect(merged[0]?.start).toBe('08:00');
+  });
+
+  it('isDateMarkedByTemplate returns true for marked date', () => {
+    const ov: DayOverrides = {
+      '2026-09-01': { type: 'work', multiplier: 1, segments: null, nightShift: false, templateMarks: ['tpl-1'] },
+    };
+    expect(isDateMarkedByTemplate(date(2026, 8, 1), ov)).toBe(true);
+    expect(isDateMarkedByTemplate(date(2026, 8, 2), ov)).toBe(false);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// v1.3.5 · 兼职类型时间记录
+// ══════════════════════════════════════════════════════════════
+describe('v1.3.5 parttime records', () => {
+  it('parttimeEarnings sums custom earnings', () => {
+    const sessions = [
+      { id: 'p1', dateKey: '2026-09-01', label: 'parttime' as const, startTs: 1000, endTs: 2000, nightShift: false, parttimeEarned: 100 },
+      { id: 'p2', dateKey: '2026-09-01', label: 'parttime' as const, startTs: 3000, endTs: 4000, nightShift: false, parttimeEarned: 200 },
+      { id: 's1', dateKey: '2026-09-01', label: 'slack' as const, startTs: 5000, endTs: 6000, nightShift: false },
+    ];
+    expect(parttimeEarnings(sessions)).toBe(300);
+  });
+
+  it('parttimeEarnings ignores null earnings', () => {
+    const sessions = [
+      { id: 'p1', dateKey: '2026-09-01', label: 'parttime' as const, startTs: 1000, endTs: 2000, nightShift: false, parttimeEarned: null },
+      { id: 'p2', dateKey: '2026-09-01', label: 'parttime' as const, startTs: 3000, endTs: 4000, nightShift: false, parttimeEarned: 50 },
+    ];
+    expect(parttimeEarnings(sessions)).toBe(50);
+  });
+
+  it('parttimeMinutes calculates total duration', () => {
+    const sessions = [
+      { id: 'p1', dateKey: '2026-09-01', label: 'parttime' as const, startTs: date(2026, 8, 1, 10, 0).getTime(), endTs: date(2026, 8, 1, 11, 30).getTime(), nightShift: false },
+      { id: 'p2', dateKey: '2026-09-01', label: 'parttime' as const, startTs: date(2026, 8, 1, 14, 0).getTime(), endTs: date(2026, 8, 1, 15, 0).getTime(), nightShift: false },
+    ];
+    const nowTs = date(2026, 8, 1, 16, 0).getTime();
+    expect(parttimeMinutes(sessions, nowTs)).toBe(150); // 90 + 60
+  });
+
+  it('parttimeMinutes includes ongoing session', () => {
+    const sessions = [
+      { id: 'p1', dateKey: '2026-09-01', label: 'parttime' as const, startTs: date(2026, 8, 1, 10, 0).getTime(), endTs: null, nightShift: false },
+    ];
+    const nowTs = date(2026, 8, 1, 11, 0).getTime();
+    expect(parttimeMinutes(sessions, nowTs)).toBe(60);
   });
 });

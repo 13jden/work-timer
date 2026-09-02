@@ -13,8 +13,8 @@ interface BottomNavProps {
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'today',    label: 'TODAY' },
-  { id: 'convert',  label: 'SWAP' },
   { id: 'calendar', label: 'MONTH' },
+  { id: 'fish',     label: 'FISH' },
   { id: 'settings', label: 'MINE' },
 ];
 

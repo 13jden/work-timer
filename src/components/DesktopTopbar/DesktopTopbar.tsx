@@ -19,6 +19,7 @@ interface DesktopTopbarProps {
 const TAB_LABELS: Record<DesktopTabId, { eyebrow: string; title: string }> = {
   today:    { eyebrow: 'today',    title: '今日出售时间' },
   calendar: { eyebrow: 'calendar', title: '月度日历' },
+  fish:     { eyebrow: 'fish',     title: '摸鱼记录' },
 };
 
 export function DesktopTopbar({ activeTab, onOpenSettings }: DesktopTopbarProps) {

@@ -6,7 +6,7 @@
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
 import { HOLIDAYS } from '../../lib/constants';
-import { dayState, progressPct, getDayOverride, getEffectiveSegments } from '../../lib/compute';
+import { dayState, progressPct, getDayOverride, getEffectiveSegments, findCurrentSegment } from '../../lib/compute';
 import { useNow } from '../../hooks/useNow';
 import { formatDateKey } from '../../lib/time';
 import { Clock, Lightning } from '@phosphor-icons/react';
@@ -26,10 +26,11 @@ export function TimerCard() {
   const isOvertime = entry?.type === 'paid_overtime';
   const mult = entry?.multiplier ?? 1;
 
-  // 显示的上下班时间:与计时器一致,用今日有效工时段(override > 全局多段 > 默认)
+  // 显示的上下班时间：优先取「当前时段」(13:00 落在 14-18 段)，否则 fallback 到首末段
   const segs = getEffectiveSegments(config, entry ?? null);
-  const rangeStart = segs[0]?.start ?? config.startTime;
-  const rangeEnd = segs[segs.length - 1]?.end ?? config.endTime;
+  const currentSeg = findCurrentSegment(segs, now);
+  const rangeStart = currentSeg?.start ?? segs[0]?.start ?? config.startTime;
+  const rangeEnd = currentSeg?.end ?? segs[segs.length - 1]?.end ?? config.endTime;
 
   // ===== REST MODE: 匹配参考图 & index.html —— 显示 "REST" 衬线大字体 =====
   if (ds.mode === 'rest') {
