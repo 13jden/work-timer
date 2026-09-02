@@ -1,5 +1,5 @@
 .page {
-  padding: 0 16px 100px;
+  padding: 0 0 100px;
   position: relative;
 }
 
@@ -54,16 +54,16 @@
   gap: 6px;
   background: var(--paper-2);
   border-radius: var(--r-md);
-  padding: 4px;
+  padding: 3px;
 }
 
 .segmentedChip {
   flex: 1;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: none;
   background: transparent;
   border-radius: calc(var(--r-md) - 2px);
-  font: 500 14px var(--font-sans);
+  font: 500 13px var(--font-sans);
   color: var(--muted);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -87,6 +87,61 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-bottom: 10px;
+}
+
+/* ── 日期切换导航 ── */
+.dateNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dateNavBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--paper-2);
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.dateNavBtn:hover:not(:disabled) {
+  background: var(--line-soft);
+  color: var(--ink);
+}
+
+.dateNavBtn:disabled,
+.dateNavBtnDisabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dateNavTitle {
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  transition: background 0.15s;
+}
+
+.dateNavTitle:hover {
+  background: var(--paper-2);
 }
 
 .card {

@@ -144,7 +144,16 @@ export function App() {
       }}
     >
       {mobileOverlay === 'convert' ? <ConvertPage onBack={() => setMobileOverlay(null)} /> : mobileOverlay === 'fish' ? <FishPage /> : renderPage(activeTab, () => setMobileOverlay('convert'), () => setActiveTab('fish'))}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          // 从 overlay 点击底部导航：先关闭 overlay，再切换 tab
+          if (mobileOverlay) {
+            setMobileOverlay(null);
+          }
+          setActiveTab(tab);
+        }}
+      />
     </div>
   );
 }
