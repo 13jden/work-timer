@@ -40,6 +40,8 @@ function fmtHoursMin(min: number): string {
 interface Props {
   /** 返回回调 */
   onBack?: () => void;
+  /** 模式切换回调（日/周/月） */
+  onModeChange?: (mode: 'day' | 'week' | 'month') => void;
 }
 
 /**
@@ -56,7 +58,7 @@ function normalizeLabel(raw: string): { label: TimeRecordLabel; fallbackCustom?:
   return { label: 'other', fallbackCustom: map[raw] };
 }
 
-export function TimeTrackerDetailPage({ onBack }: Props) {
+export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
@@ -130,14 +132,14 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
           <button
             type="button"
             className={`${styles.segmentedChip} ${activeTab === 'week' ? styles.segmentedChipActive : ''}`}
-            onClick={() => setActiveTab('week')}
+            onClick={() => { setActiveTab('week'); onModeChange?.('week'); }}
           >
             周
           </button>
           <button
             type="button"
             className={`${styles.segmentedChip} ${activeTab === 'month' ? styles.segmentedChipActive : ''}`}
-            onClick={() => setActiveTab('month')}
+            onClick={() => { setActiveTab('month'); onModeChange?.('month'); }}
           >
             月
           </button>

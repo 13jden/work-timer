@@ -9,6 +9,8 @@ import styles from './FishPage.module.css';
 
 type RangeMode = 'day' | 'week' | 'month';
 
+const WEEKDAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
+
 function rangeFor(mode: Exclude<RangeMode, 'day'>, offset: number, now: Date) {
   if (mode === 'week') {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7) + offset * 7);
@@ -26,13 +28,13 @@ function fmtMinutes(value: number) {
 function fmtRange(mode: Exclude<RangeMode, 'day'>, offset: number, now: Date) {
   const { start, end } = rangeFor(mode, offset, now);
   if (mode === 'month') return `${start.getFullYear()}年${start.getMonth() + 1}月`;
-  return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+  return `${start.getMonth() + 1}月${start.getDate()}日 - ${end.getMonth() + 1}月${end.getDate()}日`;
 }
 
 export function FishPage() {
-  const [mode, setMode] = useState<RangeMode>('day');
+  const [mode, setMode] = useState<RangeMode>('week');
   const [offset, setOffset] = useState(0);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const sessions = useSlackingStore((s) => s.sessions);
@@ -53,47 +55,217 @@ export function FishPage() {
           </div>
           <h1 className={styles.headTitle}>时间记录</h1>
         </div>
-        <TimeTrackerDetailPage />
+        <TimeTrackerDetailPage onModeChange={(newMode) => { setMode(newMode); setOffset(0); }} />
       </div>
     );
   }
 
-  const max = Math.max(...(stats?.perDay.map((d) => d.netMinutes) ?? [1]), 1);
-  const selected = stats?.perDay.find((d) => d.dateKey === selectedKey) ?? null;
-  const chartWidth = Math.max((stats?.perDay.length ?? 0) * 28, 196);
+  // 找到今天在列表中的索引
+  const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const todayIndex = stats?.perDay.findIndex(d => d.dateKey === todayKey) ?? -1;
+  
+  // 当前选中的日期（默认今天，如果今天不在范围内则第一个工作日）
+  const actualSelectedIndex = selectedDayIndex !== null ? selectedDayIndex : (todayIndex >= 0 ? todayIndex : stats?.perDay.findIndex(d => !d.isRest) ?? 0);
+  const selectedDay = stats?.perDay[actualSelectedIndex];
+  
+  const max = 540; // 固定 9h 刻度，网格线对应 0/3h/6h/9h
+  
+  // 工作日天数（非工作日不参与平均）
+  const workDays = stats?.perDay.filter(d => !d.isRest).length ?? 1;
+  
+  // 时长去向：有效工时、摸鱼、加班占比（基于净工时）
+  const totalNet = stats?.totalNetMinutes ?? 0;
+  const effectiveMin = totalNet - (stats?.totalCompMinutes ?? 0);
+  const effPct = totalNet > 0 ? (effectiveMin / totalNet) * 100 : 0;
+  const slackPct = totalNet > 0 ? ((stats?.totalSlackMinutes ?? 0) / totalNet) * 100 : 0;
+  const compPct = totalNet > 0 ? ((stats?.totalCompMinutes ?? 0) / totalNet) * 100 : 0;
+  
+  // 摸鱼总薪资 = 摸鱼时长 × 基础时薪
+  // 基础时薪 = 月薪 / 22天 / 8h
+  const baseHourly = config.monthlySalary / 22 / 8;
+  const fishSalary = ((stats?.totalSlackMinutes ?? 0) / 60) * baseHourly;
+  
+  // 累计已赚 = 每日已赚累加
+  const totalEarned = stats?.perDay.reduce((sum, d) => sum + (d.earned ?? 0), 0) ?? 0;
+  
   return (
     <div className={styles.page}>
-      <div className={styles.head}><span>FISH · {mode === 'week' ? 'WEEK' : 'MONTH'}</span><strong>时间统计</strong></div>
-      <div className={styles.switcher}>{(['day', 'week', 'month'] as RangeMode[]).map((item) => <button key={item} className={item === mode ? styles.active : ''} onClick={() => { setMode(item); setOffset(0); }}>{item === 'day' ? '日' : item === 'week' ? '周' : '月'}</button>)}</div>
-      <div className={styles.rangeNav}><button onClick={() => setOffset((v) => v - 1)}>‹</button><span>{fmtRange(mode, offset, now)}</span><button onClick={() => setOffset((v) => v + 1)}>›</button></div>
-      <div className={styles.cards}>
-        <div><small>净工时</small><b>{fmtMinutes(stats?.totalNetMinutes ?? 0)}</b></div>
-        <div><small>平均净时薪</small><b>¥{(stats?.avgNetHourly ?? 0).toFixed(2)}</b></div>
-        <div><small>摸鱼</small><b>{fmtMinutes(stats?.totalSlackMinutes ?? 0)}</b></div>
-        <div><small>加班补偿</small><b>{fmtMinutes(stats?.totalCompMinutes ?? 0)}</b></div>
+      <div className={styles.head}>
+        <div className={styles.headEyebrowRow}>
+          <span className={styles.headEyebrow}>TIME RECORDS</span>
+        </div>
+        <h1 className={styles.headTitle}>时间记录</h1>
       </div>
-      <div className={styles.chart}>
-        <svg viewBox={`0 0 ${chartWidth} 180`} role="img" aria-label="每日净工时柱状图">
+
+      {/* 日/周/月切换器 */}
+      <div className={styles.tabs}>
+        <button onClick={() => { setMode('day'); setOffset(0); }}>日</button>
+        <button className={mode === 'week' ? styles.tabActive : ''} onClick={() => { setMode('week'); setOffset(0); setSelectedDayIndex(null); }}>周</button>
+        <button className={mode === 'month' ? styles.tabActive : ''} onClick={() => { setMode('month'); setOffset(0); setSelectedDayIndex(null); }}>月</button>
+      </div>
+
+      {/* 日期范围导航 */}
+      <div className={styles.rangeNav}>
+        <button onClick={() => { setOffset((v) => v - 1); setSelectedDayIndex(null); }}>‹</button>
+        <span>{fmtRange(mode, offset, now)}</span>
+        <button onClick={() => { setOffset((v) => v + 1); setSelectedDayIndex(null); }}>›</button>
+      </div>
+
+      {/* 顶部大数字：选中日的日期 + 净工时（周/月视图均显示选中日） */}
+      {selectedDay ? (
+        <>
+          <div className={styles.sDay}>
+            {selectedDay.date.getMonth() + 1}月{selectedDay.date.getDate()}日 · 周{WEEKDAY_NAMES[selectedDay.date.getDay()]}
+          </div>
+          <div className={styles.sBig}>
+            {fmtMinutes(selectedDay.netMinutes)}
+            <small>净工时</small>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.sDay}>
+            工作日 {workDays} 天
+          </div>
+          <div className={styles.sBig}>
+            {fmtMinutes(stats?.totalNetMinutes ?? 0)}
+            <small>累计净工时</small>
+          </div>
+        </>
+      )}
+
+      {/* 柱状图 */}
+      <div className={styles.chartWrap}>
+        <div className={styles.chart}>
+          {/* 网格线 + Y轴标签 */}
+          <div className={styles.gridLine} style={{ top: '0%' }}><span>9h</span></div>
+          <div className={styles.gridLine} style={{ top: '33.3%' }}><span>6h</span></div>
+          <div className={styles.gridLine} style={{ top: '66.6%' }}><span>3h</span></div>
+          <div className={styles.gridLine} style={{ top: '100%' }}><span>0</span></div>
+
+          {/* 柱子 */}
+          <div className={`${styles.bars} ${mode === 'month' ? styles.barsMonth : styles.barsWeek}`}>
+            {stats?.perDay.map((day, index) => {
+              const heightPct = day.isRest ? 0 : Math.min(100, Math.max(3, (day.netMinutes / max) * 100));
+              const isSelected = index === actualSelectedIndex;
+
+              return (
+                <div
+                  key={day.dateKey}
+                  className={styles.barSlot}
+                  onClick={() => !day.isRest && setSelectedDayIndex(index)}
+                  style={{ cursor: day.isRest ? 'default' : 'pointer' }}
+                  title={`${day.dateKey} · ${fmtMinutes(day.netMinutes)}`}
+                >
+                  {day.isRest ? (
+                    <div className={styles.restDot} />
+                  ) : (
+                    <div
+                      className={`${styles.bar} ${isSelected ? styles.barSelected : ''}`}
+                      style={{ height: `${heightPct}%` }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* X轴标签 */}
+        <div className={`${styles.xLabels} ${mode === 'month' ? styles.xLabelsMonth : styles.xLabelsWeek}`}>
           {stats?.perDay.map((day, index) => {
-            const x = index * 28 + 6;
-            const height = Math.max(day.isRest ? 3 : 5, (day.netMinutes / max) * 126);
-            const isToday = day.dateKey === [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-            const className = [styles.svgBar, day.isRest ? styles.svgRest : '', day.compMinutes > 0 ? styles.svgOvertime : '', selectedKey === day.dateKey ? styles.svgSelected : ''].filter(Boolean).join(' ');
+            const showLabel = mode === 'week' || (mode === 'month' && index % 5 === 0);
+            const isSelected = index === actualSelectedIndex;
+
             return (
-              <g key={day.dateKey} className={styles.svgItem} onClick={() => setSelectedKey(day.dateKey)}>
-                <title>{`${day.dateKey} · ${fmtMinutes(day.netMinutes)}`}</title>
-                {isToday && <line className={styles.todayLine} x1={x + 8} x2={x + 8} y1="12" y2="156" />}
-                <rect className={className} x={x} y={156 - height} width="16" height={height} rx="3" />
-                <text x={x + 8} y="174" textAnchor="middle">{day.date.getDate()}</text>
-              </g>
+              <div
+                key={day.dateKey}
+                className={`${styles.xLabel} ${isSelected ? styles.xLabelSel : ''}`}
+                onClick={() => !day.isRest && setSelectedDayIndex(index)}
+                style={{ cursor: day.isRest ? 'default' : 'pointer' }}
+              >
+                {showLabel && (
+                  mode === 'week' ? (
+                    <>
+                      <b>{day.date.getMonth() + 1}/{day.date.getDate()}</b>
+                      <span>{day.isRest ? <span className={styles.restTag}>休</span> : `周${WEEKDAY_NAMES[day.date.getDay()]}`}</span>
+                    </>
+                  ) : (
+                    <b>{day.date.getDate()}</b>
+                  )
+                )}
+              </div>
             );
           })}
-        </svg>
+        </div>
       </div>
-      <div className={styles.records}>
-        <h3>{selected ? `${selected.date.getMonth() + 1}月${selected.date.getDate()}日 · 当日明细` : '记录汇总'}</h3>
-        {(selected ? [selected] : (stats?.perDay ?? []).filter((d) => d.slackMinutes || d.compMinutes)).map((day) => <div className={styles.record} key={day.dateKey}><span>{day.date.getMonth() + 1}/{day.date.getDate()}</span><span>摸鱼 {fmtMinutes(day.slackMinutes)}</span><span>加班 +{fmtMinutes(day.compMinutes)}</span></div>)}
-        {selected && <button className={styles.clear} onClick={() => setSelectedKey(null)}>查看全部</button>}
+
+      {/* 双栏：累计净工时 / 日均净工时 */}
+      <div className={styles.duo}>
+        <div className={styles.duoItem}>
+          <div className={styles.duoLabel}>累计净工时</div>
+          <div className={styles.duoValue}>{fmtMinutes(stats?.totalNetMinutes ?? 0)}</div>
+          <div className={styles.duoSub}>工作日 {workDays} 天</div>
+        </div>
+        <div className={styles.duoDivider}></div>
+        <div className={styles.duoItem}>
+          <div className={styles.duoLabel}>日均净工时</div>
+          <div className={styles.duoValue}>{fmtMinutes((stats?.totalNetMinutes ?? 0) / workDays)}</div>
+          <div className={styles.duoSub}>非工作日不参与平均</div>
+        </div>
+      </div>
+
+      {/* 深色卡：净时薪 + 累计已赚 */}
+      <div className={styles.darkCard}>
+        <div className={styles.darkItem}>
+          <div className={styles.darkLabel}>净时薪</div>
+          <div className={styles.darkValue}>¥{(stats?.avgNetHourly ?? 0).toFixed(1)}/h</div>
+        </div>
+        <div className={styles.darkItem}>
+          <div className={styles.darkLabel}>累计已赚</div>
+          <div className={styles.darkValue}>¥{Math.round(totalEarned).toLocaleString()}</div>
+        </div>
+      </div>
+
+      {/* 时长去向 */}
+      <h3 className={styles.sectionTitle}>时长去向</h3>
+      <div className={styles.composition}>
+        <div className={styles.compBar}>
+          <div className={styles.compSegEff} style={{ width: `${effPct}%` }}></div>
+          <div className={styles.compSegFish} style={{ width: `${slackPct}%` }}></div>
+          <div className={styles.compSegOt} style={{ width: `${compPct}%` }}></div>
+        </div>
+        <div className={styles.compCols}>
+          <div className={styles.compCol}>
+            <div className={styles.compIco}>💼</div>
+            <div className={styles.compPct}>{effPct.toFixed(0)}%</div>
+            <div className={styles.compLab}>有效工时</div>
+          </div>
+          <div className={styles.compCol}>
+            <div className={styles.compIco}>🐟</div>
+            <div className={styles.compPct}>{slackPct.toFixed(0)}%</div>
+            <div className={styles.compLab}>摸鱼</div>
+          </div>
+          <div className={styles.compCol}>
+            <div className={styles.compIco}>⏰</div>
+            <div className={styles.compPct}>{compPct.toFixed(0)}%</div>
+            <div className={styles.compLab}>加班</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 摸鱼总薪资 */}
+      <div className={styles.fishSalary}>
+        <div>
+          <div className={styles.fishLabel}>摸鱼总薪资</div>
+          <div className={styles.fishSub}>按 ¥{baseHourly.toFixed(2)}/h × {fmtMinutes(stats?.totalSlackMinutes ?? 0)}</div>
+        </div>
+        <div className={styles.fishValue}>¥{fishSalary.toFixed(2)}</div>
+      </div>
+
+      <div className={styles.footnote}>
+        * 日均、净时薪均按工作日计算，非工作日不参与平均<br />
+        当前基础时薪 ¥{baseHourly.toFixed(2)}/h
       </div>
     </div>
   );
