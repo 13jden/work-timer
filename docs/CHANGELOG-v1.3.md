@@ -6,6 +6,44 @@
 
 ---
 
+## [v1.3.5] · 2026-09-03 · 已赚记录定型 + 自由兼职兼容 + 日视图日期切换
+
+### A · 已赚记录定型（核心）
+- **`src/lib/compute.ts`**: `DayOverrideEntry` 新增 `earnedNetMinutes` 字段，生成时同时快照薪资和净工时
+- **`src/lib/compute.ts`**: `batchGenerateEarned` 生成时写入 `earnedAmount` + `earnedNetMinutes` 双快照
+- **`src/lib/compute.ts`**: `computeRangeStats` 历史日期优先读取快照值，修改配置不影响已生成记录
+- **`src/pages/CalendarPage.tsx`**: 右上角"已赚"卡片从按月薪快照动态计算改为累加当月所有 `earnedGenerated` 记录的快照值 + 今日实时已赚
+- **`src/pages/CalendarPage.tsx`**: 日历格子 earnText 新增 `earnedGenerated` 优先判断，生成后立即显示快照值
+- **`src/pages/CalendarPage.tsx`**: 单日生成/取消已赚使用 `useCalendarStore.getState()` 取最新值，修复异步保存后生成仍用旧闭包值的 bug
+
+### B · 自由兼职兼容
+- **`src/components/DaySheet/DaySheet.tsx`**: 自由兼职类型保存即自动生成已赚快照（UI 不显示生成区块，静默处理）
+- **`src/lib/compute.ts`**: `batchGenerateEarned` 已兼容 freelance 类型（`isWorkday` 含 freelance + `effectiveDailyRate` 支持兼职费率）
+- **`src/lib/compute.ts`**: `computeRangeStats` freelance 类型正确计入 earned 和 netMinutes
+- **`src/pages/FishPage.tsx`**: 过滤逻辑 `earnedGenerated` 不区分类型，兼职记录正常显示
+
+### C · 时间记录日视图日期切换
+- **`src/pages/TimeTrackerDetailPage.tsx`**: 日视图新增日期切换导航（‹ 日期 ›），支持前一天/后一天/点标题回今天
+- **`src/pages/TimeTrackerDetailPage.tsx`**: 今日实时计算，历史日期按 23:59:59 计算
+- **`src/pages/TimeTrackerDetailPage.tsx`**: 添加/编辑记录均写入当前查看的日期
+- **`src/pages/SlackingDetailPage.module.css`**: 新增 `.dateNav` 日期导航样式
+
+### D · UI 统一与修复
+- **标题样式统一**: TodayPage、CalendarPage、FishPage、ConvertPage 四个页面的标题（含英语小字）字号、字重、字间距、上边距全部统一为设置页标准（30px/400/-0.5px + 10px/400/2px + 22px top）
+- **卡片宽度统一**: Fish 页日视图切换器与下方卡片宽度一致，总宽度占页面 95%
+- **切换器尺寸**:  segmented 字体 14px → 13px，内边距 10px → 8px，外框 padding 4px → 3px
+- **设置页下拉箭头**: 去掉原生 select 的重复下拉箭头（`appearance: none` + 自定义图标）
+- **Fish 页默认视图**: 从"周"改为"日"
+- **统计图 X 轴**: 周/月视图无记录的日期也显示在 X 轴，柱子高度为 0
+
+### E · 其他修复
+- **底部导航**: 点击任意底部导航直接切换到对应页面，Today 再点一次也退出 Swap
+- **ConvertPage 返回按钮**: 位置移到左上角
+- **日历批量生成**: 今日和未来日期不可选（仅过去的工作日可生成）
+- **DaySheet 单日生成**: 仅过去的工作日显示已赚生成区块，今日自动实时计算
+
+---
+
 ## [v1.3.0] · 2026-08-29 · 增强版薪资模型(Enhanced Time Model)
 
 ### A · 加班实时时薪

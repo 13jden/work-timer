@@ -92,6 +92,7 @@ function normalizeEntry(raw: unknown): DayOverrideEntry | null {
       nightShift,
       earnedGenerated: obj.earnedGenerated === true,
       earnedAmount: typeof obj.earnedAmount === 'number' && Number.isFinite(obj.earnedAmount) ? obj.earnedAmount : null,
+      earnedNetMinutes: typeof obj.earnedNetMinutes === 'number' && Number.isFinite(obj.earnedNetMinutes) ? obj.earnedNetMinutes : null,
       freelanceDaily,
       freelanceHourly,
       templateMarks: templateMarks && templateMarks.length > 0 ? templateMarks : undefined,
@@ -1431,7 +1432,7 @@ export function batchGenerateEarned(
     const previous = getDayOverride(overrides, key);
     if (cancel) {
       if (!previous?.earnedGenerated) continue;
-      const { earnedGenerated: _generated, earnedAmount: _amount, ...manual } = previous;
+      const { earnedGenerated: _generated, earnedAmount: _amount, earnedNetMinutes: _netMin, ...manual } = previous;
       if (previous.type === 'work' && previous.segments === null && !previous.nightShift &&
           previous.freelanceDaily == null && previous.freelanceHourly == null) {
         delete next[key];
@@ -1441,10 +1442,19 @@ export function batchGenerateEarned(
       continue;
     }
     if (!isWorkday(date, config, overrides, holidays)) continue;
+    const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    const breakdown = computeNetHours({
+      date: atDayEnd,
+      config,
+      overrides,
+      holidays,
+      slackingSessions: [],
+    });
     next[key] = {
       ...(previous ?? { type: 'work', multiplier: 1, segments: null, nightShift: false }),
       earnedGenerated: true,
       earnedAmount: effectiveDailyRate(date, config, overrides, holidays),
+      earnedNetMinutes: Math.max(0, breakdown.netMinutes),
     };
   }
   return next;
@@ -1476,6 +1486,7 @@ export function computeRangeStats(
   overrides: DayOverrides,
   holidays: HolidayMap,
   sessions: Record<string, SlackingSession[]>,
+  now = new Date(),
 ): RangeStats {
   const perDay: RangeDayStat[] = [];
   const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
@@ -1492,11 +1503,26 @@ export function computeRangeStats(
       holidays,
       slackingSessions: sessions[key] ?? [],
     });
+    const entry = getDayOverride(overrides, key);
+    const isToday =
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
+    const isGeneratedHistory = entry?.earnedGenerated && !isToday && entry.earnedAmount != null;
+
     perDay.push({
       date,
       dateKey: key,
-      netMinutes: isRest ? 0 : Math.max(0, breakdown.netMinutes),
-      earned: isRest ? 0 : effectiveDailyRate(date, config, overrides, holidays),
+      netMinutes: isRest
+        ? 0
+        : isGeneratedHistory && entry.earnedNetMinutes != null
+          ? entry.earnedNetMinutes
+          : Math.max(0, breakdown.netMinutes),
+      earned: isRest
+        ? 0
+        : isGeneratedHistory
+          ? entry.earnedAmount!
+          : effectiveDailyRate(date, config, overrides, holidays),
       slackMinutes: breakdown.slackingMinutes,
       compMinutes: breakdown.overtimeBonus + breakdown.nightBonus,
       isRest,

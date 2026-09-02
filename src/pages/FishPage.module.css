@@ -3,24 +3,26 @@
    CSS flex 柱状图 + 主题色适配
 ──────────────────────────────────────────────────────────── */
 
-.page { 
-  padding: 18px 16px 96px; 
-  color: var(--ink); 
+.page {
+  padding: 0 20px 96px;
+  color: var(--ink);
   background: var(--paper);
 }
 
 /* ══════════ Head ══════════ */
-.head { margin-bottom: 16px; text-align: center; }
+.head { padding: 22px 0 16px; text-align: center; margin-bottom: 0; }
 .headEyebrowRow { 
   display: flex; 
   align-items: center; 
   justify-content: center; 
   gap: 8px; 
-  margin-bottom: 4px; 
+  margin-bottom: 8px; 
 }
 .headEyebrow { 
-  font: 600 10px var(--font-mono); 
-  letter-spacing: 4px; 
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
   color: var(--muted); 
   text-transform: uppercase; 
 }
@@ -28,10 +30,10 @@
   font-family: var(--font-display); 
   font-style: italic; 
   font-size: 30px; 
-  font-weight: 600; 
+  font-weight: 400;
   color: var(--ink); 
-  letter-spacing: 2px; 
-  line-height: 1.3; 
+  letter-spacing: -0.5px;
+  line-height: 1.1;
   margin: 0; 
 }
 

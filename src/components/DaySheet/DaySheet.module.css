@@ -454,6 +454,101 @@
   text-transform: uppercase;
 }
 
+/* ── 已赚生成区块 ── */
+.earnedSection {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--paper-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-soft);
+}
+
+.earnedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.earnedInfo {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.earnedLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.earnedAmount {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.earnedEmpty {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.earnedActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.earnedBtnPrimary {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.earnedBtnPrimary:hover {
+  opacity: 0.9;
+}
+
+.earnedBtnSecondary {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.earnedBtnSecondary:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.earnedHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 /* ── 操作按钮(修复:删除 .toggle 复用) ── */
 .actions {
   display: flex;

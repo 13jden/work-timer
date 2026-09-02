@@ -177,6 +177,8 @@ export interface DayOverrideEntry {
   /** v1.3.5:由已赚批量生成写入的标记与金额快照 */
   earnedGenerated?: boolean;
   earnedAmount?: number | null;
+  /** v1.3.5:生成记录时的净工时快照（分钟），修改配置不影响历史已生成的日期 */
+  earnedNetMinutes?: number | null;
   /**
    * v1.3.5:该日期的模板标记列表（多模板分组标记系统）
    * 

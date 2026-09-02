@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
-import { useSlackingStore, todayKey } from '../store/slackingStore';
+import { useSlackingStore } from '../store/slackingStore';
 import { HOLIDAYS, SLACKING_LABEL_ICON, SLACKING_LABEL_TEXT } from '../lib/constants';
 import {
   computeNetHours,
@@ -65,46 +65,59 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
   const getSessionsByDate = useSlackingStore((s) => s.getSessionsByDate);
   const removeSession = useSlackingStore((s) => s.removeSession);
 
-  const dateKey = todayKey(now);
-  const todaySessions = getSessionsByDate(dateKey);
+  // 日视图的日期偏移（0=今天，-1=昨天，以此类推）
+  const [dayOffset, setDayOffset] = useState(0);
+  const viewDate = useMemo(() => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() + dayOffset);
+    return d;
+  }, [now, dayOffset]);
+  const isToday = dayOffset === 0;
+  const viewDateKey = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(viewDate.getDate()).padStart(2, '0')}`;
+  const viewSessions = getSessionsByDate(viewDateKey);
+
+  // 计算用的时间点：今日用 now（实时），其他日用当天 23:59:59
+  const calcDate = isToday
+    ? now
+    : new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 23, 59, 59);
 
   // 净工时
   const net = useMemo(() => computeNetHours({
-    date: now,
+    date: calcDate,
     config,
     overrides,
     holidays: HOLIDAYS,
-    slackingSessions: todaySessions,
-  }), [now, config, overrides, todaySessions]);
+    slackingSessions: viewSessions,
+  }), [calcDate, config, overrides, viewSessions]);
 
-  const earned = useMemo(() => todayEarned(now, config, overrides, HOLIDAYS), [now, config, overrides]);
-  const hourly = useMemo(() => effectiveHourlyRate(now, config, overrides, HOLIDAYS), [now, config, overrides]);
+  const earned = useMemo(() => todayEarned(calcDate, config, overrides, HOLIDAYS), [calcDate, config, overrides]);
+  const hourly = useMemo(() => effectiveHourlyRate(calcDate, config, overrides, HOLIDAYS), [calcDate, config, overrides]);
 
   const netHourly = net.netMinutes > 0 ? earned / (net.netMinutes / 60) : 0;
 
   // v1.3.3:摸鱼总薪资(按 effectiveHourlyRate × 摸鱼时长,进行中实时)
   const slackingTotal = useMemo(
-    () => slackingEarn(todaySessions, hourly, now.getTime()),
-    [todaySessions, hourly, now],
+    () => slackingEarn(viewSessions, hourly, calcDate.getTime()),
+    [viewSessions, hourly, calcDate],
   );
 
   // 加班补偿明细
   const [showCompPopup, setShowCompPopup] = useState(false);
-  const entry = overrides[dateKey] ?? null;
+  const entry = overrides[viewDateKey] ?? null;
   const overtimeMul = entry?.multiplier ?? 1;
   // v1.3.3 patch4:加班卡片分钟数 = 用户手动添加的「加班」session 总分钟数
   // v1.3.3 patch6:拆分为 dayMin / nightMin,popup 显示「日间 × multiplier + 夜班 × multiplier × 1.5」
   // v1.3.4-patch2:dashboard 4 卡「加班」显示 net.overtimeElapsed(用户 session 累计,含进行中),
   //   popup 拆分明细复用 userOvertimeDayMin/NightMin
   const otSplit = useMemo(
-    () => overtimeSessionSplit(todaySessions, now.getTime()),
-    [todaySessions, now],
+    () => overtimeSessionSplit(viewSessions, calcDate.getTime()),
+    [viewSessions, calcDate],
   );
   const userOvertimeDayMin = Math.round(otSplit.dayMin);
   const userOvertimeNightMin = Math.round(otSplit.nightMin);
 
   // v1.3.3:夜班 session 数(用于 badge)
-  const nightSessionCount = todaySessions.filter((s) => s.nightShift).length;
+  const nightSessionCount = viewSessions.filter((s) => s.nightShift).length;
 
   const [editTarget, setEditTarget] = useState<TimeRecord | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -148,7 +161,35 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
 
       {activeTab === 'day' && (
         <>
-          {/* ── A · 2x2 dashboard · v1.3.4-patch2 实时累计 ── */}
+          {/* ── 日期切换 ── */}
+          <div className={styles.dateNav}>
+            <button
+              type="button"
+              className={styles.dateNavBtn}
+              onClick={() => setDayOffset((d) => d - 1)}
+              aria-label="前一天"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className={styles.dateNavTitle}
+              onClick={() => setDayOffset(0)}
+            >
+              {isToday ? '今天' : `${viewDate.getMonth() + 1}月${viewDate.getDate()}日`}
+            </button>
+            <button
+              type="button"
+              className={`${styles.dateNavBtn} ${dayOffset >= 0 ? styles.dateNavBtnDisabled : ''}`}
+              onClick={() => setDayOffset((d) => Math.min(0, d + 1))}
+              disabled={dayOffset >= 0}
+              aria-label="后一天"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* ── A · 2x2 dashboard ── */}
           <div className={styles.dashboard}>
             <div className={styles.card}>
               {/* v1.3.4-patch4:总工时实时累计(grossElapsed),与净工时同节奏
@@ -230,7 +271,7 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
           {/* ── C · 记录列表 ── */}
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
-              今日记录
+              {isToday ? '今日记录' : '当日记录'}
               {nightSessionCount > 0 && (
                 <span className={styles.nightBadge} title="夜班自动标记(22:00-06:00)">
                   <Moon size={11} weight="regular" />
@@ -238,14 +279,14 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
                 </span>
               )}
             </div>
-            {todaySessions.length === 0 ? (
+            {viewSessions.length === 0 ? (
               <div className={styles.empty}>暂无记录</div>
             ) : (
-              todaySessions.map((s) => {
+              viewSessions.map((s) => {
                 const dur = s.endTs !== null ? Math.floor((s.endTs - s.startTs) / 1000) : null;
                 const normalized = normalizeLabel(s.label);
-                // v1.3.3 patch2:仅摸鱼 session 显示对应的摸鱼薪资(进行中按 now 实时计算)
-                const durSecForEarn = dur !== null ? dur : Math.max(0, Math.floor((now.getTime() - s.startTs) / 1000));
+                // v1.3.3 patch2:仅摸鱼 session 显示对应的摸鱼薪资(进行中按 calcDate 实时计算)
+                const durSecForEarn = dur !== null ? dur : Math.max(0, Math.floor((calcDate.getTime() - s.startTs) / 1000));
                 const sessionEarn = s.label === 'slack'
                   ? hourly * (durSecForEarn / 3600)
                   : 0;
@@ -334,7 +375,7 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
       {(editTarget || showAdd) && (
         <TimeRecordSheet
           target={editTarget}
-          dateKey={dateKey}
+          dateKey={viewDateKey}
           onClose={() => {
             setEditTarget(null);
             setShowAdd(false);

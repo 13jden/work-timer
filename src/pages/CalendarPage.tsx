@@ -13,7 +13,7 @@ import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { HOLIDAYS } from '../lib/constants';
-import { dailySalary, daysInMonthCalc, isWorkday, monthEarnedSoFar, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate } from '../lib/compute';
+import { dailySalary, daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
@@ -108,13 +108,46 @@ export function CalendarPage({
   // 快照月薪
   const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
 
-  // 当月已赚(用快照月薪,若快照存在;无快照则固定显示 0)
-  const monthEarned = hasSnapshot
-    ? (() => {
-        const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
-        return monthEarnedSoFar(year, month, now, cfg, overrides, HOLIDAYS);
-      })()
-    : 0;
+  // 当月已赚：
+  // - 今日及之前已生成记录的 earnedAmount 快照（不受后续配置影响）
+  // - 今日实时已赚（如果是当月且今日未生成）
+  const monthEarned = useMemo(() => {
+    const todayKey = formatDateKey(now);
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    let total = 0;
+
+    // 累加所有已生成记录的快照值
+    for (const key of Object.keys(overrides)) {
+      const ov = overrides[key];
+      if (!ov?.earnedGenerated || ov.earnedAmount == null) continue;
+      const [y, m] = key.split('-').map(Number);
+      if (y === year && m === month + 1) {
+        total += ov.earnedAmount;
+      }
+    }
+
+    // 今日如果还没生成过，加上实时已赚
+    if (isCurrentMonth && !overrides[todayKey]?.earnedGenerated) {
+      const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
+      total += todayEarned(now, cfg, overrides, HOLIDAYS);
+    }
+
+    return total;
+  }, [year, month, now, overrides, effectiveConfig, effectiveSalary]);
+
+  // 是否有过去的工作日还没生成已赚记录（用于显示提示点）
+  const hasUnGeneratedPastDays = useMemo(() => {
+    if (isFutureMonth) return false;
+    const todayKey = formatDateKey(now);
+    for (let d = 1; d <= daysInMonthCalc(year, month); d++) {
+      const date = new Date(year, month, d);
+      const key = formatDateKey(date);
+      if (key >= todayKey) break; // 今日及未来不算
+      if (!isWorkday(date, effectiveConfig, overrides, HOLIDAYS)) continue;
+      if (!overrides[key]?.earnedGenerated) return true;
+    }
+    return false;
+  }, [year, month, now, overrides, effectiveConfig, isFutureMonth]);
 
   // 当日已赚(当前月时实时计算)
   const todayEarn = useMemo(() => {
@@ -200,6 +233,25 @@ export function CalendarPage({
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
     setSelectMode(null);
     setSelectedDays([]);
+  }
+
+  // 单日生成已赚
+  function generateSingleEarned() {
+    if (!pickedDate) return;
+    // 用 store 最新值（可能被 DaySheet 刚保存过，避免闭包旧值）
+    const latestOverrides = useCalendarStore.getState().dayOverrides;
+    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false);
+    const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
+    keys.forEach((key) => setDayOverride(key, next[key] ?? null));
+  }
+
+  // 单日取消已赚
+  function cancelSingleEarned() {
+    if (!pickedDate) return;
+    const latestOverrides = useCalendarStore.getState().dayOverrides;
+    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, true);
+    const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
+    keys.forEach((key) => setDayOverride(key, next[key] ?? null));
   }
 
   const selectedTotal = selectedDays.reduce((sum, key) => {
@@ -314,7 +366,7 @@ export function CalendarPage({
               ¥{Math.round(monthEarned).toLocaleString('en-US')}
             </div>
             <div className={styles.summaryLbl}>已赚</div>
-            {!hasSnapshot && !isFutureMonth && !selectMode && (
+            {!isFutureMonth && !selectMode && hasUnGeneratedPastDays && (
               <span className={styles.earnDot} aria-label="可点击生成薪资" />
             )}
           </button>
@@ -376,6 +428,7 @@ export function CalendarPage({
                 (year === now.getFullYear() && month === now.getMonth() && d < now.getDate());
               const key = formatDateKey(date);
               const hasOv = key in overrides;
+              const ovEntry = getDayOverride(overrides, key);
               const tplColor = templateColorForDate(key);
               const isPicked = selectedKey === key;
               const isBatchSelected = selectedDays.includes(key);
@@ -393,7 +446,11 @@ export function CalendarPage({
               if (isWork) {
                 if (isToday) {
                   earnText = formatEarnText(todayEarn);
+                } else if (ovEntry?.earnedGenerated && ovEntry.earnedAmount != null) {
+                  // 已生成记录：用快照值，修改配置不影响
+                  earnText = formatEarnText(ovEntry.earnedAmount);
                 } else if (hasSnapshot && isPast && units > 0) {
+                  // 旧版快照逻辑：按月薪快照动态计算
                   const dayEarn = daily * units;
                   earnText = formatEarnText(dayEarn);
                 }
@@ -435,6 +492,9 @@ export function CalendarPage({
           onClose={() => setSheetOpen(false)}
           onSave={(key, entry) => setDayOverride(key, entry)}
           onReset={(key) => clearOverride(key)}
+          isPast={pickedDate ? pickedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate()) : false}
+          onGenerateEarned={generateSingleEarned}
+          onCancelEarned={cancelSingleEarned}
         />
       )}
 
