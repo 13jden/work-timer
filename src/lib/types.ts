@@ -383,3 +383,183 @@ export interface NetHoursBreakdown {
   /** 用户 overtime session 累计分钟数(含进行中 dayMin + nightMin) */
   overtimeElapsed: number;
 }
+
+// ── v2.0 Accounting ─────────────────────────────────────────
+
+/**
+ * 账户类型
+ * - alipay: 支付宝
+ * - wechat: 微信
+ * - card: 银行卡
+ * - cash: 现金
+ */
+export type AccountType = 'alipay' | 'wechat' | 'card' | 'cash';
+
+/**
+ * 账户
+ */
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  color: string;
+  order: number;
+  createdAt: number;
+}
+
+/**
+ * 记账记录类型
+ * - income: 收入
+ * - expense: 支出
+ */
+export type RecordType = 'income' | 'expense';
+
+/**
+ * 记账记录
+ */
+export interface AccountRecord {
+  id: string;
+  dateKey: string;        // YYYY-MM-DD
+  amount: number;         // 正数=收入，负数=支出
+  type: RecordType;
+  categoryId: string;
+  note?: string;
+  accountId: string;
+  createdAt: number;
+  updatedAt: number;
+  // 池关联
+  poolId?: string;
+  poolDirection?: 'in' | 'out';
+  poolStatus?: 'virtual' | 'confirmed';
+  // 分配状态
+  assignedFolderId?: string;
+  // 分类状态
+  isUncategorized?: boolean;  // true=未分配分类
+}
+
+/**
+ * 分类（收入/支出各一套）
+ */
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;           // emoji
+  color: string;
+  type: RecordType;
+  parentId?: string;
+  order: number;
+}
+
+/**
+ * 分类文件夹（用于首页分类卡片展示）
+ */
+export interface Folder {
+  id: string;
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  order: number;
+}
+
+// ── Pool ────────────────────────────────────────────────────
+
+/**
+ * 池类型
+ * - equalize: 均摊型（长期循环，日均虚拟记录）
+ * - deposit: 存池型（押金模式，不关联天数）
+ */
+export type PoolType = 'equalize' | 'deposit';
+
+/**
+ * 池配置
+ */
+export interface PoolConfig {
+  id: string;
+  name: string;
+  type: PoolType;
+  amount: number;          // 每月/每周期总金额
+  cycleMonths: number;     // 周期月数（均摊型）
+  dayRange?: { start: number; end: number };  // 每周期天数范围
+  targetAccountId?: string; // 目标账户（存池型）
+  createdAt: number;
+}
+
+/**
+ * 池周期状态
+ * - generating: 生成中
+ * - confirmed: 已确认
+ * - overdue: 已逾期
+ */
+export type PoolCycleStatus = 'generating' | 'confirmed' | 'overdue';
+
+/**
+ * 池周期记录
+ */
+export interface PoolCycle {
+  id: string;
+  poolId: string;
+  monthKey: string;        // YYYY-MM
+  totalAmount: number;
+  dayCount: number;        // 实际天数
+  dailyVirtual: number;   // 日均虚拟金额
+  status: PoolCycleStatus;
+  transactions: PoolTransaction[];
+}
+
+/**
+ * 池交易状态
+ */
+export type PoolTransactionStatus = 'virtual' | 'confirmed';
+
+/**
+ * 池交易记录
+ */
+export interface PoolTransaction {
+  id: string;
+  cycleId: string;
+  dateKey: string;
+  recordId?: string;      // 关联的 AccountRecord id
+  amount: number;
+  direction: 'in' | 'out';
+  status: PoolTransactionStatus;
+  confirmedAt?: number;
+}
+
+// ── Savings Goal ─────────────────────────────────────────────
+
+/**
+ * 存钱目标
+ */
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetAccountId?: string;
+  deadline?: string;       // YYYY-MM-DD
+  createdAt: number;
+}
+
+// ── Accounting Store State ───────────────────────────────────
+
+/**
+ * 记账 Store 状态
+ */
+export interface AccountingState {
+  // 账户
+  accounts: Account[];
+  // 分类（收入 + 支出）
+  categories: Category[];
+  // 分类文件夹
+  folders: Folder[];
+  // 记账记录
+  records: AccountRecord[];
+  // 池配置
+  pools: PoolConfig[];
+  // 池周期
+  cycles: PoolCycle[];
+  // 存钱目标
+  savingsGoals: SavingsGoal[];
+}

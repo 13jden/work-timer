@@ -209,3 +209,69 @@ export const SEGMENTS_MAX = 10;
  *   - 模板 5 → colors[4 % 4] = #4ADE80 (循环)
  */
 export const TEMPLATE_COLORS = ['#4ADE80', '#FBBF24', '#60A5FA', '#A78BFA'];
+
+// ── v2.0 Accounting ─────────────────────────────────────────
+
+/** 记账 storage key v1 */
+export const ACCOUNTING_KEY = 'salary_timer_accounting_v1';
+
+// 账户类型颜色
+export const ACCOUNT_TYPE_COLORS: Record<'alipay' | 'wechat' | 'card' | 'cash', string> = {
+  alipay: '#1677FF',
+  wechat: '#07C160',
+  card: '#2D2D2D',
+  cash: '#8B8F84',
+};
+
+/** 默认支出分类 */
+export const DEFAULT_EXPENSE_CATEGORIES = [
+  { id: 'cat-food', name: '餐饮', icon: '🍜', color: '#FF9B8E' },
+  { id: 'cat-transport', name: '交通', icon: '🚌', color: '#60A5FA' },
+  { id: 'cat-shopping', name: '购物', icon: '🛒', color: '#F472B6' },
+  { id: 'cat-entertainment', name: '娱乐', icon: '🎮', color: '#A78BFA' },
+  { id: 'cat-housing', name: '住房', icon: '🏠', color: '#34D399' },
+  { id: 'cat-utilities', name: '水电', icon: '💡', color: '#FBBF24' },
+  { id: 'cat-medical', name: '医疗', icon: '💊', color: '#F87171' },
+  { id: 'cat-education', name: '教育', icon: '📚', color: '#38BDF8' },
+  { id: 'cat-other', name: '其他', icon: '📦', color: '#9CA3AF' },
+];
+
+/** 默认收入分类 */
+export const DEFAULT_INCOME_CATEGORIES = [
+  { id: 'cat-salary', name: '工资', icon: '💰', color: '#34D399' },
+  { id: 'cat-bonus', name: '奖金', icon: '🎁', color: '#FBBF24' },
+  { id: 'cat-investment', name: '投资', icon: '📈', color: '#60A5FA' },
+  { id: 'cat-parttime', name: '兼职', icon: '💼', color: '#A78BFA' },
+  { id: 'cat-gift', name: '红包', icon: '🧧', color: '#F472B6' },
+  { id: 'cat-refund', name: '退款', icon: '↩️', color: '#9CA3AF' },
+  { id: 'cat-other-income', name: '其他', icon: '✨', color: '#6B7280' },
+];
+
+/** 记账 emoji 选项 */
+export const ACCOUNTING_EMOJI_CHOICES: readonly string[] = [
+  '🍜','🧋','🍕','🍔','🥗','🍱','🍰','☕',
+  '🚌','🚗','🚕','⛽','🅿️','✈️','🚄',
+  '🛒','👗','💄','🎮','🎬','🎵','⚽','🎯',
+  '🏠','💡','💧','📱','💻','📚','🎓',
+  '💰','💵','🏦','💳','🧧','🎁','📈',
+  '💊','🏥','🚑','💪','🧘',
+  '🐱','🐶','🌍','✈️','🗺️','🏖️',
+  '📦','🎁','🛍️','💼','🎒','⌚','👓',
+  '☂️','🧥','👟','🧢','🎒','👶','🎈',
+];
+
+/** 存钱目标 emoji 选项 */
+export const SAVINGS_GOAL_EMOJI_CHOICES: readonly string[] = [
+  '🏠','🚗','✈️','💍','💎','🎮','📱','💻',
+  '🎓','🏖️','🎯','🎁','🧧','💰','🏦','📈',
+  '🎯','⚡','🌟','🎉','🚀','💪','🏆','🎖️',
+];
+
+/** 记账记录排序方式 */
+export type RecordSortBy = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
+export const RECORD_SORT_OPTIONS: Record<RecordSortBy, { label: string; value: RecordSortBy }> = {
+  date_desc: { label: '最新在前', value: 'date_desc' },
+  date_asc: { label: '最早在前', value: 'date_asc' },
+  amount_desc: { label: '金额从大到小', value: 'amount_desc' },
+  amount_asc: { label: '金额从小到大', value: 'amount_asc' },
+};

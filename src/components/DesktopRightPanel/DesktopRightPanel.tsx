@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react';
 import { DaySheet } from '../DaySheet';
 import { RecordsPanel } from '../RecordsPanel/RecordsPanel';
+import { TodayRecordsList } from '../Accounting/TodayRecordsList';
 import { ConvertPanel } from '../ConvertPanel';
 import { GenerateSheet } from '../GenerateSheet';
 import { useConfigStore } from '../../store/configStore';
@@ -64,6 +65,21 @@ export function DesktopRightPanel({
 
         {/* 时间记录 */}
         <RecordsPanel title="时间记录" />
+      </aside>
+    );
+  }
+
+  // ── accounting tab:今日账目 ──
+  if (page === 'accounting') {
+    return (
+      <aside className={styles.panel}>
+        <div className={styles.recordsPanel}>
+          <div className={styles.recordsHeader}>
+            <span className={styles.recordsTitle}>今日账目</span>
+            <span className={styles.recordsCount}>LEDGER</span>
+          </div>
+          <TodayRecordsList showSummary={false} />
+        </div>
       </aside>
     );
   }

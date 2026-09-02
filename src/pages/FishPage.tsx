@@ -32,7 +32,7 @@ function fmtRange(mode: Exclude<RangeMode, 'day'>, offset: number, now: Date) {
 }
 
 export function FishPage() {
-  const [mode, setMode] = useState<RangeMode>('week');
+  const [mode, setMode] = useState<RangeMode>('day');
   const [offset, setOffset] = useState(0);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const config = useConfigStore();
@@ -146,7 +146,7 @@ export function FishPage() {
           {/* 柱子 */}
           <div className={`${styles.bars} ${mode === 'month' ? styles.barsMonth : styles.barsWeek}`}>
             {stats?.perDay.map((day, index) => {
-              const heightPct = day.isRest ? 0 : Math.min(100, Math.max(3, (day.netMinutes / max) * 100));
+              const heightPct = day.isRest ? 0 : Math.min(100, (day.netMinutes / max) * 100);
               const isSelected = index === actualSelectedIndex;
 
               return (

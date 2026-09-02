@@ -3,9 +3,9 @@
    CSS flex 柱状图 + 主题色适配
 ──────────────────────────────────────────────────────────── */
 
-.page { 
-  padding: 18px 16px 96px; 
-  color: var(--ink); 
+.page {
+  padding: 18px 16px 96px;
+  color: var(--ink);
   background: var(--paper);
 }
 

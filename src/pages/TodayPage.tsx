@@ -1,22 +1,8 @@
 /**
- * TodayPage — 今日页
+ * TodayPage — 原有今日计时页
  *
- * v1.3.4-patch5 桌面端布局重构:
- * ┌──────────────────────┬─────────────┐
- * │   TimerCard (主)     │ QuoteCard   │
- * │                      ├─────────────┤
- * │                      │ Worth card  │
- * ├──────────────────────┴─────────────┤
- * │   TimeTrackerWidget(摸鱼,全宽)    │
- * ├───────────────────────────────────┤
- * │   NetHoursDashboard(4 卡,全宽)   │
- * └───────────────────────────────────┘
- *
- * 右栏(DesktopRightPanel):
- * - ConvertPanel(等价换算)
- * - RecordsPanel(时间记录)
- *
- * 移动端沿用原纵向流式布局(各组件全宽堆叠)。
+ * 移动端按原顺序展示：计时卡 → 每日引言 → 收入/等价物 → 时间记录。
+ * 桌面端使用左侧计时卡、右侧引言与等价物、底部时间记录与净工时的布局。
  */
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
@@ -32,8 +18,9 @@ import { NetHoursDashboard } from '../components/NetHoursDashboard/NetHoursDashb
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
-  /** 点击"查看更多"时跳转(由 App 路由层注入) */
+  /** 点击“查看更多”时打开等价换算 */
   onOpenConvert?: () => void;
+  /** 打开时间记录页 */
   onOpenFish?: () => void;
 }
 
@@ -44,10 +31,9 @@ function formatDate(date: Date): string {
 }
 
 export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
-
   const now = useNow(1000);
   const config = useConfigStore();
-  const overrides = useCalendarStore((s) => s.dayOverrides);
+  const overrides = useCalendarStore((state) => state.dayOverrides);
   const isDesktop = useIsDesktop();
 
   const earned = todayEarned(now, config, overrides, HOLIDAYS);
@@ -56,17 +42,14 @@ export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
   const coffeeCount = config.coffeePrice > 0 ? earned / config.coffeePrice : 0;
 
   const year = now.getFullYear();
-  const dayOfYear = (() => {
-    const start = new Date(year, 0, 0);
-    const diff = now.getTime() - start.getTime();
-    return Math.floor(diff / 86_400_000);
-  })();
+  const dayOfYear = Math.floor(
+    (now.getTime() - new Date(year, 0, 0).getTime()) / 86_400_000,
+  );
 
-  // ── 移动端:纵向堆叠 ──
+  // 移动端保持原版纵向流式布局。
   if (!isDesktop) {
     return (
       <div className={styles.page}>
-        {/* TopBar */}
         <div className={styles.topbar}>
           <div className={styles.topbarEyebrowRow}>
             <span className={styles.topbarEyebrow}>today</span>
@@ -110,10 +93,9 @@ export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
     );
   }
 
-  // ── 桌面端:TopBar(全宽一行)+ Timer+Quote/Worth 同行 + Widget + Dashboard ──
+  // 桌面端保持原版两栏结构，时间记录与净工时横跨主内容区。
   return (
     <div className={styles.desktopPage}>
-      {/* Row 0: TopBar 占据整个桌面端一行 */}
       <div className={styles.topbar}>
         <div className={styles.topbarEyebrowRow}>
           <span className={styles.topbarEyebrow}>today</span>
@@ -123,7 +105,6 @@ export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
         <div className={styles.topbarCenter}>今日出售时间</div>
       </div>
 
-      {/* Row 1: TimerCard(左) + Quote/Worth 竖排(右,高度匹配 Timer) */}
       <div className={styles.topRow}>
         <div className={styles.timerWrap}>
           <TimerCard />
@@ -144,12 +125,10 @@ export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
         </div>
       </div>
 
-      {/* Row 2: 摸鱼 Widget 全宽(移除详情按钮) */}
       <div className={styles.slackingWrap}>
         <TimeTrackerWidget onOpenDetail={undefined} />
       </div>
 
-      {/* Row 3: 净工时 Dashboard 全宽 */}
       <div className={styles.dashboardWrap}>
         <NetHoursDashboard />
       </div>

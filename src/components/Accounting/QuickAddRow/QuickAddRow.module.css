@@ -1,0 +1,107 @@
+/* ==========================================================
+   QuickAddRow — 左快速记录 / 右详细记录
+   v2.1 优化:暗色背景+紧凑布局,移动端 / 桌面端都保持同一行
+   ========================================================== */
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px;
+  border-radius: var(--r-lg);
+  min-height: 96px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 200ms, box-shadow 200ms;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 左卡：黑色底 — 适配 QuickAddRecord 的暗色风格 */
+.quickCard {
+  background: #141610;
+  color: #F2F1EA;
+  border: none;
+  cursor: default;
+  min-width: 0;
+}
+
+.quickCard:hover {
+  transform: none;
+}
+
+/* 右卡：白底 — 与 PRD 原型 .hm-add-card.full 一致 */
+.fullCard {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+
+.fullCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.fullCard:active {
+  transform: scale(0.98);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.fullSub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-soft);
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.fullOpen {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-2, #9fcc00);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* 极窄屏(<360px,老 iPhone SE 等):只压缩 padding,仍保持同一行 */
+@media (max-width: 360px) {
+  .row {
+    gap: 6px;
+  }
+
+  .card {
+    padding: 10px 8px;
+    min-height: 88px;
+  }
+}
+
+/* 桌面端：拉伸占满 .slackingWrap 的高度 */
+@media (min-width: 1024px) {
+  .card {
+    min-height: 120px;
+  }
+}

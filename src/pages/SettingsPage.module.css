@@ -132,6 +132,8 @@
   cursor: pointer;
   outline: none;
   padding: 2px 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .chevron {

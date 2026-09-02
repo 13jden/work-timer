@@ -24,6 +24,12 @@ export const NavIcons: Record<string, ReactNode> = {
       <path d="M11 6v5l3 2" />
     </svg>
   ),
+  accounting: (
+    <svg {...COMMON}>
+      <path d="M5 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />
+      <path d="M8 8h6M8 11.5h6M8 15h3" />
+    </svg>
+  ),
   convert: (
     <svg {...COMMON}>
       <path d="M4 7h14M4 7l3-3M4 7l3 3" />

@@ -1,0 +1,145 @@
+/* ==========================================================
+   AccountingTopCard — 会计模式深色大卡
+   与 TimerCard 视觉/尺寸完全一致（同骨架 · 内容原位替换）
+   ========================================================== */
+
+.card {
+  height: 100%;
+  min-height: 250px;
+  background: var(--ink);
+  border-radius: var(--r-xl);
+  padding: clamp(16px, 4vh, 24px) clamp(16px, 4vw, 24px);
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(200, 255, 0, 0.18) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.2vh, 12px);
+  letter-spacing: 1.2px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: clamp(8px, 2vh, 18px);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.7); }
+}
+
+.display {
+  font-family: var(--font-num);
+  font-size: clamp(30px, 7.5vh, 64px);
+  line-height: 1.08;
+  font-weight: 300;
+  color: #FFFFFF;
+  letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+  margin: clamp(6px, 1.2vh, 8px) 0;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.2vh, 12px);
+  letter-spacing: 1.5px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: clamp(10px, 2.5vh, 22px);
+}
+
+.shift {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.2vh, 12px);
+  letter-spacing: 1.2px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: clamp(6px, 1.5vh, 10px);
+}
+
+.shiftLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shiftLeft strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.pct {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: clamp(10px, 1.3vh, 12px);
+}
+
+.progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: clamp(12px, 2vh, 18px);
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s var(--ease);
+  box-shadow: 0 0 12px var(--accent-shadow);
+}
+
+.range {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-num);
+  font-size: clamp(11px, 1.2vh, 11px);
+  font-weight: 300;
+  color: var(--muted-2);
+  margin-top: clamp(14px, 1.2vh, 10px);
+}
+
+.range span {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 桌面端(宽高比≥3:2,与 useIsDesktop 一致):允许随视口高度收缩 */
+@media (min-aspect-ratio: 3/2) {
+  .card {
+    min-height: clamp(160px, 30vh, 250px);
+  }
+}

@@ -1,0 +1,200 @@
+/* ==========================================================
+   QuickAddRecord — 快速记录条
+   v2.1 优化:移动端不溢出，输入区自适应伸缩
+   ========================================================== */
+
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.inputWrap {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0 8px;
+  height: 38px;
+  overflow: hidden;
+}
+
+.currency {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(242, 241, 234, 0.5);
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: #F2F1EA;
+  padding: 0;
+  width: 100%;
+  letter-spacing: -0.3px;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input::placeholder {
+  color: rgba(242, 241, 234, 0.4);
+}
+
+/* ── 类型切换 ── */
+.toggleWrap {
+  display: flex;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 2px;
+  flex-shrink: 0;
+  height: 38px;
+  align-items: center;
+}
+
+.toggleBtn {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: rgba(242, 241, 234, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+  white-space: nowrap;
+}
+
+.toggleBtn:hover {
+  color: rgba(242, 241, 234, 0.8);
+}
+
+.toggleActive {
+  background: rgba(255, 255, 255, 0.1);
+  color: #F2F1EA;
+}
+
+.toggleActive.expense {
+  color: #FF6B6B;
+}
+
+.toggleActive.income {
+  color: #4ADE80;
+}
+
+/* ── 提交按钮 ── */
+.submitBtn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #C8FF00);
+  color: var(--ink, #0F0F0F);
+  font-size: 20px;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+  line-height: 1;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.submitBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── 详细按钮 ── */
+.fullBtn {
+  height: 38px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(242, 241, 234, 0.85);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms;
+  white-space: nowrap;
+}
+
+.fullBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 桌面端留一些呼吸空间 */
+@media (min-width: 768px) {
+  .row {
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .inputWrap {
+    padding: 0 12px;
+    height: 44px;
+  }
+
+  .currency {
+    font-size: 16px;
+  }
+
+  .input {
+    font-size: 17px;
+  }
+
+  .toggleWrap {
+    height: 44px;
+    padding: 3px;
+  }
+
+  .toggleBtn {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .submitBtn {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+
+  .fullBtn {
+    height: 44px;
+    padding: 0 14px;
+    font-size: 12px;
+  }
+}

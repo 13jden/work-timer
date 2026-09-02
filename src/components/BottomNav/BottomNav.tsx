@@ -12,10 +12,11 @@ interface BottomNavProps {
 }
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'today',    label: 'TODAY' },
-  { id: 'calendar', label: 'MONTH' },
-  { id: 'fish',     label: 'FISH' },
-  { id: 'settings', label: 'MINE' },
+  { id: 'today',      label: 'TODAY' },
+  { id: 'accounting', label: 'ACCT' },
+  { id: 'calendar',   label: 'MONTH' },
+  { id: 'fish',       label: 'FISH' },
+  { id: 'settings',   label: 'MINE' },
 ];
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
