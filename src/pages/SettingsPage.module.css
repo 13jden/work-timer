@@ -674,7 +674,7 @@
   background: rgba(15, 15, 15, 0.45);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  z-index: 200;
+  z-index: 300;
   animation: fadeIn 0.2s var(--ease, ease-out);
 }
 
@@ -695,7 +695,7 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  z-index: 201;
+  z-index: 301;
   animation: scaleIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
 }
@@ -826,4 +826,190 @@
 
 .modalBody .templateCard:last-of-type {
   margin-bottom: 4px;
+}
+
+.restTemplateList {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 12px;
+}
+
+.restTemplateList button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--paper-2);
+  color: var(--muted);
+  padding: 8px 10px;
+  font: 10px var(--font-mono);
+  cursor: pointer;
+}
+
+.restTemplateList .restTemplateActive {
+  background: var(--ink);
+  color: var(--accent);
+  border-color: var(--ink);
+}
+
+.restTemplateList .restTemplateActive .templateColorDot {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+
+/* v1.3.5:第一个模板 = 默认全局工时,加一个「默认」tag */
+.restTemplateDefaultTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font: 600 9px var(--font-mono);
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  background: var(--paper-2, var(--card));
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.restTemplateActive .restTemplateDefaultTag {
+  color: var(--accent);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* v1.3.5:已标记 N 天 摘要条 */
+.markedSummary {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 6px 4px 12px;
+  font: 11px var(--font-mono);
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.markedSummary strong {
+  font: 700 14px var(--font-mono);
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  margin: 0 2px;
+}
+
+.templateColorDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.restTemplateList button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.restCalendarNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 10px;
+}
+
+.restCalendarNav button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper-2);
+  color: var(--ink);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.restCalendarNav strong {
+  font: 13px var(--font-mono);
+}
+
+.restWeekdays,
+.restCalendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.restWeekdays span {
+  text-align: center;
+  color: var(--muted);
+  font: 10px var(--font-mono);
+  padding-bottom: 4px;
+}
+
+.restCalendarGrid button,
+.restCalendarGrid span {
+  aspect-ratio: 1;
+}
+
+.restCalendarGrid button {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font: 12px var(--font-mono);
+  cursor: pointer;
+}
+
+.restCalendarGrid .restDayActive {
+  background: color-mix(in srgb, var(--accent) 18%, var(--card));
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.restDay {
+  position: relative;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 !important;
+}
+
+.restDayNum {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.restDayDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  padding: 0 2px;
+}
+
+.restDayDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.restDayDotMore {
+  font-size: 8px;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.restCalendarNote {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
 }

@@ -21,6 +21,11 @@
   --muted-2:      #B8B6AB;
   --danger:       #E5484D;
   --accent-name:  '柠檬黄';
+
+  --faint:        #C5C2B8;
+  --surface-dark: #2A2520;
+  --gold:         #B8941E;
+  --gold-bright:  #C9A84C;
 }
 
 [data-theme="obsidian"] {
@@ -39,6 +44,11 @@
   --muted-2:      #9090C0;
   --danger:       #F76F7A;
   --accent-name:  '靛蓝';
+
+  --faint:        #4A4A6A;
+  --surface-dark: #0E0E1A;
+  --gold:         #C9A84C;
+  --gold-bright:  #D4B85A;
 }
 
 [data-theme="gold"] {
@@ -58,6 +68,11 @@
   --muted-2:      #B0A898;
   --danger:       #C84040;
   --accent-name:  '香槟金';
+
+  --faint:        #C0B8A8;
+  --surface-dark: #3D3530;
+  --gold:         #A8882E;
+  --gold-bright:  #C9A84C;
 }
 
 /* 全局基础 */

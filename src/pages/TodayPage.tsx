@@ -18,7 +18,6 @@
  *
  * 移动端沿用原纵向流式布局(各组件全宽堆叠)。
  */
-import { useState } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { HOLIDAYS } from '../lib/constants';
@@ -30,12 +29,12 @@ import { StatCard } from '../components/StatCard';
 import { QuoteCard } from '../components/QuoteCard';
 import { TimeTrackerWidget } from '../components/TimeTrackerWidget';
 import { NetHoursDashboard } from '../components/NetHoursDashboard/NetHoursDashboard';
-import { TimeTrackerDetailPage } from './TimeTrackerDetailPage';
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
   /** 点击"查看更多"时跳转(由 App 路由层注入) */
   onOpenConvert?: () => void;
+  onOpenFish?: () => void;
 }
 
 function formatDate(date: Date): string {
@@ -44,8 +43,7 @@ function formatDate(date: Date): string {
   return `${month}/${day}`;
 }
 
-export function TodayPage({ onOpenConvert }: TodayPageProps) {
-  const [showSlackingDetail, setShowSlackingDetail] = useState(false);
+export function TodayPage({ onOpenConvert, onOpenFish }: TodayPageProps) {
 
   const now = useNow(1000);
   const config = useConfigStore();
@@ -63,15 +61,6 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
     const diff = now.getTime() - start.getTime();
     return Math.floor(diff / 86_400_000);
   })();
-
-  // ── 详情页路由 ──
-  if (showSlackingDetail) {
-    return (
-      <TimeTrackerDetailPage
-        onBack={() => setShowSlackingDetail(false)}
-      />
-    );
-  }
 
   // ── 移动端:纵向堆叠 ──
   if (!isDesktop) {
@@ -115,7 +104,7 @@ export function TodayPage({ onOpenConvert }: TodayPageProps) {
         </div>
 
         <div className={styles.slackingWrap}>
-          <TimeTrackerWidget onOpenDetail={() => setShowSlackingDetail(true)} />
+          <TimeTrackerWidget onOpenDetail={onOpenFish} />
         </div>
       </div>
     );

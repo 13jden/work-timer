@@ -12,13 +12,14 @@ import { useSidebarCollapsed } from '../../store/sidebarStore';
 import {
   ClockCounterClockwise,
   CalendarBlank,
+  FishSimple,
   CaretLeft,
   CaretRight,
 } from '@phosphor-icons/react';
 import { MonthIncomeProgress } from '../MonthIncomeProgress';
 import styles from './DesktopSidebar.module.css';
 
-export type DesktopTabId = 'today' | 'calendar';
+export type DesktopTabId = 'today' | 'calendar' | 'fish';
 
 interface DesktopSidebarProps {
   activeTab: DesktopTabId;
@@ -30,6 +31,7 @@ interface DesktopSidebarProps {
 const TABS: Array<{ id: DesktopTabId; label: string; Icon: typeof ClockCounterClockwise }> = [
   { id: 'today',    label: '今日',  Icon: ClockCounterClockwise },
   { id: 'calendar', label: '日历',  Icon: CalendarBlank },
+  { id: 'fish',     label: 'Fish',  Icon: FishSimple },
 ];
 
 export function DesktopSidebar({ activeTab, onTabChange, onOpenSettings }: DesktopSidebarProps) {

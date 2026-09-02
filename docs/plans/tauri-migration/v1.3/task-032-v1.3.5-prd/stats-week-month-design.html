@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>时间记录 · 周/月统计设计</title>
+<style>
+  :root {
+    --paper: #F2EFE7;
+    --card: #FCFBF7;
+    --ink: #2A2620;
+    --muted: #8D867A;
+    --faint: #B4AC9C;
+    --line: #E7E2D4;
+    --dark: #26221A;
+    --dark-2: #1C1913;
+    --lime: #9FCC00;
+    --lime-soft: #DCE8B4;
+    --lime-bright: #C8FF00;
+    --gold: #C9A227;
+    --gold-bright: #E3C566;
+    --red: #C04A3A;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
+    --font-serif: Georgia, "Noto Serif CJK SC", "Times New Roman", serif;
+    --font-body: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    background-image: radial-gradient(rgba(42,38,32,0.045) 1px, transparent 1px);
+    background-size: 22px 22px;
+    font-family: var(--font-body);
+    color: var(--ink);
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Page head ── */
+  .page-head { text-align: center; margin-bottom: 44px; }
+  .page-head .kicker {
+    font: 600 11px var(--font-mono);
+    letter-spacing: 4px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .page-head h1 {
+    font: italic 600 30px/1.3 var(--font-serif);
+    letter-spacing: 2px;
+  }
+  .page-head p {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Phones row ── */
+  .phones {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+    margin-bottom: 64px;
+  }
+  .phone-col { display: flex; flex-direction: column; align-items: center; }
+  .phone {
+    width: 350px;
+    height: 740px;
+    background: #171410;
+    border-radius: 44px;
+    padding: 12px;
+    box-shadow: 0 24px 60px rgba(30,25,15,0.22), 0 6px 16px rgba(30,25,15,0.10);
+  }
+  .screen {
+    width: 100%; height: 100%;
+    background: var(--paper);
+    background-image: radial-gradient(rgba(42,38,32,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-radius: 34px;
+    overflow-y: auto;
+    position: relative;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .phone-label {
+    margin-top: 16px;
+    font: 600 12px var(--font-mono);
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+  .phone-label b { color: var(--ink); }
+
+  /* ── Screen inner ── */
+  .s-head { text-align: center; padding: 22px 0 14px; }
+  .s-head .en { font: 600 9px var(--font-mono); letter-spacing: 4px; color: var(--faint); }
+  .s-head .cn { font: italic 600 21px/1.4 var(--font-serif); letter-spacing: 2px; margin-top: 2px; }
+
+  .s-tabs {
+    display: flex;
+    margin: 0 18px 16px;
+    background: #EAE6DA;
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .s-tab {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 8px 0;
+    border-radius: 9px;
+  }
+  .s-tab.active {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 2px 6px rgba(30,25,15,0.08);
+  }
+
+  .s-range {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .s-range .arr { color: var(--faint); font-size: 14px; }
+  .s-range .val { color: var(--ink); font-weight: 500; }
+
+  .s-day { text-align: center; font-size: 12px; color: var(--muted); }
+  .s-big {
+    text-align: center;
+    font: 600 40px/1.1 var(--font-mono);
+    letter-spacing: -1px;
+    margin: 4px 0 2px;
+  }
+  .s-big small { font: 500 13px var(--font-body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+
+  /* chart */
+  .chart {
+    position: relative;
+    margin: 18px 26px 4px 18px;
+    height: 150px;
+  }
+  .chart .grid-line {
+    position: absolute; left: 0; right: 34px;
+    border-top: 1px solid rgba(42,38,32,0.07);
+  }
+  .chart .y-lab {
+    position: absolute; right: 0;
+    transform: translateY(-50%);
+    font: 500 9px var(--font-mono);
+    color: var(--faint);
+  }
+  .bars {
+    position: absolute;
+    left: 0; right: 34px; top: 0; bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+  }
+  .bar-slot {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+  }
+  .bar {
+    width: 10px;
+    border-radius: 5px;
+    background: var(--lime-soft);
+  }
+  .bar.sel {
+    background: var(--lime);
+    box-shadow: 0 0 0 3px rgba(159,204,0,0.18);
+  }
+  .bar.rest {
+    width: 8px; height: 8px !important;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px dashed var(--faint);
+    margin-bottom: 1px;
+  }
+  .bar.thin { width: 6px; border-radius: 3px; }
+  .x-labels {
+    display: flex;
+    justify-content: space-around;
+    margin: 8px 26px 0 18px;
+  }
+  .x-lab {
+    flex: 1;
+    text-align: center;
+    font-size: 9px;
+    color: var(--faint);
+    line-height: 1.5;
+  }
+  .x-lab b { display: block; font-weight: 500; color: var(--muted); }
+  .x-lab.sel b { color: var(--ink); font-weight: 700; }
+  .x-lab .rest-tag { color: var(--faint); }
+
+  /* cards */
+  .duo {
+    display: flex;
+    margin: 16px 18px 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 0;
+  }
+  .duo-item { flex: 1; text-align: center; }
+  .duo-item .l { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .duo-item .v { font: 600 20px/1 var(--font-mono); letter-spacing: -0.5px; }
+  .duo-item .v small { font: 500 10px var(--font-body); color: var(--muted); margin-left: 3px; }
+  .duo-item .s { font-size: 9px; color: var(--faint); margin-top: 5px; }
+  .duo-divider { width: 1px; background: var(--line); margin: 2px 0; }
+
+  .dark-card {
+    margin: 0 18px 10px;
+    background: var(--dark);
+    border-radius: 14px;
+    padding: 16px 0;
+    display: flex;
+  }
+  .dark-card .dc-item { flex: 1; text-align: center; }
+  .dark-card .l { font-size: 11px; color: #9A9284; margin-bottom: 7px; }
+  .dark-card .v { font: 600 19px/1 var(--font-mono); color: var(--gold-bright); letter-spacing: -0.5px; }
+
+  .grid4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0 18px 10px;
+  }
+  .g4 {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-align: center;
+    padding: 11px 0 12px;
+  }
+  .g4 .l { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+  .g4 .v { font: 600 15px/1 var(--font-mono); }
+  .g4 .v.neg { color: var(--gold); }
+  .g4 .v.pos { color: var(--lime); }
+
+  /* composition */
+  .comp-title { margin: 14px 20px 8px; font-size: 13px; font-weight: 600; }
+  .comp-card {
+    margin: 0 18px 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+  }
+  .comp-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .comp-bar .seg-eff { background: var(--lime); }
+  .comp-bar .seg-fish { background: var(--gold); }
+  .comp-bar .seg-ot { background: var(--dark); }
+  .comp-cols { display: flex; }
+  .comp-col { flex: 1; text-align: center; }
+  .comp-col .ico { font-size: 16px; margin-bottom: 5px; }
+  .comp-col .pct { font: 600 14px var(--font-mono); }
+  .comp-col .pct.eff { color: var(--lime); }
+  .comp-col .pct.fish { color: var(--gold); }
+  .comp-col .pct.ot { color: var(--dark); }
+  .comp-col .lab { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  .fish-salary {
+    margin: 0 18px 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fish-salary .l { font-size: 12px; font-weight: 600; }
+  .fish-salary .s { font: 500 9px var(--font-mono); color: var(--faint); margin-top: 4px; }
+  .fish-salary .v { font: 600 17px var(--font-mono); color: var(--gold); }
+
+  .footnote {
+    margin: 4px 24px 18px;
+    font-size: 9px;
+    color: var(--faint);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  /* tabbar */
+  .tabbar {
+    position: sticky;
+    bottom: 10px;
+    margin: 6px 28px 14px;
+    background: var(--dark-2);
+    border-radius: 22px;
+    display: flex;
+    padding: 10px 6px;
+  }
+  .tb-item {
+    flex: 1;
+    text-align: center;
+    color: #7C7566;
+    font: 600 8px var(--font-mono);
+    letter-spacing: 1.5px;
+  }
+  .tb-item .ico { font-size: 14px; margin-bottom: 4px; }
+  .tb-item.active {
+    background: #2E2A21;
+    border-radius: 14px;
+    color: var(--gold-bright);
+    position: relative;
+    padding: 4px 0;
+  }
+  .tb-item.active::after {
+    content: "";
+    position: absolute;
+    top: -3px; left: 50%;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--gold-bright);
+    transform: translateX(-50%);
+  }
+
+  /* ── Spec section ── */
+  .spec {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .spec h2 {
+    font: italic 600 22px var(--font-serif);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .spec .sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+  .spec-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .spec-card h3 { font-size: 15px; margin-bottom: 12px; }
+  .spec-card h3 .tag {
+    display: inline-block;
+    font: 600 9px var(--font-mono);
+    letter-spacing: 1px;
+    background: var(--lime-soft);
+    color: #5A7300;
+    border-radius: 5px;
+    padding: 3px 7px;
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left;
+    font: 600 10px var(--font-mono);
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 9px 8px;
+    border-bottom: 1px solid rgba(231,226,212,0.6);
+    vertical-align: top;
+    line-height: 1.6;
+  }
+  tr:last-child td { border-bottom: none; }
+  td .mono { font: 600 11px var(--font-mono); color: var(--ink); }
+  td .rule {
+    display: inline-block;
+    font-size: 10px;
+    color: #5A7300;
+    background: var(--lime-soft);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+  .spec-note {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.9;
+  }
+  .spec-note b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="kicker">TIME RECORDS · STATS REDESIGN</div>
+  <h1>周 / 月统计 · 页面设计</h1>
+  <p>布局参考健康 app · 配色沿用 Salary Timer 主题 · 非工作日不参与平均</p>
+</header>
+
+<div class="phones">
+
+  <!-- ══════════ 周视图 ══════════ -->
+  <div class="phone-col">
+    <div class="phone"><div class="screen">
+      <div class="s-head">
+        <div class="en">TIME RECORDS</div>
+        <div class="cn">时间记录</div>
+      </div>
+
+      <div class="s-tabs">
+        <div class="s-tab">日</div>
+        <div class="s-tab active">周</div>
+        <div class="s-tab">月</div>
+      </div>
+
+      <div class="s-range">
+        <span class="arr">‹</span>
+        <span class="val">8月31日 - 9月6日</span>
+        <span class="arr">▾</span>
+      </div>
+
+      <div class="s-day">9月2日 · 周三</div>
+      <div class="s-big">7h30m<small>净工时</small></div>
+
+      <div class="chart">
+        <div class="grid-line" style="top:0;"><span class="y-lab">9h</span></div>
+        <div class="grid-line" style="top:33.3%;"><span class="y-lab">6h</span></div>
+        <div class="grid-line" style="top:66.6%;"><span class="y-lab">3h</span></div>
+        <div class="grid-line" style="top:100%;"><span class="y-lab">0</span></div>
+        <div class="bars">
+          <div class="bar-slot"><div class="bar" style="height:83%;"></div></div>
+          <div class="bar-slot"><div class="bar" style="height:91%;"></div></div>
+          <div class="bar-slot"><div class="bar sel" style="height:83%;"></div></div>
+          <div class="bar-slot"><div class="bar" style="height:76%;"></div></div>
+          <div class="bar-slot"><div class="bar" style="height:89%;"></div></div>
+          <div class="bar-slot"><div class="bar rest"></div></div>
+          <div class="bar-slot"><div class="bar rest"></div></div>
+        </div>
+      </div>
+      <div class="x-labels">
+        <div class="x-lab"><b>8/31</b>周一</div>
+        <div class="x-lab"><b></b>周二</div>
+        <div class="x-lab sel"><b></b>周三</div>
+        <div class="x-lab"><b></b>周四</div>
+        <div class="x-lab"><b></b>周五</div>
+        <div class="x-lab"><b></b><span class="rest-tag">休</span></div>
+        <div class="x-lab"><b></b><span class="rest-tag">休</span></div>
+      </div>
+
+      <div class="duo">
+        <div class="duo-item">
+          <div class="l">累计净工时</div>
+          <div class="v">38h30m</div>
+          <div class="s">工作日 5 天</div>
+        </div>
+        <div class="duo-divider"></div>
+        <div class="duo-item">
+          <div class="l">日均净工时</div>
+          <div class="v">7h42m</div>
+          <div class="s">非工作日不参与平均</div>
+        </div>
+      </div>
+
+      <div class="dark-card">
+        <div class="dc-item">
+          <div class="l">净时薪</div>
+          <div class="v">¥62.4/h</div>
+        </div>
+        <div class="dc-item">
+          <div class="l">累计已赚</div>
+          <div class="v">¥2,403</div>
+        </div>
+      </div>
+
+      <div class="comp-title">时长去向</div>
+      <div class="comp-card">
+        <div class="comp-bar">
+          <div class="seg-eff" style="width:84%;"></div>
+          <div class="seg-fish" style="width:9%;"></div>
+          <div class="seg-ot" style="width:7%;"></div>
+        </div>
+        <div class="comp-cols">
+          <div class="comp-col">
+            <div class="ico">💼</div>
+            <div class="pct eff">84%</div>
+            <div class="lab">有效工时</div>
+          </div>
+          <div class="comp-col">
+            <div class="ico">🐟</div>
+            <div class="pct fish">9%</div>
+            <div class="lab">摸鱼</div>
+          </div>
+          <div class="comp-col">
+            <div class="ico">⏰</div>
+            <div class="pct ot">7%</div>
+            <div class="lab">加班</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fish-salary">
+        <div>
+          <div class="l">摸鱼总薪资</div>
+          <div class="s">按 ¥88.89/h × 3h20m</div>
+        </div>
+        <div class="v">¥296.30</div>
+      </div>
+
+      <div class="footnote">* 日均、净时薪均按工作日计算，非工作日不参与平均<br>当前基础时薪 ¥88.89/h</div>
+
+      <div class="tabbar">
+        <div class="tb-item"><div class="ico">🕐</div>TODAY</div>
+        <div class="tb-item"><div class="ico">📅</div>MONTH</div>
+        <div class="tb-item active"><div class="ico">🐟</div>FISH</div>
+        <div class="tb-item"><div class="ico">⚙</div>MINE</div>
+      </div>
+    </div></div>
+    <div class="phone-label"><b>周视图</b> · WEEK</div>
+  </div>
+
+  <!-- ══════════ 月视图 ══════════ -->
+  <div class="phone-col">
+    <div class="phone"><div class="screen">
+      <div class="s-head">
+        <div class="en">TIME RECORDS</div>
+        <div class="cn">时间记录</div>
+      </div>
+
+      <div class="s-tabs">
+        <div class="s-tab">日</div>
+        <div class="s-tab">周</div>
+        <div class="s-tab active">月</div>
+      </div>
+
+      <div class="s-range">
+        <span class="arr">‹</span>
+        <span class="val">2026年9月</span>
+        <span class="arr">▾</span>
+      </div>
+
+      <div class="s-day">9月1日 - 9月30日 · 工作日 22 天</div>
+      <div class="s-big">165h30m<small>累计净工时</small></div>
+
+      <div class="chart">
+        <div class="grid-line" style="top:0;"><span class="y-lab">9h</span></div>
+        <div class="grid-line" style="top:33.3%;"><span class="y-lab">6h</span></div>
+        <div class="grid-line" style="top:66.6%;"><span class="y-lab">3h</span></div>
+        <div class="grid-line" style="top:100%;"><span class="y-lab">0</span></div>
+        <div class="bars">
+          <div class="bar-slot"><div class="bar thin" style="height:80%;"></div></div>
+          <div class="bar-slot"><div class="bar thin sel" style="height:83%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:88%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:76%;"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:85%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:79%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:91%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:82%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:74%;"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:86%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:80%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:89%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:77%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:84%;"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:81%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:87%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:75%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:83%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:79%;"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin rest"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:85%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:78%;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:70%; opacity:0.4;"></div></div>
+          <div class="bar-slot"><div class="bar thin" style="height:66%; opacity:0.4;"></div></div>
+        </div>
+      </div>
+      <div class="x-labels">
+        <div class="x-lab"><b>1</b></div>
+        <div class="x-lab sel"><b>5</b></div>
+        <div class="x-lab"><b>10</b></div>
+        <div class="x-lab"><b>15</b></div>
+        <div class="x-lab"><b>20</b></div>
+        <div class="x-lab"><b>25</b></div>
+        <div class="x-lab"><b>30</b></div>
+      </div>
+
+      <div class="duo">
+        <div class="duo-item">
+          <div class="l">日均净工时</div>
+          <div class="v">7h31m</div>
+          <div class="s">÷ 22 工作日 · 非工作日不参与</div>
+        </div>
+        <div class="duo-divider"></div>
+        <div class="duo-item">
+          <div class="l">出勤</div>
+          <div class="v">22<small>天</small></div>
+          <div class="s">休息 8 天</div>
+        </div>
+      </div>
+
+      <div class="grid4">
+        <div class="g4"><div class="l">总工时</div><div class="v">186h</div></div>
+        <div class="g4"><div class="l">午休扣除</div><div class="v neg">-33h</div></div>
+        <div class="g4"><div class="l">摸鱼扣除</div><div class="v neg">-7h</div></div>
+        <div class="g4"><div class="l">加班</div><div class="v pos">+5h</div></div>
+      </div>
+
+      <div class="dark-card">
+        <div class="dc-item">
+          <div class="l">净时薪</div>
+          <div class="v">¥61.8/h</div>
+        </div>
+        <div class="dc-item">
+          <div class="l">累计已赚</div>
+          <div class="v">¥10,230</div>
+        </div>
+      </div>
+
+      <div class="comp-title">时长去向</div>
+      <div class="comp-card">
+        <div class="comp-bar">
+          <div class="seg-eff" style="width:86%;"></div>
+          <div class="seg-fish" style="width:8%;"></div>
+          <div class="seg-ot" style="width:6%;"></div>
+        </div>
+        <div class="comp-cols">
+          <div class="comp-col">
+            <div class="ico">💼</div>
+            <div class="pct eff">86%</div>
+            <div class="lab">有效工时</div>
+          </div>
+          <div class="comp-col">
+            <div class="ico">🐟</div>
+            <div class="pct fish">8%</div>
+            <div class="lab">摸鱼</div>
+          </div>
+          <div class="comp-col">
+            <div class="ico">⏰</div>
+            <div class="pct ot">6%</div>
+            <div class="lab">加班</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fish-salary">
+        <div>
+          <div class="l">摸鱼总薪资</div>
+          <div class="s">按 ¥88.89/h × 7h</div>
+        </div>
+        <div class="v">¥622.23</div>
+      </div>
+
+      <div class="footnote">* 日均、净时薪均按工作日计算，非工作日不参与平均<br>当前基础时薪 ¥88.89/h</div>
+
+      <div class="tabbar">
+        <div class="tb-item"><div class="ico">🕐</div>TODAY</div>
+        <div class="tb-item"><div class="ico">📅</div>MONTH</div>
+        <div class="tb-item active"><div class="ico">🐟</div>FISH</div>
+        <div class="tb-item"><div class="ico">⚙</div>MINE</div>
+      </div>
+    </div></div>
+    <div class="phone-label"><b>月视图</b> · MONTH</div>
+  </div>
+</div>
+
+<!-- ══════════ 统计参数设计 ══════════ -->
+<section class="spec">
+  <h2>统计参数设计</h2>
+  <p class="sub">周 / 月视图共用的参数口径，以及非工作日处理规则。</p>
+
+  <div class="spec-card">
+    <h3>核心参数 <span class="tag">日 / 周 / 月 通用</span></h3>
+    <table>
+      <thead><tr><th>参数</th><th>定义</th><th>非工作日规则</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">总工时</td><td>Σ 班次时长</td><td><span class="rule">仅累加工作日</span></td></tr>
+        <tr><td class="mono">午休扣除</td><td>Σ 午休时长（多段午休合计）</td><td><span class="rule">仅累加工作日</span></td></tr>
+        <tr><td class="mono">摸鱼扣除</td><td>Σ 摸鱼时长</td><td><span class="rule">仅累加工作日</span></td></tr>
+        <tr><td class="mono">加班</td><td>Σ 加班补偿时长</td><td><span class="rule">仅累加工作日</span></td></tr>
+        <tr><td class="mono">净工时</td><td>总工时 − 午休 − 摸鱼 + 加班</td><td>—</td></tr>
+        <tr><td class="mono">累计已赚</td><td>Σ 每日已赚</td><td>—</td></tr>
+        <tr><td class="mono">净时薪</td><td>累计已赚 ÷ 净工时</td><td><span class="rule">自然只含工作日</span></td></tr>
+        <tr><td class="mono">摸鱼总薪资</td><td>摸鱼时长 × 基础时薪</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="spec-card">
+    <h3>周 / 月专属参数 <span class="tag">非工作日不参与平均</span></h3>
+    <table>
+      <thead><tr><th>参数</th><th>定义</th><th>展示位置</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">日均净工时</td><td>净工时 ÷ <b>工作日天数</b>（不除以自然日）</td><td>双栏卡右侧，附「非工作日不参与平均」小字</td></tr>
+        <tr><td class="mono">工作日 / 休息日</td><td>区间内计数（含自定义休息日）</td><td>月视图双栏卡「出勤 22 天 · 休 8 天」</td></tr>
+        <tr><td class="mono">时长去向</td><td>有效 / 摸鱼 / 加班 三段占比（加班按补偿时长计入）</td><td>堆叠条 + 三列图标，参考健康 app 活动占比</td></tr>
+        <tr><td class="mono">选中日净工时</td><td>点击柱子切换大数字（周视图）</td><td>顶部大数字 + 柱高亮</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="spec-card">
+    <h3>非工作日视觉与交互规则</h3>
+    <p class="spec-note">
+      <b>图表</b>：非工作日的柱子渲染为空心虚线圆点（不占高度），X 轴标签显示「休」，一眼可辨。<br>
+      <b>平均</b>：日均净工时、净时薪的分母均为工作日天数；自定义休息日（设置里配置的）同样排除。<br>
+      <b>交互</b>：点击空心圆点不切换大数字，仅 toast 提示「休息日 · 无工时数据」。<br>
+      <b>区间切换</b>：顶部「▾」弹出区间选择器；周视图左右箭头切换上/下周，月视图切换上/下月。<br>
+      <b>未来日期</b>：当月未到的日期柱子以 40% 透明度占位，不参与累计与平均。
+    </p>
+  </div>
+</section>
+
+</body>
+</html>

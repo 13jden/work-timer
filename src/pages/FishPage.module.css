@@ -1,0 +1,346 @@
+/* ────────────────────────────────────────────────────────────
+   FishPage - 周/月统计视图
+   CSS flex 柱状图 + 主题色适配
+──────────────────────────────────────────────────────────── */
+
+.page { 
+  padding: 18px 16px 96px; 
+  color: var(--ink); 
+  background: var(--paper);
+}
+
+/* ══════════ Head ══════════ */
+.head { margin-bottom: 16px; text-align: center; }
+.headEyebrowRow { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 8px; 
+  margin-bottom: 4px; 
+}
+.headEyebrow { 
+  font: 600 10px var(--font-mono); 
+  letter-spacing: 4px; 
+  color: var(--muted); 
+  text-transform: uppercase; 
+}
+.headTitle { 
+  font-family: var(--font-display); 
+  font-style: italic; 
+  font-size: 30px; 
+  font-weight: 600; 
+  color: var(--ink); 
+  letter-spacing: 2px; 
+  line-height: 1.3; 
+  margin: 0; 
+}
+
+/* ══════════ 日/周/月切换器 ══════════ */
+.tabs { 
+  display: flex; 
+  background: var(--paper-2); 
+  border-radius: 12px; 
+  padding: 4px; 
+  margin-bottom: 16px; 
+}
+.tabs button { 
+  flex: 1; 
+  border: 0; 
+  background: transparent; 
+  padding: 8px 0; 
+  border-radius: 9px; 
+  font-size: 14px; 
+  font-weight: 600; 
+  color: var(--muted); 
+  cursor: pointer; 
+  transition: all 0.2s; 
+}
+.tabActive { 
+  background: var(--card) !important; 
+  color: var(--ink) !important; 
+  box-shadow: 0 2px 6px rgba(30, 25, 15, 0.08); 
+}
+
+/* ══════════ 日期范围导航 ══════════ */
+.rangeNav { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 8px; 
+  margin-bottom: 14px; 
+  font: 500 12px var(--font-body); 
+  color: var(--muted); 
+}
+.rangeNav button { 
+  border: 0; 
+  background: transparent; 
+  font-size: 14px; 
+  color: var(--faint); 
+  cursor: pointer; 
+  padding: 4px 8px; 
+}
+.rangeNav span { 
+  color: var(--ink); 
+  font-weight: 500; 
+}
+
+/* ══════════ 顶部大数字 ══════════ */
+.sDay { 
+  text-align: center; 
+  font-size: 12px; 
+  color: var(--muted); 
+  margin-bottom: 4px; 
+}
+.sBig { 
+  text-align: center; 
+  font: 600 34px/1.1 var(--font-mono);
+  letter-spacing: -1px; 
+  color: var(--ink); 
+  margin-bottom: 18px; 
+}
+.sBig small { 
+  font: 500 13px var(--font-body); 
+  color: var(--muted); 
+  letter-spacing: 0; 
+  margin-left: 6px; 
+}
+
+/* ══════════ 柱状图 (CSS flex) ══════════ */
+.chartWrap { 
+  margin-bottom: 18px; 
+}
+.chart { 
+  position: relative;
+  height: 180px;
+  padding-right: 24px;
+}
+
+/* 网格线 */
+.gridLine {
+  position: absolute;
+  left: 0;
+  right: 24px;
+  border-top: 1px dashed var(--line-soft);
+  pointer-events: none;
+}
+.gridLine span {
+  position: absolute;
+  right: -22px;
+  top: -6px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--faint);
+}
+
+/* 柱子容器 */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+.barsWeek { gap: 8px; }
+.barsMonth { gap: 2px; }
+
+.barSlot {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* 正常柱子 */
+.bar {
+  width: 100%;
+  max-width: 14px;
+  border-radius: 5px;
+  background: var(--accent);
+  opacity: 0.3;
+  transition: opacity 0.2s, background 0.2s;
+}
+.barsMonth .bar { max-width: 6px; }
+
+/* 选中柱子 */
+.barSelected {
+  opacity: 1;
+  background: var(--accent-deep);
+  box-shadow: 0 0 0 3px var(--accent-shadow);
+}
+
+/* 休息日标记 */
+.restDot {
+  width: 8px;
+  height: 8px;
+  border: 1.5px dashed var(--faint);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+/* ══════════ X轴标签 ══════════ */
+.xLabels { 
+  display: flex; 
+  padding-right: 24px;
+  margin-top: 8px;
+}
+.xLabelsWeek { gap: 8px; }
+.xLabelsMonth { gap: 2px; }
+
+.xLabel { 
+  flex: 1; 
+  text-align: center; 
+  font-size: 9px; 
+  color: var(--faint); 
+  line-height: 1.5; 
+  cursor: pointer;
+  min-width: 0;
+}
+.xLabel b { 
+  display: block; 
+  font-weight: 500; 
+  color: var(--muted); 
+}
+.xLabelSel b { 
+  color: var(--ink); 
+  font-weight: 700; 
+}
+.restTag { 
+  color: var(--faint); 
+}
+
+/* ══════════ 双栏卡 ══════════ */
+.duo { 
+  display: flex; 
+  margin-bottom: 10px; 
+  background: var(--card); 
+  border: 1px solid var(--line-soft); 
+  border-radius: 14px; 
+  padding: 14px 0; 
+}
+.duoItem { 
+  flex: 1; 
+  text-align: center; 
+}
+.duoLabel { 
+  font-size: 11px; 
+  color: var(--muted); 
+  margin-bottom: 6px; 
+}
+.duoValue { 
+  font: 600 20px/1 var(--font-mono); 
+  letter-spacing: -0.5px; 
+  color: var(--ink); 
+}
+.duoSub { 
+  font-size: 9px; 
+  color: var(--faint); 
+  margin-top: 5px; 
+}
+.duoDivider { 
+  width: 1px; 
+  background: var(--line-soft); 
+  margin: 2px 0; 
+}
+
+/* ══════════ 深色卡 ══════════ */
+.darkCard { 
+  margin-bottom: 10px; 
+  background: var(--surface-dark); 
+  border-radius: 14px; 
+  padding: 16px 0; 
+  display: flex; 
+}
+.darkItem { 
+  flex: 1; 
+  text-align: center; 
+}
+.darkLabel { 
+  font-size: 11px; 
+  color: var(--faint); 
+  margin-bottom: 7px; 
+}
+.darkValue { 
+  font: 600 19px/1 var(--font-mono); 
+  color: var(--gold-bright); 
+  letter-spacing: -0.5px; 
+}
+
+/* ══════════ Section title ══════════ */
+.sectionTitle { 
+  margin: 14px 2px 8px; 
+  font-size: 13px; 
+  font-weight: 600; 
+  color: var(--ink); 
+}
+
+/* ══════════ 时长去向 ══════════ */
+.composition { 
+  background: var(--card); 
+  border: 1px solid var(--line-soft); 
+  border-radius: 14px; 
+  padding: 16px 16px 14px; 
+  margin-bottom: 10px; 
+}
+.compBar { 
+  display: flex; 
+  height: 6px; 
+  border-radius: 3px; 
+  overflow: hidden; 
+  margin-bottom: 14px; 
+}
+.compSegEff { background: var(--accent-deep); }
+.compSegFish { background: var(--danger); }
+.compSegOt { background: var(--accent); }
+.compCols { display: flex; }
+.compCol { flex: 1; text-align: center; }
+.compIco { font-size: 16px; margin-bottom: 5px; }
+.compPct { 
+  font: 600 14px var(--font-mono); 
+  color: var(--ink); 
+  margin-bottom: 3px; 
+}
+.compLab { font-size: 10px; color: var(--muted); }
+
+/* ══════════ 摸鱼总薪资 ══════════ */
+.fishSalary { 
+  margin-bottom: 10px; 
+  background: var(--card); 
+  border: 1px solid var(--line-soft); 
+  border-radius: 14px; 
+  padding: 13px 16px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+}
+.fishLabel { 
+  font-size: 12px; 
+  font-weight: 600; 
+  color: var(--ink); 
+}
+.fishSub { 
+  font: 500 9px var(--font-mono); 
+  color: var(--faint); 
+  margin-top: 4px; 
+}
+.fishValue { 
+  font: 600 17px var(--font-mono); 
+  color: var(--gold); 
+  letter-spacing: -0.5px; 
+}
+
+/* ══════════ Footnote ══════════ */
+.footnote { 
+  margin: 4px 8px 18px; 
+  font-size: 9px; 
+  color: var(--faint); 
+  text-align: center; 
+  line-height: 1.7; 
+}
+
+/* ══════════ Responsive ══════════ */
+@media (min-width: 700px) { 
+  .page { 
+    max-width: 760px; 
+    margin: 0 auto; 
+  } 
+}

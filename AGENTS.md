@@ -62,6 +62,7 @@ docs/plans/tauri-migration/
 
 - ✅ 有 TASK 先读 TASK,没有就新建再动手
 - ✅ 核心逻辑必须有单测(`src/lib/compute.ts`)
+- ✅ **调用链 / 影响面分析优先用 codegraph_explore**:查"谁在用 XXX""改这里会影响哪些地方""调用链路"时,用 `codegraph_explore` 而非 Read/Grep 遍历
 - ✅ **不动现有组件样式**:新增功能尽量新建组件,避免污染已稳定的 UI
 - ✅ **共用组件优先**:为后续桌面端复用设计,移动端 / 桌面端共享同一份组件
 - ✅ **验收后才写 CHANGELOG / 提交**:改动跑完 typecheck + test + build,还要让用户在浏览器/终端**实际看过效果并明确通过**之后,才能追加 CHANGELOG 与创建 commit

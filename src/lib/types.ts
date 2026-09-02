@@ -44,6 +44,47 @@ export interface SegmentTemplate {
   id: string;
   label: string;          // 用户命名,如 "早班"/"晚班"/"周末加班"
   segments: WorkSegment[];
+  /** v1.3.5 单段模板；segments 保留用于兼容旧数据 */
+  segment?: WorkSegment;
+}
+
+/**
+ * v1.3.5 工作日模板（多模板分组标记系统）
+ * 
+ * 用于日历页标记工作日的模板系统。
+ * 区别于 SegmentTemplate（设置页工时模板），WorkTemplate 用于日历页的彩色标记点。
+ * 
+ * 特性：
+ *   - 动态数量（无上限）
+ *   - 颜色自动循环分配（TEMPLATE_COLORS 4 色池）
+ *   - 单段工时（不支持多段，简化模型）
+ *   - 日历页顶部横向选择器展示
+ * 
+ * 标记规则：
+ *   - 日期被任意模板标记 → 自动判定为工作日
+ *   - 同一天可叠加多个模板（小点并排显示）
+ *   - 工时段自动合并去重叠（unionSegments）
+ *   - 时间冲突校验（重叠时禁止添加）
+ * 
+ * 示例：
+ *   { id: 'tpl-uuid1', name: '常规班', color: '#4ADE80', workSegment: { start: '09:00', end: '18:00' } }
+ *   { id: 'tpl-uuid2', name: '夜班',   color: '#FBBF24', workSegment: { start: '22:00', end: '06:00' } }
+ */
+export interface WorkTemplate {
+  /** 唯一标识，格式 'tpl-<uuid>' */
+  id: string;
+  /** 用户自定义名称，默认 '模板1' / '模板2' ... */
+  name: string;
+  /** CSS hex 颜色，自动循环分配或手动修改 */
+  color: string;
+  /** 单段工时（不支持多段） */
+  workSegment: WorkSegment;
+}
+
+export interface CustomRestSchedule {
+  /** YYYY-MM-DD -> template ids（v1.3.5 起不再包含 'inherit',但保留字符串兼容旧数据） */
+  workDays: Record<string, string[]>;
+  updatedAt: number;
 }
 
 export interface Config {
@@ -56,7 +97,7 @@ export interface Config {
   /** 咖啡默认单价(¥) */
   coffeePrice: number;
   /** 休息模式:0=无休,1=单休,2=双休(monthly 模式) */
-  restMode: 0 | 1 | 2;
+  restMode: 0 | 1 | 2 | 'custom';
   /** 主题 ID */
   theme: 'paper' | 'obsidian' | 'gold';
   /**
@@ -90,6 +131,15 @@ export interface Config {
   lunchStart: string;
   /** 午休时长(分钟) */
   lunchMinutes: number;
+  /** v1.3.5 自定义排班 */
+  customRestSchedule?: CustomRestSchedule | null;
+  /**
+   * v1.3.5 工作日模板列表（多模板分组标记系统）
+   * 
+   * 动态数量，无上限。颜色自动循环分配。
+   * 默认初始化 1 个模板：{ id: 'tpl-default', name: '常规班', color: '#4ADE80', workSegment: { start: '09:00', end: '18:00' } }
+   */
+  workTemplates?: WorkTemplate[];
 }
 
 // ── Day Overrides(手动调休 / 加班 / 请假) ───────────────────
@@ -124,6 +174,22 @@ export interface DayOverrideEntry {
   segments: WorkSegment[] | null;
   /** 启用夜班加权(22:00–06:00 段 × 0.5 计入净工时) */
   nightShift: boolean;
+  /** v1.3.5:由已赚批量生成写入的标记与金额快照 */
+  earnedGenerated?: boolean;
+  earnedAmount?: number | null;
+  /**
+   * v1.3.5:该日期的模板标记列表（多模板分组标记系统）
+   * 
+   * 存储标记该日期的 WorkTemplate id 列表。
+   * 规则：
+   *   - 日期被任意模板标记 → 自动判定为工作日
+   *   - 优先级：templateMarks > DaySheet override > 全局 restMode
+   *   - 同一天可叠加多个模板标记（小点并排显示）
+   *   - 工时段自动合并（unionSegments 去重叠）
+   * 
+   * 示例：['tpl-uuid1', 'tpl-uuid2'] 表示该日期同时被两个模板标记
+   */
+  templateMarks?: string[];
   // ── v1.3.2 新增(freelance 类型专用,其他类型忽略) ──
   /**
    * freelance 日临时日薪(¥)。type='freelance' 且 freelancer 选了「按日薪」时使用。
@@ -222,12 +288,13 @@ export type DayState = DayStateActive | DayStateDone | DayStateRest;
  * 时间记录标签(v1.3.3 重命名自 SlackingLabel)
  * - slack:摸鱼(开小差)
  * - overtime:加班
+ * - parttime:兼职(v1.3.5 新增)
  * - other:其他(customLabel 必填)
  *
  * 设计变化:v1.3.0-1.3.2 的 toilet/meal 已合并到 other(customLabel 区分)
  *   保留 SlackingLabel 别名兼容旧数据。
  */
-export type TimeRecordLabel = 'slack' | 'overtime' | 'other';
+export type TimeRecordLabel = 'slack' | 'overtime' | 'parttime' | 'other';
 
 /** @deprecated 自 v1.3.3 起改用 TimeRecordLabel(toilet/meal 已合并到 other) */
 export type SlackingLabel = TimeRecordLabel;
@@ -250,6 +317,18 @@ export interface TimeRecord {
    * 规则:startTs 或 endTs 落在 [22:00, 06:00) 窗口即标 true。
    */
   nightShift: boolean;
+  /**
+   * v1.3.5:兼职类型专用自定义收入金额(¥)
+   * 
+   * 仅当 label='parttime' 时使用，可选填。
+   * 用于记录该兼职时段的收入金额（类似加班可自定义倍率）。
+   * 
+   * 计算逻辑：
+   *   - 兼职时长从净工时扣除（不计入正常工作效率统计）
+   *   - 兼职时长计入加班统计展示（Fish 页「加班补偿」卡片合并显示）
+   *   - 兼职收入单独累计（不影响时薪计算）
+   */
+  parttimeEarned?: number | null;
 }
 
 /** @deprecated 自 v1.3.3 起改用 TimeRecord */

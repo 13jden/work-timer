@@ -40,14 +40,17 @@ function fmtHoursMin(min: number): string {
 interface Props {
   /** 返回回调 */
   onBack?: () => void;
+  /** 模式切换回调（日/周/月） */
+  onModeChange?: (mode: 'day' | 'week' | 'month') => void;
 }
 
 /**
  * v1.3.3:把任意旧 label 收敛到 TimeRecordLabel
  * - toilet/meal → 'other' + 用 original label 作为 customLabel 默认值
+ * v1.3.5:新增 'parttime' 支持
  */
 function normalizeLabel(raw: string): { label: TimeRecordLabel; fallbackCustom?: string } {
-  if (raw === 'slack' || raw === 'overtime' || raw === 'other') {
+  if (raw === 'slack' || raw === 'overtime' || raw === 'parttime' || raw === 'other') {
     return { label: raw };
   }
   // 旧 toilet/meal 转 other
@@ -55,7 +58,7 @@ function normalizeLabel(raw: string): { label: TimeRecordLabel; fallbackCustom?:
   return { label: 'other', fallbackCustom: map[raw] };
 }
 
-export function TimeTrackerDetailPage({ onBack }: Props) {
+export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
   const now = useNow(1000);
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
@@ -105,6 +108,7 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
 
   const [editTarget, setEditTarget] = useState<TimeRecord | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [activeTab, setActiveTab] = useState<'day' | 'week' | 'month'>('day');
 
   return (
     <div className={styles.page}>
@@ -115,179 +119,216 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
         </button>
       )}
 
-      {/* ── Page head ── */}
-      <div className={styles.head}>
-        <div className={styles.eyebrow}>Time Records</div>
-        <h1 className={styles.title}>时间记录</h1>
+      {/* ── 日/周/月 tab(占满一行的 segmented control) ── */}
+      <div className={styles.segmentedWrapper}>
+        <div className={styles.segmented}>
+          <button
+            type="button"
+            className={`${styles.segmentedChip} ${activeTab === 'day' ? styles.segmentedChipActive : ''}`}
+            onClick={() => setActiveTab('day')}
+          >
+            日
+          </button>
+          <button
+            type="button"
+            className={`${styles.segmentedChip} ${activeTab === 'week' ? styles.segmentedChipActive : ''}`}
+            onClick={() => { setActiveTab('week'); onModeChange?.('week'); }}
+          >
+            周
+          </button>
+          <button
+            type="button"
+            className={`${styles.segmentedChip} ${activeTab === 'month' ? styles.segmentedChipActive : ''}`}
+            onClick={() => { setActiveTab('month'); onModeChange?.('month'); }}
+          >
+            月
+          </button>
+        </div>
       </div>
 
-      {/* ── A · 2x2 dashboard · v1.3.4-patch2 实时累计 ── */}
-      <div className={styles.dashboard}>
-        <div className={styles.card}>
-          {/* v1.3.4-patch4:总工时实时累计(grossElapsed),与净工时同节奏
-              用户语义:"10:00 已工作 1h,总工时 1h;净工时=总工时+加班-午休-摸鱼 一样实时"
-              即 4 卡全部实时:已工作 / 已发生午休 / 已发生摸鱼 / 已发生加班,
-              净工时 = grossElapsed - 已发生摸鱼∪午休 + 加班 + 夜班(实时扣除) */}
-          <div className={styles.cardLabel}>总工时</div>
-          <div className={styles.cardValue}>{fmtHoursMin(net.grossElapsed)}</div>
-        </div>
-        <div className={`${styles.card} ${net.lunchElapsed > 0 ? styles.positive : ''}`}>
-          <div className={styles.cardLabel}>午休扣除</div>
-          <div className={styles.cardValue}>
-            {net.lunchElapsed > 0 ? `−${fmtHoursMin(net.lunchElapsed)}` : '0h'}
-          </div>
-        </div>
-        <div className={`${styles.card} ${net.slackingElapsed > 0 ? styles.positive : ''}`}>
-          <div className={styles.cardLabel}>摸鱼扣除</div>
-          <div className={styles.cardValue}>
-            {net.slackingElapsed > 0 ? `−${fmtHoursMin(net.slackingElapsed)}` : '0h'}
-          </div>
-        </div>
-        <div
-          className={`${styles.card} ${styles.clickable} ${net.overtimeElapsed > 0 ? styles.negative : ''}`}
-          onClick={() => setShowCompPopup((v) => !v)}
-        >
-          <div className={styles.cardLabel}>加班</div>
-          <div className={styles.cardValue}>
-            +{fmtHoursMin(net.overtimeElapsed)}
-          </div>
-          {showCompPopup && net.overtimeElapsed > 0 && (userOvertimeDayMin + userOvertimeNightMin > 0) && (
-            <div className={styles.popup}>
-              {userOvertimeDayMin > 0 && (
-                <div className={styles.popupRow}>
-                  <ChartLineUp size={14} weight="bold" />
-                  <span>加班(日){fmtHoursMin(userOvertimeDayMin)} × {overtimeMul}</span>
-                </div>
-              )}
-              {userOvertimeNightMin > 0 && (
-                <div className={styles.popupRow}>
-                  <Moon size={14} weight="regular" />
-                  <span>加班(夜){fmtHoursMin(userOvertimeNightMin)} × {overtimeMul} × 1.5</span>
-                </div>
-              )}
-              {userOvertimeDayMin > 0 && userOvertimeNightMin > 0 && (
-                <div className={`${styles.popupRow} ${styles.popupRowTotal}`}>
-                  <span>= {fmtHoursMin(userOvertimeDayMin)} + {fmtHoursMin(userOvertimeNightMin)} × 1.5</span>
+      {activeTab === 'day' && (
+        <>
+          {/* ── A · 2x2 dashboard · v1.3.4-patch2 实时累计 ── */}
+          <div className={styles.dashboard}>
+            <div className={styles.card}>
+              {/* v1.3.4-patch4:总工时实时累计(grossElapsed),与净工时同节奏
+                  用户语义:"10:00 已工作 1h,总工时 1h;净工时=总工时+加班-午休-摸鱼 一样实时"
+                  即 4 卡全部实时:已工作 / 已发生午休 / 已发生摸鱼 / 已发生加班,
+                  净工时 = grossElapsed - 已发生摸鱼∪午休 + 加班 + 夜班(实时扣除) */}
+              <div className={styles.cardLabel}>总工时</div>
+              <div className={styles.cardValue}>{fmtHoursMin(net.grossElapsed)}</div>
+            </div>
+            <div className={`${styles.card} ${net.lunchElapsed > 0 ? styles.positive : ''}`}>
+              <div className={styles.cardLabel}>午休扣除</div>
+              <div className={styles.cardValue}>
+                {net.lunchElapsed > 0 ? `−${fmtHoursMin(net.lunchElapsed)}` : '0h'}
+              </div>
+            </div>
+            <div className={`${styles.card} ${net.slackingElapsed > 0 ? styles.positive : ''}`}>
+              <div className={styles.cardLabel}>摸鱼扣除</div>
+              <div className={styles.cardValue}>
+                {net.slackingElapsed > 0 ? `−${fmtHoursMin(net.slackingElapsed)}` : '0h'}
+              </div>
+            </div>
+            <div
+              className={`${styles.card} ${styles.clickable} ${net.overtimeElapsed > 0 ? styles.negative : ''}`}
+              onClick={() => setShowCompPopup((v) => !v)}
+            >
+              <div className={styles.cardLabel}>加班</div>
+              <div className={styles.cardValue}>
+                +{fmtHoursMin(net.overtimeElapsed)}
+              </div>
+              {showCompPopup && net.overtimeElapsed > 0 && (userOvertimeDayMin + userOvertimeNightMin > 0) && (
+                <div className={styles.popup}>
+                  {userOvertimeDayMin > 0 && (
+                    <div className={styles.popupRow}>
+                      <ChartLineUp size={14} weight="bold" />
+                      <span>加班(日){fmtHoursMin(userOvertimeDayMin)} × {overtimeMul}</span>
+                    </div>
+                  )}
+                  {userOvertimeNightMin > 0 && (
+                    <div className={styles.popupRow}>
+                      <Moon size={14} weight="regular" />
+                      <span>加班(夜){fmtHoursMin(userOvertimeNightMin)} × {overtimeMul} × 1.5</span>
+                    </div>
+                  )}
+                  {userOvertimeDayMin > 0 && userOvertimeNightMin > 0 && (
+                    <div className={`${styles.popupRow} ${styles.popupRowTotal}`}>
+                      <span>= {fmtHoursMin(userOvertimeDayMin)} + {fmtHoursMin(userOvertimeNightMin)} × 1.5</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── B · summary bar ── */}
-      <div className={styles.summary}>
-        <div className={styles.sumItem}>
-          <div className={styles.sumLabel}>净工时</div>
-          <div className={styles.sumValue}>{fmtHoursMin(net.netMinutes)}</div>
-        </div>
-        <div className={styles.sumItem}>
-          <div className={styles.sumLabel}>净时薪</div>
-          <div className={styles.sumValue}>¥{netHourly.toFixed(2)}/h</div>
-        </div>
-      </div>
-
-      {/* ── B2 · 摸鱼薪资(按 effectiveHourlyRate × 摸鱼时长) ── */}
-      <div className={styles.slackingEarn}>
-        <div className={styles.slackingEarnLeft}>
-          <div className={styles.slackingEarnLabel}>摸鱼总薪资</div>
-          <div className={styles.slackingEarnHint}>
-            按 ¥{hourly.toFixed(2)}/h × 摸鱼时长
           </div>
-        </div>
-        <div className={`${styles.slackingEarnValue} ${slackingTotal > 0 ? styles.slackingEarnRunning : ''}`}>
-          {slackingTotal > 0 ? `+¥${slackingTotal.toFixed(2)}` : '¥0.00'}
-        </div>
-      </div>
 
-      {/* ── C · 记录列表 ── */}
-      <div className={styles.section}>
-        <div className={styles.sectionTitle}>
-          今日记录
-          {nightSessionCount > 0 && (
-            <span className={styles.nightBadge} title="夜班自动标记(22:00-06:00)">
-              <Moon size={11} weight="regular" />
-              夜班 {nightSessionCount}
-            </span>
-          )}
-        </div>
-        {todaySessions.length === 0 ? (
-          <div className={styles.empty}>暂无记录</div>
-        ) : (
-          todaySessions.map((s) => {
-            const dur = s.endTs !== null ? Math.floor((s.endTs - s.startTs) / 1000) : null;
-            const normalized = normalizeLabel(s.label);
-            // v1.3.3 patch2:仅摸鱼 session 显示对应的摸鱼薪资(进行中按 now 实时计算)
-            const durSecForEarn = dur !== null ? dur : Math.max(0, Math.floor((now.getTime() - s.startTs) / 1000));
-            const sessionEarn = s.label === 'slack'
-              ? hourly * (durSecForEarn / 3600)
-              : 0;
-            return (
-              <div key={s.id} className={styles.record}>
-                <span className={styles.recIcon}>
-                  {SLACKING_LABEL_ICON[s.label as keyof typeof SLACKING_LABEL_ICON] ?? SLACKING_LABEL_ICON.other}
-                </span>
-                <div className={styles.recInfo}>
-                  <div className={styles.recLabel}>
-                    {normalized.label === 'other' && (s.customLabel || normalized.fallbackCustom)
-                      ? (s.customLabel || normalized.fallbackCustom)
-                      : SLACKING_LABEL_TEXT[s.label as keyof typeof SLACKING_LABEL_TEXT] ?? s.label}
-                    {s.nightShift && (
-                      <span className={styles.nightDot} title="夜班自动标记"> 🌙</span>
-                    )}
-                  </div>
-                  <div className={styles.recTime}>
-                    {new Date(s.startTs).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                    {' – '}
-                    {s.endTs !== null
-                      ? new Date(s.endTs).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                      : '进行中'}
-                  </div>
-                </div>
-                <div className={styles.recRight}>
-                  <span className={styles.recDuration}>
-                    {dur !== null ? fmtMMSS(dur) : '--:--'}
-                  </span>
-                  {s.label === 'slack' && (
-                    <span className={styles.recEarn}>
-                      +¥{sessionEarn.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                <div className={styles.recActions}>
-                  <button
-                    type="button"
-                    className={styles.recBtn}
-                    onClick={() => setEditTarget(s)}
-                    aria-label="编辑"
-                  >
-                    <Pencil size={12} weight="regular" />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.recBtn} ${styles.recBtnDanger}`}
-                    onClick={() => {
-                      if (window.confirm('删除这条记录?')) removeSession(s.id);
-                    }}
-                    aria-label="删除"
-                  >
-                    <X size={12} weight="bold" />
-                  </button>
-                </div>
+          {/* ── B · summary bar ── */}
+          <div className={styles.summary}>
+            <div className={styles.sumItem}>
+              <div className={styles.sumLabel}>净工时</div>
+              <div className={styles.sumValue}>{fmtHoursMin(net.netMinutes)}</div>
+            </div>
+            <div className={styles.sumItem}>
+              <div className={styles.sumLabel}>净时薪</div>
+              <div className={styles.sumValue}>¥{netHourly.toFixed(2)}/h</div>
+            </div>
+          </div>
+
+          {/* ── B2 · 摸鱼薪资(按 effectiveHourlyRate × 摸鱼时长) ── */}
+          <div className={styles.slackingEarn}>
+            <div className={styles.slackingEarnLeft}>
+              <div className={styles.slackingEarnLabel}>摸鱼总薪资</div>
+              <div className={styles.slackingEarnHint}>
+                按 ¥{hourly.toFixed(2)}/h × 摸鱼时长
               </div>
-            );
-          })
-        )}
-        <button type="button" className={styles.addBtn} onClick={() => setShowAdd(true)}>
-          <Plus size={14} weight="bold" />
-          添加记录
-        </button>
-      </div>
+            </div>
+            <div className={`${styles.slackingEarnValue} ${slackingTotal > 0 ? styles.slackingEarnRunning : ''}`}>
+              {slackingTotal > 0 ? `+¥${slackingTotal.toFixed(2)}` : '¥0.00'}
+            </div>
+          </div>
 
-      {/* ── D · 公式说明 ── */}
-      <div className={styles.formula}>
-        净时薪 = 今日已赚 ÷ (总工时 − 时间记录∪午休 + 加班补偿)
-      </div>
+          {/* ── C · 记录列表 ── */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>
+              今日记录
+              {nightSessionCount > 0 && (
+                <span className={styles.nightBadge} title="夜班自动标记(22:00-06:00)">
+                  <Moon size={11} weight="regular" />
+                  夜班 {nightSessionCount}
+                </span>
+              )}
+            </div>
+            {todaySessions.length === 0 ? (
+              <div className={styles.empty}>暂无记录</div>
+            ) : (
+              todaySessions.map((s) => {
+                const dur = s.endTs !== null ? Math.floor((s.endTs - s.startTs) / 1000) : null;
+                const normalized = normalizeLabel(s.label);
+                // v1.3.3 patch2:仅摸鱼 session 显示对应的摸鱼薪资(进行中按 now 实时计算)
+                const durSecForEarn = dur !== null ? dur : Math.max(0, Math.floor((now.getTime() - s.startTs) / 1000));
+                const sessionEarn = s.label === 'slack'
+                  ? hourly * (durSecForEarn / 3600)
+                  : 0;
+                return (
+                  <div key={s.id} className={styles.record}>
+                    <span className={styles.recIcon}>
+                      {SLACKING_LABEL_ICON[s.label as keyof typeof SLACKING_LABEL_ICON] ?? SLACKING_LABEL_ICON.other}
+                    </span>
+                    <div className={styles.recInfo}>
+                      <div className={styles.recLabel}>
+                        {normalized.label === 'other' && (s.customLabel || normalized.fallbackCustom)
+                          ? (s.customLabel || normalized.fallbackCustom)
+                          : SLACKING_LABEL_TEXT[s.label as keyof typeof SLACKING_LABEL_TEXT] ?? s.label}
+                        {s.nightShift && (
+                          <span className={styles.nightDot} title="夜班自动标记"> 🌙</span>
+                        )}
+                      </div>
+                      <div className={styles.recTime}>
+                        {new Date(s.startTs).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                        {' – '}
+                        {s.endTs !== null
+                          ? new Date(s.endTs).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                          : '进行中'}
+                      </div>
+                    </div>
+                    <div className={styles.recRight}>
+                      <span className={styles.recDuration}>
+                        {dur !== null ? fmtMMSS(dur) : '--:--'}
+                      </span>
+                      {s.label === 'slack' && (
+                        <span className={styles.recEarn}>
+                          +¥{sessionEarn.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.recActions}>
+                      <button
+                        type="button"
+                        className={styles.recBtn}
+                        onClick={() => setEditTarget(s)}
+                        aria-label="编辑"
+                      >
+                        <Pencil size={12} weight="regular" />
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.recBtn} ${styles.recBtnDanger}`}
+                        onClick={() => {
+                          if (window.confirm('删除这条记录?')) removeSession(s.id);
+                        }}
+                        aria-label="删除"
+                      >
+                        <X size={12} weight="bold" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <button type="button" className={styles.addBtn} onClick={() => setShowAdd(true)}>
+              <Plus size={14} weight="bold" />
+              添加记录
+            </button>
+          </div>
+
+          {/* ── D · 公式说明 ── */}
+          <div className={styles.formula}>
+            净时薪 = 今日已赚 ÷ (总工时 − 时间记录∪午休 + 加班补偿)
+          </div>
+
+          <div className={styles.footer}>
+            当前基础时薪 ¥{hourly.toFixed(2)}/h · 累计今日已赚 ¥{earned.toFixed(2)}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'week' && (
+        <div className={styles.comingSoon}>周统计 · 下期开放</div>
+      )}
+
+      {activeTab === 'month' && (
+        <div className={styles.comingSoon}>月统计 · 下期开放</div>
+      )}
 
       {/* ── 编辑 / 添加 sheet(占位实现,后续可拆为独立组件) ── */}
       {(editTarget || showAdd) && (
@@ -300,14 +341,6 @@ export function TimeTrackerDetailPage({ onBack }: Props) {
           }}
         />
       )}
-
-      <div className={styles.historyHint}>
-        周/月汇总 · 下期开放
-      </div>
-
-      <div className={styles.footer}>
-        当前基础时薪 ¥{hourly.toFixed(2)}/h · 累计今日已赚 ¥{earned.toFixed(2)}
-      </div>
     </div>
   );
 }
@@ -377,7 +410,7 @@ function TimeRecordSheet({
 
         <div className={styles.sheetLabel}>模式</div>
         <div className={styles.sheetSegmented}>
-          {(['slack', 'overtime', 'other'] as TimeRecordLabel[]).map((l) => (
+          {(['slack', 'overtime', 'parttime', 'other'] as TimeRecordLabel[]).map((l) => (
             <button
               key={l}
               type="button"

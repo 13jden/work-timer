@@ -8,7 +8,7 @@ import { useThemeStore } from '../../store/themeStore';
 import { NavIcons } from '../NavIcons';
 import styles from './Sidebar.module.css';
 
-export type TabId = 'today' | 'convert' | 'calendar' | 'settings';
+export type TabId = 'today' | 'convert' | 'calendar' | 'fish' | 'settings';
 
 interface SidebarProps {
   activeTab: TabId;

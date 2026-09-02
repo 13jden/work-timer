@@ -22,7 +22,8 @@
 }
 
 .head {
-  margin: 12px 0 16px;
+  margin: 12px 0 8px;
+  text-align: center;
 }
 
 .eyebrow {
@@ -41,6 +42,43 @@
   color: var(--ink);
   letter-spacing: -0.3px;
   line-height: 1.15;
+}
+
+/* ── Segmented Control(占满一行) ── */
+.segmentedWrapper {
+  margin: 12px 0 16px;
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  background: var(--paper-2);
+  border-radius: var(--r-md);
+  padding: 4px;
+}
+
+.segmentedChip {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--r-md) - 2px);
+  font: 500 14px var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.segmentedChip:hover {
+  color: var(--ink);
+}
+
+.segmentedChipActive {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-weight: 600;
 }
 
 /* ── Dashboard ── */
@@ -354,6 +392,16 @@
   border-radius: var(--r-sm);
   margin-bottom: 8px;
   opacity: 0.6;
+}
+
+.comingSoon {
+  text-align: center;
+  font: 400 14px var(--font-sans);
+  color: var(--muted);
+  padding: 48px 24px;
+  background: var(--paper-2);
+  border-radius: var(--r-md);
+  margin: 24px 0;
 }
 
 /* ── Sheet ── */

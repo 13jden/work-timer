@@ -112,6 +112,8 @@ function normalizeOverrides(raw: unknown): DayOverrides {
           nightShift,
           freelanceDaily,
           freelanceHourly,
+          earnedGenerated: entry.earnedGenerated === true,
+          earnedAmount: typeof entry.earnedAmount === 'number' ? entry.earnedAmount : null,
         };
       }
     }
