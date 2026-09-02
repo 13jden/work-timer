@@ -19,6 +19,7 @@ import { TodayPage } from './pages/TodayPage';
 import { ConvertPage } from './pages/ConvertPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { FishPage } from './pages/FishPage';
 import { DesktopSidebar, type DesktopTabId } from './components/DesktopSidebar';
 import { DesktopRightPanel } from './components/DesktopRightPanel';
 import { SettingsDrawer } from './components/SettingsDrawer';
@@ -38,15 +39,17 @@ function DesktopContent({
   if (activeTab === 'today') {
     return <TodayPage onOpenConvert={() => {}} />;
   }
+  if (activeTab === 'fish') return <FishPage />;
   return <CalendarPage isDesktopInline onPickDate={onPickedDate} selectedDate={selectedDate} />;
 }
 
-function renderPage(tab: TabId, onOpenConvert: () => void) {
+function renderPage(tab: TabId, onOpenConvert: () => void, onOpenFish: () => void) {
   switch (tab) {
-    case 'today':    return <TodayPage onOpenConvert={onOpenConvert} />;
+    case 'today':    return <TodayPage onOpenConvert={onOpenConvert} onOpenFish={onOpenFish} />;
     case 'convert':  return <ConvertPage />;
     case 'calendar':  return <CalendarPage />;
     case 'settings':  return <SettingsPage />;
+    case 'fish':      return <FishPage />;
   }
 }
 
@@ -57,6 +60,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileOverlay, setMobileOverlay] = useState<'convert' | 'fish' | null>(null);
 
   // v1.3.4-patch4:日历页选中日期,提到 App 层让 DesktopRightPanel 共用
   const [pickedDate, setPickedDate] = useState<Date | null>(null);
@@ -139,7 +143,7 @@ export function App() {
         paddingBottom: '72px',
       }}
     >
-      {renderPage(activeTab, () => setActiveTab('convert'))}
+      {mobileOverlay === 'convert' ? <ConvertPage onBack={() => setMobileOverlay(null)} /> : mobileOverlay === 'fish' ? <FishPage /> : renderPage(activeTab, () => setMobileOverlay('convert'), () => setActiveTab('fish'))}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );

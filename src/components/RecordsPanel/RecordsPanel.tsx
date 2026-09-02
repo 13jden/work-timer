@@ -25,9 +25,10 @@ interface Props {
 
 /**
  * 收敛旧 label(toilet/meal → other)
+ * v1.3.5:新增 'parttime' 支持
  */
 function normalizeLabel(raw: string): { label: TimeRecordLabel; fallbackCustom?: string } {
-  if (raw === 'slack' || raw === 'overtime' || raw === 'other') {
+  if (raw === 'slack' || raw === 'overtime' || raw === 'parttime' || raw === 'other') {
     return { label: raw };
   }
   const map: Record<string, string> = { toilet: '厕所', meal: '吃饭' };
@@ -223,7 +224,7 @@ function TimeRecordSheet({
 
         <div className={sheetStyles.label}>模式</div>
         <div className={sheetStyles.segmented}>
-          {(['slack', 'overtime', 'other'] as TimeRecordLabel[]).map((l) => (
+          {(['slack', 'overtime', 'parttime', 'other'] as TimeRecordLabel[]).map((l) => (
             <button
               key={l}
               type="button"

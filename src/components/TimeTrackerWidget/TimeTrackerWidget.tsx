@@ -45,6 +45,7 @@ function fmtCNY(value: number): string {
 const LABEL_TEXT: Record<TimeRecordLabel, string> = {
   slack: '摸鱼',
   overtime: '加班',
+  parttime: '兼职',
   other: '其他',
 };
 
