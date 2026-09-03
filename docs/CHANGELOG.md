@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.1 | 2026-09-03 | 线稿图标 + 移动端双主题框架(上下滑切换) | [`docs/CHANGELOG-v2.1.md`](./CHANGELOG-v2.1.md) |
 | v2.0 | 2026-09-02 | 独立记账页(快速记录 + 未分类 + 分类文件夹) | [`docs/CHANGELOG-v2.0.md`](./CHANGELOG-v2.0.md) |
 | v1.3.5 | 2026-09-03 | 已赚记录定型 + 自由兼职兼容 + 日视图日期切换 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.3.4-patch3 | 2026-08-31 | 右栏加宽到 1/3 + 撤销 patch2 居中(撑满整个页面) | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
