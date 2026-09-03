@@ -16,6 +16,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
+import { IconByKey } from '../../IconByKey';
 import styles from './AddRecordModal.module.css';
 
 interface AddRecordModalProps {
@@ -202,7 +203,9 @@ export function AddRecordModal({
               onClick={() => setCategoryId(cat.id)}
               style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
             >
-              <span className={styles.catIcon}>{cat.icon}</span>
+              <span className={styles.catIcon}>
+                <IconByKey icon={cat.icon} size={16} color={categoryId === cat.id ? '#fff' : cat.color} />
+              </span>
               <span className={styles.catName}>{cat.name}</span>
             </button>
           ))}

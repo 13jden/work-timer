@@ -12,7 +12,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import { ACCOUNTING_EMOJI_CHOICES } from '../../../lib/constants';
+import { ACCOUNTING_ICON_GROUPS, IconByKey } from '../../IconByKey';
 import type { RecordType } from '../../../lib/types';
 import styles from './AddCategoryModal.module.css';
 
@@ -54,7 +54,7 @@ export function AddCategoryModal({
 
   const [name, setName] = useState('');
   const [type, setType] = useState<RecordType>(defaultType);
-  const [emoji, setEmoji] = useState<string>('📦');
+  const [iconKey, setIconKey] = useState<string>('box');
   const [color, setColor] = useState<string>(COLOR_PALETTE[8]!);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -64,7 +64,7 @@ export function AddCategoryModal({
     if (!open) return;
     setName('');
     setType(defaultType);
-    setEmoji('📦');
+    setIconKey('box');
     setColor(COLOR_PALETTE[8]!);
     setError(null);
     const id = setTimeout(() => nameRef.current?.focus(), 250);
@@ -92,7 +92,7 @@ export function AddCategoryModal({
 
     const newCategory = addCategory({
       name: trimmed,
-      icon: emoji,
+      icon: iconKey,
       color,
       type,
       order: maxOrder + 1,
@@ -103,7 +103,7 @@ export function AddCategoryModal({
     addFolder({
       categoryId: newCategory.id,
       name: trimmed,
-      icon: emoji,
+      icon: iconKey,
       color,
       order: maxFolderOrder + 1,
     });
@@ -126,7 +126,9 @@ export function AddCategoryModal({
         {/* 预览 */}
         <div className={styles.preview}>
           <div className={styles.previewFolder} style={{ background: color }}>
-            <span className={styles.previewIcon}>{emoji}</span>
+            <span className={styles.previewIcon}>
+              <IconByKey icon={iconKey} size={20} color="#fff" />
+            </span>
             <span className={styles.previewName}>{name.trim() || '新分类'}</span>
           </div>
         </div>
@@ -161,19 +163,26 @@ export function AddCategoryModal({
           />
         </div>
 
-        {/* Emoji 选取 */}
+        {/* 图标选取（v2.1:Phosphor 线稿分组 picker） */}
         <div className={styles.field}>
           <label className={styles.fieldLabel}>图标</label>
-          <div className={styles.emojiGrid}>
-            {ACCOUNTING_EMOJI_CHOICES.slice(0, 24).map((e) => (
-              <button
-                key={e}
-                className={`${styles.emojiChip} ${emoji === e ? styles.emojiChipActive : ''}`}
-                onClick={() => setEmoji(e)}
-                aria-label={`选择 emoji ${e}`}
-              >
-                {e}
-              </button>
+          <div className={styles.iconPicker}>
+            {ACCOUNTING_ICON_GROUPS.map((group) => (
+              <div key={group.label} className={styles.iconGroup}>
+                <div className={styles.iconGroupLabel}>{group.label}</div>
+                <div className={styles.iconGroupRow}>
+                  {group.icons.map((key) => (
+                    <button
+                      key={key}
+                      className={`${styles.emojiChip} ${iconKey === key ? styles.emojiChipActive : ''}`}
+                      onClick={() => setIconKey(key)}
+                      aria-label={`选择图标 ${key}`}
+                    >
+                      <IconByKey icon={key} size={18} />
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

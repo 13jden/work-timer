@@ -191,6 +191,29 @@
   padding: 4px 2px;
 }
 
+/* v2.1 TASK-036:线稿图标分组 picker */
+.iconPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 170px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.iconGroupLabel {
+  margin-bottom: 5px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--muted, #8B8B82);
+}
+
+.iconGroupRow {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
 .emojiChip {
   aspect-ratio: 1;
   background: var(--paper-3, #f9f7f0);

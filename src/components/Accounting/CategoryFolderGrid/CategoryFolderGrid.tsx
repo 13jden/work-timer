@@ -10,6 +10,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
+import { IconByKey } from '../../IconByKey';
 import styles from './CategoryFolderGrid.module.css';
 
 export const FOLDER_DRAG_PREFIX = 'folder:';
@@ -137,7 +138,9 @@ function SortableFolder({ folder, stat, isRecordDragging, onClickCategory }: Sor
         {...attributes}
         {...listeners}
       >
-        <span className={styles.icon}>{folder.icon}</span>
+        <span className={styles.icon}>
+          <IconByKey icon={folder.icon} size={20} color="var(--folder-color, #9CA3AF)" />
+        </span>
         <span className={styles.name}>{folder.name}</span>
         <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>
         {stat && stat.todayCount > 0 && <span className={styles.count}>{stat.todayCount}</span>}

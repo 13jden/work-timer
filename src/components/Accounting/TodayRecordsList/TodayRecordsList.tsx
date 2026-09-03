@@ -14,6 +14,7 @@ import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount, sumExpense, sumIncome } from '../../../lib/accounting';
+import { IconByKey } from '../../IconByKey';
 import styles from './TodayRecordsList.module.css';
 
 interface TodayRecordsListProps {
@@ -119,7 +120,9 @@ function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress }: 
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <span className={styles.icon}>{categoryIcon}</span>
+      <span className={styles.icon}>
+        <IconByKey icon={categoryIcon} size={17} />
+      </span>
       <div className={styles.info}>
         <span className={styles.name}>
           {record.note?.trim() || categoryName}
