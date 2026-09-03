@@ -1,11 +1,11 @@
 /* ==========================================================
-   QuickAddRow — 左快速记录 / 右详细记录
+   QuickAddRow — 快速记录占满一行,详细按钮内嵌
    v2.1 优化:暗色背景+紧凑布局,移动端 / 桌面端都保持同一行
    ========================================================== */
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
@@ -41,23 +41,6 @@
   transform: none;
 }
 
-/* 右卡：白底 — 与 PRD 原型 .hm-add-card.full 一致 */
-.fullCard {
-  background: var(--card);
-  color: var(--ink);
-  border: 1px solid var(--line-soft);
-  cursor: pointer;
-}
-
-.fullCard:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-}
-
-.fullCard:active {
-  transform: scale(0.98);
-}
-
 .label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -65,25 +48,6 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
   opacity: 0.55;
-  flex-shrink: 0;
-}
-
-.fullSub {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 13px;
-  color: var(--ink-soft);
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.fullOpen {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent-2, #9fcc00);
-  letter-spacing: 0.5px;
   flex-shrink: 0;
 }
 
