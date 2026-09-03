@@ -310,3 +310,63 @@
     to   { transform: translateX(0); }
   }
 }
+
+/* v2.1 TASK-037:删除分类确认弹窗 */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.confirmCard {
+  width: min(78%, 320px);
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--card, #fff);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+}
+
+.confirmTitle {
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.confirmText {
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.confirmBtns {
+  display: flex;
+  gap: 10px;
+}
+
+.confirmCancel,
+.confirmDanger {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.confirmCancel {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.confirmDanger {
+  background: var(--danger, #E5484D);
+  color: #fff;
+}

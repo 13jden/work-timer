@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { formatAmount, sumExpense } from '../../../lib/accounting';
 import type { AccountRecord } from '../../../lib/types';
+import { X } from '@phosphor-icons/react';
+import { IconByKey } from '../../IconByKey';
 import styles from './CategoryDetailPanel.module.css';
 
 const RECORD_DRAG_MIME = 'application/x-accounting-category-record-id';
@@ -31,6 +33,7 @@ export function CategoryDetailPanel({
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const [dragRecordId, setDragRecordId] = useState<string | null>(null);
   const [dragOverDateKey, setDragOverDateKey] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const category = useMemo(
     () => categories.find((item) => item.id === categoryId) ?? null,
@@ -84,11 +87,6 @@ export function CategoryDetailPanel({
 
   const hasAnyRecord = records.some((record) => record.categoryId === category.id);
 
-  const handleDelete = () => {
-    if (hasAnyRecord || !onDeleteCategory) return;
-    if (window.confirm(`删除分类「${category.name}」？`)) onDeleteCategory(category.id);
-  };
-
   const handleRecordDragStart = (event: React.DragEvent, recordId: string) => {
     event.dataTransfer.setData(RECORD_DRAG_MIME, recordId);
     event.dataTransfer.effectAllowed = 'move';
@@ -112,14 +110,43 @@ export function CategoryDetailPanel({
         <button className={styles.backBtn} onClick={onClose} aria-label="返回">‹</button>
         <span className={styles.title}>{category.name}</span>
         {onDeleteCategory && !hasAnyRecord ? (
-          <button className={styles.moreBtn} onClick={handleDelete} aria-label="删除分类">删除</button>
+          <button className={styles.moreBtn} onClick={() => setConfirmOpen(true)} aria-label="删除分类">
+            <X size={16} weight="regular" />
+          </button>
         ) : (
           <button className={styles.moreBtn} onClick={() => onEditCategory?.(category.id)} aria-label="更多">⋯</button>
         )}
       </div>
 
+      {/* v2.1 TASK-037:删除分类确认弹窗(替代 window.confirm) */}
+      {confirmOpen && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmOpen(false)}>
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmTitle}>删除这个分类？</div>
+            <div className={styles.confirmText}>「{category.name}」将被删除，删除后不可恢复。</div>
+            <div className={styles.confirmBtns}>
+              <button type="button" className={styles.confirmCancel} onClick={() => setConfirmOpen(false)}>
+                取消
+              </button>
+              <button
+                type="button"
+                className={styles.confirmDanger}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  onDeleteCategory?.(category.id);
+                }}
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.summary}>
-        <div className={styles.bigIcon} style={{ background: folder.color }}>{folder.icon}</div>
+        <div className={styles.bigIcon} style={{ background: folder.color }}>
+          <IconByKey icon={folder.icon} size={26} color="#fff" />
+        </div>
         <div className={styles.amount}>¥{formatAmount(stats.total)}</div>
         <div className={styles.meta}>本月 {stats.count} 笔 · 日均 ¥{formatAmount(stats.dailyAvg)}</div>
       </div>
@@ -182,7 +209,9 @@ export function CategoryDetailPanel({
                         setDragOverDateKey(null);
                       }}
                     >
-                      <div className={styles.cardIcon} style={{ background: folder.color }}>{folder.icon}</div>
+                      <div className={styles.cardIcon} style={{ background: folder.color }}>
+                        <IconByKey icon={folder.icon} size={15} color="#fff" />
+                      </div>
                       <div className={styles.cardInfo}>
                         <div className={styles.cardName}>{record.note?.trim() || category.name}</div>
                         <div className={styles.cardSub}>{formatTime(record.createdAt)} · {account?.name ?? '未知账户'}</div>

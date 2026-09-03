@@ -55,4 +55,24 @@ export const NavIcons: Record<string, ReactNode> = {
       <path d="M11 2v2M11 18v2M2 11h2M18 11h2M4.9 4.9l1.4 1.4M15.7 15.7l1.4 1.4M4.9 17.1l1.4-1.4M15.7 6.3l1.4-1.4" />
     </svg>
   ),
+  // v2.1 TASK-037:记账主题占位 tab 图标
+  'acct-stats': (
+    <svg {...COMMON}>
+      <path d="M4 18h14" />
+      <path d="M7 18v-6M11 18V6M15 18v-9" />
+    </svg>
+  ),
+  'acct-cal': (
+    <svg {...COMMON}>
+      <rect x="3" y="5" width="16" height="14" rx="2" />
+      <path d="M3 9h16M7 3v4M15 3v4" />
+      <path d="M8 13h6M11 13v4M9.5 14.5c0-1 1-1.5 1.5-1.5s1.5.5 1.5 1.5" />
+    </svg>
+  ),
+  'acct-mine': (
+    <svg {...COMMON}>
+      <circle cx="11" cy="8" r="3.5" />
+      <path d="M4.5 18c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5" />
+    </svg>
+  ),
 };

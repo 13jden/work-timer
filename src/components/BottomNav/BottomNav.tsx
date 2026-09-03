@@ -1,30 +1,29 @@
 /**
  * BottomNav — 移动端底部 Tab 栏(<1024px)
  * 深色 pill + active 用主题强调色描边 + 顶部绿色光晕
+ *
+ * v2.1 TASK-037:改为通用 tabs props,支持计时 / 记账双主题各 4 tab。
  */
-import type { TabId } from '../Sidebar';
 import { NavIcons } from '../NavIcons';
 import styles from './BottomNav.module.css';
 
-interface BottomNavProps {
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
+export interface BottomNavTab {
+  id: string;
+  label: string;
 }
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'today',      label: 'TODAY' },
-  { id: 'accounting', label: 'ACCT' },
-  { id: 'calendar',   label: 'MONTH' },
-  { id: 'fish',       label: 'FISH' },
-  { id: 'settings',   label: 'MINE' },
-];
+interface BottomNavProps {
+  tabs: BottomNavTab[];
+  activeId: string;
+  onTabChange: (id: string) => void;
+}
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export function BottomNav({ tabs, activeId, onTabChange }: BottomNavProps) {
   return (
     <div className={styles.wrap}>
       <nav className={styles.dock}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
+        {tabs.map((tab) => {
+          const isActive = activeId === tab.id;
           return (
             <button
               key={tab.id}

@@ -9,12 +9,14 @@
  *     - calendar → DaySheet 内联(日历选中日期的设置)
  * - 移动端(<1024px):BottomNav + 页面切换,完全独立分支
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bootstrapTheme, useThemeStore } from './store/themeStore';
+import { useAppModeStore } from './store/appModeStore';
 import { useIsDesktop } from './hooks/useMediaQuery';
 import { useDesktopScale, BASE_WIDTH, BASE_HEIGHT } from './hooks/useDesktopScale';
 import { type TabId } from './components/Sidebar';
-import { BottomNav } from './components/BottomNav';
+import { BottomNav, type BottomNavTab } from './components/BottomNav';
+import { PlaceholderPage } from './components/PlaceholderPage';
 import { TodayPage } from './pages/TodayPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { ConvertPage } from './pages/ConvertPage';
@@ -56,14 +58,60 @@ function renderPage(tab: TabId, onOpenConvert: () => void, onOpenFish: () => voi
   }
 }
 
+// ── v2.1 TASK-037:移动端双主题 4 tab(索引一一对应)──────────────
+const TIMER_TABS: BottomNavTab[] = [
+  { id: 'today',    label: 'TODAY' },
+  { id: 'calendar', label: 'MONTH' },
+  { id: 'fish',     label: 'FISH' },
+  { id: 'settings', label: 'MINE' },
+];
+
+const ACCT_TABS: BottomNavTab[] = [
+  { id: 'accounting', label: 'ACCT' },
+  { id: 'acct-stats', label: 'STATS' },
+  { id: 'acct-cal',   label: 'CAL' },
+  { id: 'acct-mine',  label: 'MINE' },
+];
+
+/** 记账主题页面:0=ACCT,其余占位(v2.2–v2.4) */
+function renderAcctPage(index: number) {
+  switch (index) {
+    case 0:  return <AccountingPage />;
+    case 1:  return <PlaceholderPage title="统计" plannedIn="v2.2" />;
+    case 2:  return <PlaceholderPage title="账单日历" plannedIn="v2.3" />;
+    default: return <PlaceholderPage title="我的" plannedIn="v2.4" />;
+  }
+}
+
 export function App() {
   const isDesktop = useIsDesktop();
   const theme = useThemeStore((s) => s.theme);
   const scale = useDesktopScale();
-  const [activeTab, setActiveTab] = useState<TabId>('today');
+  // v2.1 TASK-037:移动端双主题;tabIndex 跨主题保持索引对应
+  const mode = useAppModeStore((s) => s.mode);
+  const setMode = useAppModeStore((s) => s.setMode);
+  const [tabIndex, setTabIndex] = useState(0);
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileOverlay, setMobileOverlay] = useState<'convert' | 'fish' | null>(null);
+
+  // 上下滑切换主题:flick 判定(快 + 纵向位移大),避免与列表滚动冲突
+  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (t) touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const s = touchRef.current;
+    touchRef.current = null;
+    const t = e.changedTouches[0];
+    if (!s || !t) return;
+    const dy = t.clientY - s.y;
+    const dx = t.clientX - s.x;
+    const dt = Date.now() - s.t;
+    if (dt > 350 || Math.abs(dy) < 70 || Math.abs(dy) < 2 * Math.abs(dx)) return;
+    setMode(dy > 0 ? 'accounting' : 'timer');
+  }
 
   // v1.3.4-patch4:日历页选中日期,提到 App 层让 DesktopRightPanel 共用
   const [pickedDate, setPickedDate] = useState<Date | null>(null);
@@ -136,7 +184,11 @@ export function App() {
     );
   }
 
-  // ── 移动端 BottomNav 布局 ──────────────────────────────────
+  // ── 移动端 BottomNav 布局(双主题 + 上下滑切换)──────────────────
+  const tabs = mode === 'timer' ? TIMER_TABS : ACCT_TABS;
+  const safeIndex = Math.min(tabIndex, tabs.length - 1);
+  const activeId = tabs[safeIndex]?.id ?? tabs[0]!.id;
+
   return (
     <div
       data-theme={theme}
@@ -145,22 +197,28 @@ export function App() {
         background: 'var(--paper)',
         paddingBottom: '72px',
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {mobileOverlay === 'convert' ? (
         <ConvertPage onBack={() => setMobileOverlay(null)} />
       ) : mobileOverlay === 'fish' ? (
         <FishPage />
+      ) : mode === 'timer' ? (
+        renderPage(activeId as TabId, () => setMobileOverlay('convert'), () => setMobileOverlay('fish'))
       ) : (
-        renderPage(activeTab, () => setMobileOverlay('convert'), () => setMobileOverlay('fish'))
+        renderAcctPage(safeIndex)
       )}
       <BottomNav
-        activeTab={activeTab}
-        onTabChange={(tab) => {
+        tabs={tabs}
+        activeId={activeId}
+        onTabChange={(id) => {
           // 从 overlay 点击底部导航：先关闭 overlay，再切换 tab
           if (mobileOverlay) {
             setMobileOverlay(null);
           }
-          setActiveTab(tab);
+          const idx = tabs.findIndex((t) => t.id === id);
+          if (idx >= 0) setTabIndex(idx);
         }}
       />
     </div>
