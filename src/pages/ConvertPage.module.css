@@ -24,7 +24,7 @@
 
 /* v1.3 加班胶囊 */
 .capsule {
-  margin: 0 16px 12px;
+  margin: 0 0 12px;
   background: var(--accent);
   color: var(--ink);
   padding: 4px 14px;
@@ -37,7 +37,7 @@
 }
 
 .list {
-  padding: 0 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -120,7 +120,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 14px 16px 24px;
+  margin: 14px 0 24px;
   padding: 16px;
   border: 1.5px dashed var(--line);
   border-radius: var(--r-md);
@@ -128,7 +128,7 @@
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
-  width: calc(100% - 32px);
+  width: 100%;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s, background 0.2s;
   font-family: inherit;
@@ -144,4 +144,4 @@
   font-size: 18px;
   line-height: 1;
 }
-.back { border: 0; background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 4px 0 12px; cursor: pointer; }
+.back { display: block; text-align: left; border: 0; background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 4px 0 12px; cursor: pointer; margin-top: -10px}

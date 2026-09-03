@@ -63,7 +63,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [mobileOverlay, setMobileOverlay] = useState<'convert' | null>(null);
+  const [mobileOverlay, setMobileOverlay] = useState<'convert' | 'fish' | null>(null);
 
   // v1.3.4-patch4:日历页选中日期,提到 App 层让 DesktopRightPanel 共用
   const [pickedDate, setPickedDate] = useState<Date | null>(null);
@@ -148,14 +148,16 @@ export function App() {
     >
       {mobileOverlay === 'convert' ? (
         <ConvertPage onBack={() => setMobileOverlay(null)} />
+      ) : mobileOverlay === 'fish' ? (
+        <FishPage />
       ) : (
-        renderPage(activeTab, () => setMobileOverlay('convert'), () => setActiveTab('fish'))
+        renderPage(activeTab, () => setMobileOverlay('convert'), () => setMobileOverlay('fish'))
       )}
       <BottomNav
         activeTab={activeTab}
         onTabChange={(tab) => {
-          // 从 convert overlay 点击底部导航：先关闭 overlay，再切换 tab
-          if (mobileOverlay === 'convert') {
+          // 从 overlay 点击底部导航：先关闭 overlay，再切换 tab
+          if (mobileOverlay) {
             setMobileOverlay(null);
           }
           setActiveTab(tab);

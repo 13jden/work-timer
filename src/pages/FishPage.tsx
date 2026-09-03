@@ -60,33 +60,49 @@ export function FishPage() {
     );
   }
 
-  // 找到今天在列表中的索引
+  // 过滤：排除未来日期和未生成记录的日期（用于统计计算）
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   const todayKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const todayIndex = stats?.perDay.findIndex(d => d.dateKey === todayKey) ?? -1;
-  
-  // 当前选中的日期（默认今天，如果今天不在范围内则第一个工作日）
-  const actualSelectedIndex = selectedDayIndex !== null ? selectedDayIndex : (todayIndex >= 0 ? todayIndex : stats?.perDay.findIndex(d => !d.isRest) ?? 0);
-  const selectedDay = stats?.perDay[actualSelectedIndex];
-  
-  const max = 540; // 固定 9h 刻度，网格线对应 0/3h/6h/9h
-  
-  // 工作日天数（非工作日不参与平均）
-  const workDays = stats?.perDay.filter(d => !d.isRest).length ?? 1;
-  
-  // 时长去向：有效工时、摸鱼、加班占比（基于净工时）
-  const totalNet = stats?.totalNetMinutes ?? 0;
-  const effectiveMin = totalNet - (stats?.totalCompMinutes ?? 0);
+
+  const filteredPerDay = (stats?.perDay ?? []).filter(day => {
+    if (day.date > todayEnd) return false;
+    if (day.dateKey === todayKey) return true;
+    if (overrides[day.dateKey]?.earnedGenerated) return true;
+    if (sessions[day.dateKey]?.length) return true;
+    if (day.isRest && overrides[day.dateKey] != null) return true;
+    return false;
+  });
+
+  // 图表用：显示截止到今天的所有日期（柱子为0也显示，X轴标签完整）
+  const chartPerDay = (stats?.perDay ?? []).filter(day => day.date <= todayEnd);
+
+  const fTotalNet = filteredPerDay.reduce((sum, d) => sum + d.netMinutes, 0);
+  const fTotalSlack = filteredPerDay.reduce((sum, d) => sum + d.slackMinutes, 0);
+  const fTotalComp = filteredPerDay.reduce((sum, d) => sum + d.compMinutes, 0);
+  const fTotalEarned = filteredPerDay.reduce((sum, d) => sum + (d.earned ?? 0), 0);
+  const fWorkDays = filteredPerDay.filter(d => !d.isRest).length;
+
+  const todayIndex = chartPerDay.findIndex(d => d.dateKey === todayKey);
+  const fallbackIndex = chartPerDay.findIndex(d => !d.isRest);
+  const actualSelectedIndex = selectedDayIndex !== null
+    ? selectedDayIndex
+    : (todayIndex >= 0 ? todayIndex : fallbackIndex >= 0 ? fallbackIndex : 0);
+  const selectedDay = chartPerDay[actualSelectedIndex];
+
+  const max = 540;
+
+  const workDays = fWorkDays || 1;
+
+  const totalNet = fTotalNet;
+  const effectiveMin = totalNet - fTotalComp;
   const effPct = totalNet > 0 ? (effectiveMin / totalNet) * 100 : 0;
-  const slackPct = totalNet > 0 ? ((stats?.totalSlackMinutes ?? 0) / totalNet) * 100 : 0;
-  const compPct = totalNet > 0 ? ((stats?.totalCompMinutes ?? 0) / totalNet) * 100 : 0;
-  
-  // 摸鱼总薪资 = 摸鱼时长 × 基础时薪
-  // 基础时薪 = 月薪 / 22天 / 8h
+  const slackPct = totalNet > 0 ? (fTotalSlack / totalNet) * 100 : 0;
+  const compPct = totalNet > 0 ? (fTotalComp / totalNet) * 100 : 0;
+
   const baseHourly = config.monthlySalary / 22 / 8;
-  const fishSalary = ((stats?.totalSlackMinutes ?? 0) / 60) * baseHourly;
-  
-  // 累计已赚 = 每日已赚累加
-  const totalEarned = stats?.perDay.reduce((sum, d) => sum + (d.earned ?? 0), 0) ?? 0;
+  const fishSalary = (fTotalSlack / 60) * baseHourly;
+
+  const totalEarned = fTotalEarned;
   
   return (
     <div className={styles.page}>
@@ -128,7 +144,7 @@ export function FishPage() {
             工作日 {workDays} 天
           </div>
           <div className={styles.sBig}>
-            {fmtMinutes(stats?.totalNetMinutes ?? 0)}
+            {fmtMinutes(fTotalNet)}
             <small>累计净工时</small>
           </div>
         </>
@@ -145,8 +161,15 @@ export function FishPage() {
 
           {/* 柱子 */}
           <div className={`${styles.bars} ${mode === 'month' ? styles.barsMonth : styles.barsWeek}`}>
-            {stats?.perDay.map((day, index) => {
-              const heightPct = day.isRest ? 0 : Math.min(100, (day.netMinutes / max) * 100);
+            {chartPerDay.map((day, index) => {
+              const hasRecord = day.dateKey === todayKey
+                || !!overrides[day.dateKey]?.earnedGenerated
+                || !!sessions[day.dateKey]?.length;
+              const heightPct = day.isRest
+                ? 0
+                : hasRecord
+                  ? Math.min(100, (day.netMinutes / max) * 100)
+                  : 0;
               const isSelected = index === actualSelectedIndex;
 
               return (
@@ -173,7 +196,7 @@ export function FishPage() {
 
         {/* X轴标签 */}
         <div className={`${styles.xLabels} ${mode === 'month' ? styles.xLabelsMonth : styles.xLabelsWeek}`}>
-          {stats?.perDay.map((day, index) => {
+          {chartPerDay.map((day, index) => {
             const showLabel = mode === 'week' || (mode === 'month' && index % 5 === 0);
             const isSelected = index === actualSelectedIndex;
 
@@ -204,13 +227,13 @@ export function FishPage() {
       <div className={styles.duo}>
         <div className={styles.duoItem}>
           <div className={styles.duoLabel}>累计净工时</div>
-          <div className={styles.duoValue}>{fmtMinutes(stats?.totalNetMinutes ?? 0)}</div>
+          <div className={styles.duoValue}>{fmtMinutes(fTotalNet)}</div>
           <div className={styles.duoSub}>工作日 {workDays} 天</div>
         </div>
         <div className={styles.duoDivider}></div>
         <div className={styles.duoItem}>
           <div className={styles.duoLabel}>日均净工时</div>
-          <div className={styles.duoValue}>{fmtMinutes((stats?.totalNetMinutes ?? 0) / workDays)}</div>
+          <div className={styles.duoValue}>{fmtMinutes(fTotalNet / workDays)}</div>
           <div className={styles.duoSub}>非工作日不参与平均</div>
         </div>
       </div>
@@ -219,7 +242,7 @@ export function FishPage() {
       <div className={styles.darkCard}>
         <div className={styles.darkItem}>
           <div className={styles.darkLabel}>净时薪</div>
-          <div className={styles.darkValue}>¥{(stats?.avgNetHourly ?? 0).toFixed(1)}/h</div>
+          <div className={styles.darkValue}>¥{(fTotalNet > 0 ? fTotalEarned / (fTotalNet / 60) : 0).toFixed(1)}/h</div>
         </div>
         <div className={styles.darkItem}>
           <div className={styles.darkLabel}>累计已赚</div>
@@ -258,7 +281,7 @@ export function FishPage() {
       <div className={styles.fishSalary}>
         <div>
           <div className={styles.fishLabel}>摸鱼总薪资</div>
-          <div className={styles.fishSub}>按 ¥{baseHourly.toFixed(2)}/h × {fmtMinutes(stats?.totalSlackMinutes ?? 0)}</div>
+          <div className={styles.fishSub}>按 ¥{baseHourly.toFixed(2)}/h × {fmtMinutes(fTotalSlack)}</div>
         </div>
         <div className={styles.fishValue}>¥{fishSalary.toFixed(2)}</div>
       </div>

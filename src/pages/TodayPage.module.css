@@ -17,7 +17,7 @@
 .topbar {
   display: flex;
   flex-direction: column;
-  padding: clamp(12px, 2vh, 18px) clamp(16px, 4vw, 22px) clamp(8px, 1.5vh, 14px);
+  padding: 22px 20px 16px;
   flex-shrink: 0;
 }
 
@@ -25,16 +25,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(4px, 0.8vh, 8px);
+  margin-bottom: 8px;
 }
 
 .topbarEyebrow,
 .topbarEnglish,
 .topbarRight {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
 }
@@ -57,7 +57,7 @@
 .topbarCenter {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(24px, 4vh, 30px);
+  font-size: 30px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.5px;

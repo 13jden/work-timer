@@ -17,7 +17,7 @@ import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
 import { useMonthlyStore } from '../../store/monthlyStore';
 import { HOLIDAYS } from '../../lib/constants';
-import { dailySalary, isWorkday } from '../../lib/compute';
+import { dailySalary, isWorkday, batchGenerateEarned } from '../../lib/compute';
 import { formatDateKey } from '../../lib/time';
 import { Gear } from '@phosphor-icons/react';
 import type { DesktopTabId } from '../DesktopSidebar';
@@ -136,6 +136,30 @@ function CalendarRightContent({
     createSnapshot(year, month, salary, config, overrides, HOLIDAYS);
   }
 
+  // 单日生成已赚
+  function generateSingleEarned() {
+    if (!pickedDate) return;
+    // 用 store 最新值（避免闭包旧值）
+    const latestOverrides = useCalendarStore.getState().dayOverrides;
+    const next = batchGenerateEarned([pickedDate], config, latestOverrides, HOLIDAYS, false);
+    const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
+    keys.forEach((key) => setDayOverride(key, next[key] ?? null));
+  }
+
+  // 单日取消已赚
+  function cancelSingleEarned() {
+    if (!pickedDate) return;
+    const latestOverrides = useCalendarStore.getState().dayOverrides;
+    const next = batchGenerateEarned([pickedDate], config, latestOverrides, HOLIDAYS, true);
+    const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
+    keys.forEach((key) => setDayOverride(key, next[key] ?? null));
+  }
+
+  const now = new Date();
+  const isPastDate = pickedDate
+    ? pickedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    : false;
+
   if (!pickedDate) {
     return (
       <>
@@ -202,6 +226,9 @@ function CalendarRightContent({
           onClose={onClosePickedDate}
           onSave={(key, entry) => setDayOverride(key, entry)}
           onReset={(key) => clearOverride(key)}
+          isPast={isPastDate}
+          onGenerateEarned={generateSingleEarned}
+          onCancelEarned={cancelSingleEarned}
         />
       </div>
 

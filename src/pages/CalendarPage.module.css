@@ -1,23 +1,24 @@
 /* Header:两行结构 */
 .head {
   width: 100%;
-  padding: clamp(16px, 2.5vh, 22px) clamp(20px, 5vw, 28px) clamp(12px, 2vh, 18px);
+  padding: 22px 20px 16px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .headEyebrowRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(6px, 1vh, 10px);
+  margin-bottom: 8px;
 }
 
 .headEyebrow {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
   flex: 1;
@@ -26,9 +27,9 @@
 
 .headEnglish {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
   flex: 2;
@@ -37,9 +38,9 @@
 
 .headRight {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.2vh, 11px);
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
   flex: 1;
@@ -49,7 +50,7 @@
 .headTitle {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(24px, 4vh, 30px);
+  font-size: 30px;
   font-weight: 400;
   letter-spacing: -0.5px;
   line-height: 1.1;
@@ -60,6 +61,7 @@
   text-align: center;
   width: 100%;
   margin: 0;
+  padding: 0;
   transition: opacity 0.2s;
 }
 
