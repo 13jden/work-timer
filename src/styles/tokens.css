@@ -11,6 +11,8 @@
   --accent:       #C8FF00;
   --accent-deep:  #9FCC00;
   --accent-shadow:rgba(200, 255, 0, 0.25);
+  --accent-glow:  rgba(200, 255, 0, 0.18);
+  --accent-tint:  rgba(200, 255, 0, 0.06);
   --paper:        #F5F2EA;
   --paper-2:      #ECEAE0;
   --card:         #FFFFFF;
@@ -29,26 +31,30 @@
 }
 
 [data-theme="obsidian"] {
-  --ink:          #E8E8F0;
-  --ink-2:        #B0B0C8;
-  --ink-3:        #7070A0;
-  --accent:       #7C6FF7;
-  --accent-deep:  #5A50D4;
-  --accent-shadow: rgba(124, 111, 247, 0.30);
-  --paper:        #131320;
-  --paper-2:      #1C1C2E;
-  --card:         #1E1E30;
-  --line:         #2A2A45;
-  --line-soft:    #252540;
-  --muted:        #7070A0;
-  --muted-2:      #9090C0;
-  --danger:       #F76F7A;
-  --accent-name:  '靛蓝';
+  /* 曜石青:中性石墨底 + 青色 accent(替代旧暗紫,提高对比度) */
+  --ink:          #F2F4F8;
+  --ink-2:        #C9D0DD;
+  --ink-3:        #9AA4B8;
+  --accent:       #2DD4BF;
+  --accent-deep:  #5EEAD4;  /* 暗底卡片上的文字需要更亮才可读 */
+  --accent-shadow: rgba(45, 212, 191, 0.35);
+  --accent-glow:  rgba(45, 212, 191, 0.22);
+  --accent-tint:  rgba(45, 212, 191, 0.12);
+  --paper:        #101318;
+  --paper-2:      #171B23;
+  --card:         #1C212C;
+  --card-hover:   #242B38;
+  --line:         #333C4D;
+  --line-soft:    #262D3A;
+  --muted:        #8E99AE;
+  --muted-2:      #B7C0D0;
+  --danger:       #FF7A82;
+  --accent-name:  '曜石青';
 
-  --faint:        #4A4A6A;
-  --surface-dark: #0E0E1A;
+  --faint:        #4E586C;
+  --surface-dark: #0B0E13;
   --gold:         #C9A84C;
-  --gold-bright:  #D4B85A;
+  --gold-bright:  #D9BC66;
 }
 
 [data-theme="gold"] {
@@ -58,6 +64,8 @@
   --accent:       #C9A84C;
   --accent-deep:  #A8882E;
   --accent-shadow: rgba(201, 168, 76, 0.22);
+  --accent-glow:  rgba(201, 168, 76, 0.22);
+  --accent-tint:  rgba(201, 168, 76, 0.08);
   --paper:        #FAF9F6;
   --paper-2:      #F5F2EB;
   --card:         #FFFFFF;
