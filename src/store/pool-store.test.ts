@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAccountStore } from './accountStore';
 import { depositBalance } from '../lib/accounting/pool';
-import { getCurrentMonthKey, getTodayKey, visibleRecords } from '../lib/accounting';
+import { getCurrentMonthKey, getTodayKey, visibleRecords, calcVirtualAssets } from '../lib/accounting';
 import { shiftMonth as shiftMonthForTest } from '../lib/accounting/stats';
 
 describe('accountStore · 池业务（v2.3 重设计）', () => {
@@ -51,8 +51,18 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     // 普通消费记录：无池状态标记 → 计入统计、可编辑删除
     expect(dailyRecords[0]?.poolStatus).toBeUndefined();
 
-    // 账户余额不受均摊记录影响（真实扣减由用户付款时产生）
+    // 均摊池的逐日记录只表示消耗，不应立即增减账户或虚拟资产；
+    // 只有实际付款记录 claimToPool 后，才进入已付/已认领分解。
+    const breakdown = calcVirtualAssets({
+      accounts: state.accounts,
+      records: state.records,
+      pools: state.pools,
+    });
     expect(state.getAccountBalance(accountId)).toBe(10000);
+    expect(breakdown.actualTotal).toBe(10000);
+    expect(breakdown.virtualTotal).toBe(10000);
+    expect(breakdown.prepaidUnconsumed).toBe(0);
+    expect(breakdown.unpaidConsumed).toBeCloseTo(todayDay * 100, 2);
   });
 
   it('按日模式：完整日期范围内每天一条，范围外不生成', () => {

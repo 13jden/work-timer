@@ -218,7 +218,11 @@ export function App() {
       ) : mobileOverlay === 'fish' ? (
         <FishPage />
       ) : mode === 'timer' ? (
-        renderPage(activeId as TabId, () => setMobileOverlay('convert'), () => setMobileOverlay('fish'))
+        renderPage(activeId as TabId, () => setMobileOverlay('convert'), () => {
+          setMode('timer');
+          setTabIndex(2);
+          setMobileOverlay(null);
+        })
       ) : (
         renderAcctPage(safeIndex)
       )}

@@ -56,4 +56,46 @@
 
 ---
 
+## [v2.5-patch1] · 2026-09-04 · 均摊池资产口径修正 + UX 微调 (TASK-043 patch)
+
+基线 v2.5 (TASK-042) 的小幅修复与体验修正,同步 v2.5 独立 changelog。
+
+### A · Today 页 fish 跳转联动导航 (T-441)
+
+- `App.tsx` 的 TodayPage `jumpToFish` 不再只 `setMobileOverlay('fish')`
+- 同时 `setMode('accounting')` + `setTabIndex(2)`(会计侧 STATS tab 索引)+ 清掉当前 mobileOverlay
+- 触发顺序:计时侧 Fish → 同步切到「记账侧 · STATS」,与 v2.5 对称手势后位置一一对应
+
+### B · MinePage 总资产 虚拟 / 实际 标记位置对调 (T-442)
+
+- 原:`主显示 = actualTotal`,breakdown 写 `实际 ¥virtualTotal`(语义颠倒)
+- 现:`主显示 = virtualTotal`(顶部「虚拟」tag 已暗示),breakdown `实际 ¥actualTotal`(对齐 tag)
+- 虚拟总额 = 实际 + 待退押金 − 待付消费;主显示即「你手里 + 押金 − 待付」,数字与可支配更贴近
+
+### C · 均摊池资产口径修正 (T-443)
+
+- `calcVirtualAssets` 一直正确:均摊消费只入 `unpaidConsumed`,不计入 `prepaidUnconsumed` / `virtualTotal`
+- 问题在于没有回归测试覆盖,极易被改错。两组新单测锁定行为:
+  - **`pool-store.test.ts`** 增量补充:建 equalize 池(1000/月)前 4 天每天插入逐日记录 → `actualTotal=10000`、`unpaidConsumed≈t×70`,总资产不变
+  - **`virtual.test.ts`** +2 例:
+    - 4 条 −70 逐日无认领 → `actualTotal=2000`、`unpaidConsumed=280`、`virtualTotal=2000`
+    - 4 条 −70 逐日 + 1 条 −280 `claimed` → `actualTotal=720`、`unpaidConsumed=0`、`virtualTotal=720`
+
+### D · 负数金额显式正负号 (T-444)
+
+- `formatAmount(amount, signed = false)` 增加第二参数,启用时:
+  - 正数 → `+¥X`(显示给用户看余额、账户、池内、结余,语义「这是结余多少」)
+  - 零 → `¥0`
+  - 负数 → `−¥X`(U+2212 数学负号,与 `+` 配对)
+- 接入点位:
+  - `AccountingTopCard` 本月结余 + `AccountRow` 余额 + `GoalsSection` 当前/目标 + `PoolSection` 池内余额 + `StatsPage` Dock 当前账户余额 + `MinePage` 总资产主显示 / breakdown
+- 单词单测/计算均不变;仅影响显示文案,无数据迁移
+
+### 验证
+
+- typecheck 0 错误、376 单测全过(virtual +2、pool-store +1)
+- 用户浏览器验收通过(2026-09-04)
+
+---
+
 *创建于 2026-09-04*

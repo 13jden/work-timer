@@ -136,7 +136,7 @@ function DepositCard({ pool, poolCycles, onDelete }: CardProps) {
         </button>
       </div>
       <div className={styles.cardAmtRow}>
-        <span className={styles.cardAmt}>¥{formatAmount(balance)}</span>
+        <span className={styles.cardAmt}>¥{formatAmount(balance, true)}</span>
         <span className={styles.cardAmtLabel}>池内余额</span>
       </div>
       <div className={styles.cardMeta}>

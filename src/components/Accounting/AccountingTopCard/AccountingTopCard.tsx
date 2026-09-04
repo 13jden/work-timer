@@ -46,7 +46,7 @@ export function AccountingTopCard({ monthlyGoal = 12000 }: AccountingTopCardProp
 
       {/* 大数字 — 本月结余 */}
       <div className={styles.display}>
-        {balance >= 0 ? '+' : ''}¥{formatAmount(balance)}
+        ¥{formatAmount(balance, true)}
       </div>
       <div className={styles.label}>本月结余 · 含虚拟池</div>
 

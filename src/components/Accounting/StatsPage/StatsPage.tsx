@@ -527,7 +527,7 @@ function DockCard({ account, isCurrent }: { account: Account; isCurrent: boolean
       {isCurrent && <span className={styles.dockCurrentTag}>当前</span>}
       <span className={styles.dockDot} style={{ background: account.color }} />
       <span className={styles.dockName}>{account.name}</span>
-      <span className={styles.dockBalance}>¥{formatAmount(account.balance)}</span>
+      <span className={styles.dockBalance}>¥{formatAmount(account.balance, true)}</span>
     </div>
   );
 }

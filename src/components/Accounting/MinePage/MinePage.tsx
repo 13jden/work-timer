@@ -61,10 +61,10 @@ function TotalAssetsCard() {
         总资产
         {hasVirtual && <span className={styles.totalVirtualTag}>虚拟</span>}
       </div>
-      <div className={styles.totalAmount}>¥{formatAmount(actualTotal)}</div>
+      <div className={styles.totalAmount}>¥{formatAmount(virtualTotal, true)}</div>
       {hasBreakdown && (
         <div className={styles.virtualRow}>
-          <span className={styles.virtualActual}>实际 ¥{formatAmount(virtualTotal)}</span>
+          <span className={styles.virtualActual}>实际 ¥{formatAmount(actualTotal, true)}</span>
           {hasPending && (
             <span className={styles.pendingBox}>
               {pendingAdjust !== 0 && (

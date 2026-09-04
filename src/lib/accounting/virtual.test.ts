@@ -106,6 +106,37 @@ describe('calcVirtualAssets', () => {
     expect(r.virtualTotal).toBeCloseTo(3000 + (1000 - 15 * 33.33) + 1500, 2);
   });
 
+  it('均摊支出逐日生成但无实际认领：只计入未支付，不增加虚拟资产', () => {
+    const acc = makeAccount({ balance: 2000 });
+    const rent = makePool({ amount: 1000, direction: 'expense' });
+    const records: AccountRecord[] = Array.from({ length: 4 }, () =>
+      makeRecord({ accountId: acc.id, amount: -70, poolId: rent.id }),
+    );
+
+    const r = calcVirtualAssets({ accounts: [acc], records, pools: [rent] });
+    expect(r.actualTotal).toBe(2000);
+    expect(r.prepaidUnconsumed).toBe(0);
+    expect(r.unpaidConsumed).toBe(280);
+    expect(r.virtualTotal).toBe(2000);
+  });
+
+  it('均摊支出全额认领：实际付款后才扣减资产，不把未付款消费提前加到资产', () => {
+    const acc = makeAccount({ balance: 720 });
+    const rent = makePool({ amount: 1000, direction: 'expense' });
+    const records: AccountRecord[] = [
+      ...Array.from({ length: 4 }, () =>
+        makeRecord({ accountId: acc.id, amount: -70, poolId: rent.id }),
+      ),
+      makeRecord({ accountId: acc.id, amount: -280, poolId: rent.id, poolStatus: 'claimed' }),
+    ];
+
+    const r = calcVirtualAssets({ accounts: [acc], records, pools: [rent] });
+    expect(r.actualTotal).toBe(720);
+    expect(r.prepaidUnconsumed).toBe(0);
+    expect(r.unpaidConsumed).toBe(0);
+    expect(r.virtualTotal).toBe(720);
+  });
+
   it('收入池部分到账：已赚 1500、到账 1000 → 未到账 500', () => {
     const acc = makeAccount({ balance: 1000 });
     const salary = makePool({ amount: 3000, direction: 'income' });

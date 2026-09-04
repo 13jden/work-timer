@@ -34,7 +34,7 @@ export function AccountRow() {
               <span className={styles.accountDot} style={{ background: acc.color }} />
               <span className={styles.accountName}>{acc.name}</span>
             </span>
-            <span className={styles.accountBalance}>¥{formatAmount(acc.balance)}</span>
+            <span className={styles.accountBalance}>¥{formatAmount(acc.balance, true)}</span>
           </button>
         ))}
 

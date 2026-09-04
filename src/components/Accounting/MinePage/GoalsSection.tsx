@@ -92,7 +92,7 @@ function GoalCard({
       </div>
 
       <div className={styles.goalAmtRow}>
-        <span className={styles.goalAmt}>¥{formatAmount(goal.currentAmount)}</span>
+        <span className={styles.goalAmt}>¥{formatAmount(goal.currentAmount, true)}</span>
         <span className={styles.goalAmtLabel}>/ ¥{formatAmount(goal.targetAmount)}</span>
       </div>
 
