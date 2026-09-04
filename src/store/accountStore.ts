@@ -27,8 +27,22 @@ import type {
   AccountRecord,
   PoolConfig,
   PoolCycle,
+  PoolTransaction,
   SavingsGoal,
 } from '../lib/types';
+import {
+  buildEqualizeCycleDraft,
+  buildDepositCycleDraft,
+  getCycleDateKeys,
+  eachMonthInRange,
+  splitDailyAmount,
+  planDailyRecords,
+  deriveCycleStatus,
+  isCycleEnded,
+  type CycleDraft,
+} from '../lib/accounting/pool';
+import { getCurrentMonthKey, getTodayKey } from '../lib/accounting';
+import { shiftMonth } from '../lib/accounting/stats';
 
 // ── Store 形状 ──────────────────────────────────────────────
 interface AccountStore {
@@ -77,6 +91,19 @@ interface AccountStore {
   addCycle: (cycle: Omit<PoolCycle, 'id'>) => PoolCycle;
   updateCycle: (id: string, patch: Partial<Omit<PoolCycle, 'id'>>) => void;
 
+  // ── Pool 业务 actions（v2.3 TASK-039） ──
+  /** 创建池：均摊型预生成周期 + 每日虚拟记录；存池型建常驻周期 */
+  createPoolWithCycles: (pool: Omit<PoolConfig, 'id' | 'createdAt'>) => PoolConfig;
+  /**
+   * 认领：实际记录关联池。
+   * 均摊型按周期月份升序贪心匹配虚拟交易（可拆分/跨周期）；
+   * 存池型按记录方向（支出→存入 in / 收入→取出 out）追加已确认交易。
+   * @returns 实际匹配金额（未匹配部分正常记账不挂池）
+   */
+  claimToPool: (recordId: string, poolId: string) => number;
+  /** 跨月补齐均摊池周期 + 逾期扫描（应用启动时调用） */
+  syncPoolCycles: () => void;
+
   // ── Savings 操作 ──
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => SavingsGoal;
   updateSavingsGoal: (id: string, patch: Partial<Omit<SavingsGoal, 'id' | 'createdAt'>>) => void;
@@ -97,6 +124,39 @@ interface AccountStore {
 // ── ID 生成器 ──────────────────────────────────────────────
 function genId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * v2.3：物化周期草稿 —— 只分配 id 生成周期元数据，**不生成任何记录**。
+ * 均摊消费记录由 syncPoolCycles 在日期到来时逐日生成。
+ */
+function materializeCycle(
+  poolId: string,
+  cycleDraft: CycleDraft,
+): PoolCycle {
+  return {
+    id: genId('cycle'),
+    poolId,
+    monthKey: cycleDraft.monthKey,
+    totalAmount: cycleDraft.totalAmount,
+    dayCount: cycleDraft.dayCount,
+    dailyVirtual: cycleDraft.dailyVirtual,
+    paidAmount: cycleDraft.paidAmount,
+    status: cycleDraft.status,
+    transactions: [],
+  };
+}
+
+/** v2.3：重算均摊周期状态（已认领额 + 是否到期） */
+function refreshEqualizeCycleStatus(
+  cycle: PoolCycle,
+  pool: PoolConfig,
+  todayKey: string,
+): PoolCycle {
+  const dateKeys = getCycleDateKeys(pool, cycle.monthKey);
+  const ended = isCycleEnded(dateKeys, todayKey);
+  const paid = cycle.paidAmount ?? 0;
+  return { ...cycle, paidAmount: paid, status: deriveCycleStatus(paid, cycle.totalAmount, ended) };
 }
 
 // ── 默认分类 ──────────────────────────────────────────────
@@ -346,6 +406,51 @@ export const useAccountStore = create<AccountStore>()(
           balance: get().getAccountBalance(record.accountId) - record.amount,
         });
 
+        // v2.3：池关联记录删除处理（三类相互独立）
+        if (record.poolId) {
+          const pool = get().pools.find((p) => p.id === record.poolId);
+          if (pool && record.poolStatus === 'claimed') {
+            // 均摊付款记录：认领额回退（只扣第一个含该额度的周期），每日均摊记录不受影响
+            const amount = Math.abs(record.amount);
+            const todayKey = getTodayKey();
+            let deducted = false;
+            set((s) => ({
+              cycles: s.cycles.map((c) => {
+                if (c.poolId !== record.poolId) return c;
+                if (!deducted && (c.paidAmount ?? 0) + 1e-9 >= amount) {
+                  deducted = true;
+                  const updated = { ...c, paidAmount: Math.round(((c.paidAmount ?? 0) - amount) * 100) / 100 };
+                  return refreshEqualizeCycleStatus(updated, pool, todayKey);
+                }
+                return c;
+              }),
+            }));
+          } else if (pool?.type === 'deposit' && record.poolStatus === 'confirmed') {
+            // 存池型：移除对应交易
+            set((s) => ({
+              cycles: s.cycles.map((c) =>
+                c.poolId === record.poolId
+                  ? { ...c, transactions: c.transactions.filter((t) => t.recordId !== record.id) }
+                  : c,
+              ),
+            }));
+          } else if (!record.poolStatus) {
+            // 每日均摊记录：交易保留（防止 sync 重新生成），仅清空关联
+            set((s) => ({
+              cycles: s.cycles.map((c) =>
+                c.poolId === record.poolId
+                  ? {
+                      ...c,
+                      transactions: c.transactions.map((t) =>
+                        t.recordId === record.id ? { ...t, recordId: undefined } : t,
+                      ),
+                    }
+                  : c,
+              ),
+            }));
+          }
+        }
+
         set((s) => ({
           records: s.records.filter((r) => r.id !== id),
         }));
@@ -369,12 +474,17 @@ export const useAccountStore = create<AccountStore>()(
       },
 
       deletePool: (id) => {
+        // v2.3：删池连带删除其全部记录（每日均摊 + 认领付款），并回退账户余额
+        const affected = get().records.filter((r) => r.poolId === id);
+        for (const r of affected) {
+          get().updateAccount(r.accountId, {
+            balance: get().getAccountBalance(r.accountId) - r.amount,
+          });
+        }
         set((s) => ({
           pools: s.pools.filter((p) => p.id !== id),
           cycles: s.cycles.filter((c) => c.poolId !== id),
-          records: s.records.map((r) =>
-            r.poolId === id ? { ...r, poolId: undefined, poolDirection: undefined, poolStatus: undefined } : r,
-          ),
+          records: s.records.filter((r) => r.poolId !== id),
         }));
       },
 
@@ -391,6 +501,183 @@ export const useAccountStore = create<AccountStore>()(
         set((s) => ({
           cycles: s.cycles.map((c) => (c.id === id ? { ...c, ...patch } : c)),
         }));
+      },
+
+      // ── Pool 业务 actions（v2.3 TASK-039） ──
+      createPoolWithCycles: (poolInput) => {
+        const pool = get().addPool(poolInput);
+        const currentMonth = getCurrentMonthKey();
+
+        if (pool.type === 'equalize') {
+          // 只生成周期元数据，不生成任何记录
+          if (pool.cycleMode === 'daily' && pool.dateRange) {
+            // 按日模式：完整日期范围按自然月拆周期
+            const monthKeys = eachMonthInRange(pool.dateRange);
+            for (const monthKey of monthKeys) {
+              const draft = buildEqualizeCycleDraft(pool, monthKey);
+              set((s) => ({ cycles: [...s.cycles, materializeCycle(pool.id, draft)] }));
+            }
+          } else {
+            // 按月模式：当月 + 未来共 cycleMonths 个周期
+            for (let i = 0; i < Math.max(1, pool.cycleMonths); i += 1) {
+              const monthKey = shiftMonth(currentMonth, i);
+              const draft = buildEqualizeCycleDraft(pool, monthKey);
+              set((s) => ({ cycles: [...s.cycles, materializeCycle(pool.id, draft)] }));
+            }
+          }
+        } else {
+          // 存池型：常驻空周期
+          const draft = buildDepositCycleDraft(pool, currentMonth);
+          set((s) => ({ cycles: [...s.cycles, materializeCycle(pool.id, draft)] }));
+        }
+
+        // 建池后立即为已到来日期生成均摊消费记录
+        get().syncPoolCycles();
+        return pool;
+      },
+
+      claimToPool: (recordId, poolId) => {
+        const state = get();
+        const record = state.records.find((r) => r.id === recordId);
+        const pool = state.pools.find((p) => p.id === poolId);
+        if (!record || !pool || record.poolStatus) return 0;
+        const now = Date.now();
+        const amount = Math.abs(record.amount);
+
+        // 存池型：追加已确认交易（支出→存入 in，收入→取出 out），正常计入统计
+        if (pool.type === 'deposit') {
+          const cycle = state.cycles.find((c) => c.poolId === poolId);
+          if (!cycle) return 0;
+          const direction: 'in' | 'out' = record.type === 'expense' ? 'in' : 'out';
+          const tx: PoolTransaction = {
+            id: genId('ptx'),
+            cycleId: cycle.id,
+            dateKey: record.dateKey,
+            recordId,
+            amount,
+            direction,
+            status: 'confirmed',
+            confirmedAt: now,
+          };
+          set((s) => ({
+            cycles: s.cycles.map((c) =>
+              c.id === cycle.id ? { ...c, transactions: [...c.transactions, tx] } : c,
+            ),
+            records: s.records.map((r) =>
+              r.id === recordId
+                ? { ...r, poolId, poolDirection: direction, poolStatus: 'confirmed' as const, updatedAt: now }
+                : r,
+            ),
+          }));
+          return amount;
+        }
+
+        // 均摊型：付款记录打 'claimed' 标记（预付，不计入消费统计），
+        // 认领额计入第一个未认领足的周期；与每日均摊记录相互独立
+        const poolCycles = state.cycles
+          .filter((c) => c.poolId === poolId)
+          .sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+        const targetCycle =
+          poolCycles.find((c) => (c.paidAmount ?? 0) + 1e-9 < c.totalAmount) ??
+          poolCycles[poolCycles.length - 1];
+        if (!targetCycle) return 0;
+
+        const todayKey = getTodayKey();
+        set((s) => ({
+          cycles: s.cycles.map((c) => {
+            if (c.id !== targetCycle.id) return c;
+            const updated = { ...c, paidAmount: Math.round(((c.paidAmount ?? 0) + amount) * 100) / 100 };
+            return refreshEqualizeCycleStatus(updated, pool, todayKey);
+          }),
+          records: s.records.map((r) =>
+            r.id === recordId
+              ? { ...r, poolId, poolDirection: 'out' as const, poolStatus: 'claimed' as const, updatedAt: now }
+              : r,
+          ),
+        }));
+        return amount;
+      },
+
+      syncPoolCycles: () => {
+        const todayKey = getTodayKey();
+        const currentMonth = getCurrentMonthKey();
+        const now = Date.now();
+
+        for (const pool of get().pools) {
+          if (pool.type !== 'equalize') continue;
+          const accountId = pool.targetAccountId ?? get().accounts[0]?.id ?? 'default';
+
+          // 1. 按月模式跨月补齐（额度内且当月周期缺失）
+          if (pool.cycleMode !== 'daily') {
+            const poolCycles = get().cycles.filter((c) => c.poolId === pool.id);
+            const hasCurrent = poolCycles.some((c) => c.monthKey === currentMonth);
+            if (!hasCurrent && poolCycles.length < Math.max(1, pool.cycleMonths)) {
+              const draft = buildEqualizeCycleDraft(pool, currentMonth);
+              set((s) => ({ cycles: [...s.cycles, materializeCycle(pool.id, draft)] }));
+            }
+          }
+
+          // 2. 到期生成：已到来且未生成的日期 → 每天一条真实消费记录
+          for (const cycle of get().cycles.filter((c) => c.poolId === pool.id)) {
+            const dateKeys = getCycleDateKeys(pool, cycle.monthKey);
+            const due = planDailyRecords(cycle, dateKeys, todayKey);
+
+            // 3. 状态刷新（认领额 + 到期）
+            const refreshed = refreshEqualizeCycleStatus(cycle, pool, todayKey);
+
+            if (due.length === 0) {
+              if (refreshed.status !== cycle.status) {
+                set((s) => ({
+                  cycles: s.cycles.map((c) => (c.id === cycle.id ? refreshed : c)),
+                }));
+              }
+              continue;
+            }
+
+            // 精确金额分配（尾差补最后一天）
+            const amounts = splitDailyAmount(cycle.totalAmount, dateKeys.length);
+            const newTxs: PoolTransaction[] = [];
+            const newRecords: AccountRecord[] = [];
+            for (const dateKey of due) {
+              const idx = dateKeys.indexOf(dateKey);
+              const amount = amounts[idx] ?? cycle.dailyVirtual;
+              const recId = genId('rec');
+              newTxs.push({
+                id: genId('ptx'),
+                cycleId: cycle.id,
+                dateKey,
+                recordId: recId,
+                amount,
+                direction: 'out',
+                status: 'confirmed',
+                confirmedAt: now,
+              });
+              newRecords.push({
+                id: recId,
+                dateKey,
+                amount: -amount,
+                type: 'expense',
+                categoryId: pool.categoryId ?? '',
+                isUncategorized: !pool.categoryId,
+                accountId,
+                createdAt: now,
+                updatedAt: now,
+                poolId: pool.id,
+                poolDirection: 'out',
+                // 无 poolStatus → 普通消费记录：计入统计、可编辑可删除
+              });
+            }
+
+            set((s) => ({
+              cycles: s.cycles.map((c) =>
+                c.id === cycle.id
+                  ? { ...refreshed, transactions: [...c.transactions, ...newTxs] }
+                  : c,
+              ),
+              records: [...s.records, ...newRecords],
+            }));
+          }
+        }
       },
 
       // ── Savings ──
@@ -431,7 +718,13 @@ export const useAccountStore = create<AccountStore>()(
       },
 
       getUncategorizedRecords: () => {
-        return get().records.filter((r) => r.isUncategorized || !r.categoryId);
+        // v2.3：虚拟预扣与认领付款不进未分类
+        return get().records.filter(
+          (r) =>
+            (r.isUncategorized || !r.categoryId) &&
+            r.poolStatus !== 'virtual' &&
+            r.poolStatus !== 'claimed',
+        );
       },
 
       getAccountBalance: (accountId) => {

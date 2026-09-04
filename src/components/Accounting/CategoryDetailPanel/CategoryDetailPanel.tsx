@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import { formatAmount, sumExpense } from '../../../lib/accounting';
+import { formatAmount, sumExpense, visibleRecords } from '../../../lib/accounting';
 import type { AccountRecord } from '../../../lib/types';
 import { X } from '@phosphor-icons/react';
 import { IconByKey } from '../../IconByKey';
@@ -49,7 +49,8 @@ export function CategoryDetailPanel({
 
   const monthRecords = useMemo(() => {
     if (!categoryId) return [];
-    return records
+    // v2.3：虚拟池预扣不计入分类月度统计
+    return visibleRecords(records)
       .filter((record) => record.categoryId === categoryId && record.dateKey.startsWith(monthKey))
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey) || b.createdAt - a.createdAt);
   }, [records, categoryId, monthKey]);
@@ -72,7 +73,7 @@ export function CategoryDetailPanel({
     const total = sumExpense(monthRecords);
     const largest = [...monthRecords].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
     const uniqueDays = new Set(monthRecords.map((record) => record.dateKey)).size;
-    const allExpenses = records.filter(
+    const allExpenses = visibleRecords(records).filter(
       (record) => record.type === 'expense' && record.dateKey.startsWith(monthKey),
     );
     const allExpenseTotal = sumExpense(allExpenses);

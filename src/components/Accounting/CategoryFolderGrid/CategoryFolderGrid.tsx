@@ -10,6 +10,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
+import { visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import styles from './CategoryFolderGrid.module.css';
 
@@ -43,7 +44,8 @@ export function CategoryFolderGrid({
   const statsByFolderId = useMemo(() => {
     const todayKey = getTodayKey();
     return new Map(expenseFolders.map((folder) => {
-      const monthRecords = records.filter(
+      // v2.3：虚拟池预扣不计入分类文件夹月度统计
+      const monthRecords = visibleRecords(records).filter(
         (record) => record.categoryId === folder.categoryId
           && record.type === 'expense'
           && record.dateKey.startsWith(monthKey),

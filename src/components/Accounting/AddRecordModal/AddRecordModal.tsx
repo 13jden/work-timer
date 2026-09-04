@@ -42,9 +42,11 @@ export function AddRecordModal({
 }: AddRecordModalProps) {
   const accounts = useAccountStore((s) => s.accounts);
   const categories = useAccountStore((s) => s.categories);
+  const pools = useAccountStore((s) => s.pools);
   const addRecord = useAccountStore((s) => s.addRecord);
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const deleteRecord = useAccountStore((s) => s.deleteRecord);
+  const claimToPool = useAccountStore((s) => s.claimToPool);
 
   // 表单状态
   const [amountStr, setAmountStr] = useState('');
@@ -53,6 +55,8 @@ export function AddRecordModal({
   const [note, setNote] = useState('');
   const [dateKey, setDateKey] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
+  /** v2.3：关联池（认领入口）；''=不关联 */
+  const [poolId, setPoolId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +70,7 @@ export function AddRecordModal({
       setNote(editingRecord.note ?? '');
       setDateKey(editingRecord.dateKey);
       setAccountId(editingRecord.accountId);
+      setPoolId(editingRecord.poolId ?? '');
     } else {
       setAmountStr('');
       setType(defaultType ?? 'expense');
@@ -73,6 +78,7 @@ export function AddRecordModal({
       setNote('');
       setDateKey(defaultDate ?? getTodayKey());
       setAccountId(accounts[0]?.id ?? '');
+      setPoolId('');
     }
     setError(null);
     const id = setTimeout(() => amountRef.current?.focus(), 350);
@@ -85,12 +91,21 @@ export function AddRecordModal({
     [categories, type],
   );
 
-  // 类型切换时重置分类选择
+  // v2.3：可认领的池（支出→全部池；收入→仅存池型取出）
+  const claimablePools = useMemo(
+    () => (type === 'expense' ? pools : pools.filter((p) => p.type === 'deposit')),
+    [pools, type],
+  );
+
+  // 类型切换时重置分类选择（及不再可认领的池）
   useEffect(() => {
     if (!categoryId || !filteredCategories.find((c) => c.id === categoryId)) {
       setCategoryId(filteredCategories[0]?.id ?? '');
     }
-  }, [type, filteredCategories, categoryId]);
+    if (poolId && !claimablePools.find((p) => p.id === poolId)) {
+      setPoolId('');
+    }
+  }, [type, filteredCategories, categoryId, claimablePools, poolId]);
 
   const handleSave = () => {
     const amount = parseFloat(amountStr);
@@ -129,6 +144,10 @@ export function AddRecordModal({
         note: note.trim() || undefined,
         accountId,
       });
+      // v2.3：关联池认领（未匹配部分正常记账不挂池）
+      if (poolId) {
+        claimToPool(record.id, poolId);
+      }
       onSaved?.(record.id);
     }
     onClose();
@@ -250,6 +269,36 @@ export function AddRecordModal({
               </select>
             </div>
           </div>
+
+          {/* v2.3：池关联（认领入口） */}
+          {editingRecord?.poolStatus === 'claimed' || editingRecord?.poolStatus === 'confirmed' ? (
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>池关联</label>
+              <div className={styles.fieldInput}>
+                已认领 · {pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
+                {editingRecord.poolStatus === 'claimed' ? '（预付 · 不计入消费统计）' : ''}
+              </div>
+            </div>
+          ) : (
+            !editingRecord &&
+            claimablePools.length > 0 && (
+              <div className={styles.field}>
+                <label className={styles.fieldLabel}>池关联（认领）</label>
+                <select
+                  className={styles.fieldInput}
+                  value={poolId}
+                  onChange={(e) => setPoolId(e.target.value)}
+                >
+                  <option value="">不关联</option>
+                  {claimablePools.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}（{p.type === 'equalize' ? '均摊认领' : '存池'}）
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )
+          )}
         </div>
 
         {error && <div className={styles.error}>{error}</div>}

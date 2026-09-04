@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
-import { formatAmount } from '../../../lib/accounting';
+import { formatAmount, visibleRecords } from '../../../lib/accounting';
 import styles from './UncategorizedArea.module.css';
 
 export const RECORD_DRAG_PREFIX = 'record:';
@@ -19,7 +19,8 @@ interface UncategorizedAreaProps {
 export function UncategorizedArea({ onPickRecord, onManageAll }: UncategorizedAreaProps) {
   const records = useAccountStore((state) => state.records);
   const unclassifiedRecords = useMemo(
-    () => records
+    // v2.3：虚拟池预扣不进未分类区
+    () => visibleRecords(records)
       .filter((record) => record.isUncategorized || !record.categoryId)
       .sort((left, right) => right.createdAt - left.createdAt),
     [records],

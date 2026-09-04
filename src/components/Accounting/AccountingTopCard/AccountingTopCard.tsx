@@ -13,7 +13,7 @@
  */
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import { formatAmount, sumExpense, sumIncome, getCurrentMonthKey } from '../../../lib/accounting';
+import { formatAmount, sumExpense, sumIncome, getCurrentMonthKey, visibleRecords } from '../../../lib/accounting';
 import { Target } from '@phosphor-icons/react';
 import styles from './AccountingTopCard.module.css';
 
@@ -27,7 +27,8 @@ export function AccountingTopCard({ monthlyGoal = 12000 }: AccountingTopCardProp
 
   const monthKey = getCurrentMonthKey();
   const monthRecords = useMemo(
-    () => records.filter((r) => r.dateKey.startsWith(monthKey)),
+    // v2.3：虚拟池预扣不计入默认结余（统计页可开关）
+    () => visibleRecords(records).filter((r) => r.dateKey.startsWith(monthKey)),
     [records, monthKey],
   );
 

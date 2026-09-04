@@ -45,10 +45,21 @@ export interface RecordsSummary {
   net: number;
 }
 
-/** 虚拟池开关：默认过滤掉未确认的虚拟池记录 */
+/** 虚拟池开关：默认过滤掉池虚拟记录与均摊认领付款记录（预付不计消费） */
 function isVisible(record: AccountRecord, options?: StatsOptions): boolean {
   if (!options?.includeVirtualPool && record.poolStatus === 'virtual') return false;
+  // v2.3：均摊池认领的付款记录是预付性质，永远不计入消费统计
+  if (record.poolStatus === 'claimed') return false;
   return true;
+}
+
+/**
+ * 默认可见记录：排除池虚拟记录 + 均摊认领付款记录（v2.3）。
+ * UI 组件读取 records 做展示聚合时统一先过此函数，
+ * 避免虚拟预扣 / 预付流水污染今日流水 / 分类统计 / 未分类区。
+ */
+export function visibleRecords(records: AccountRecord[]): AccountRecord[] {
+  return records.filter((r) => r.poolStatus !== 'virtual' && r.poolStatus !== 'claimed');
 }
 
 /**

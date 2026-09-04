@@ -23,6 +23,7 @@ import {
   getTodayKey,
   sumExpense,
   sumIncome,
+  visibleRecords,
 } from '../lib/accounting';
 import type { AccountRecord } from '../lib/types';
 import { AddRecordModal } from '../components/Accounting/AddRecordModal';
@@ -62,7 +63,8 @@ export function AccountingPage() {
 
   const monthKey = getCurrentMonthKey();
   const todayKey = getTodayKey();
-  const todayRecords = records.filter((record) => record.dateKey === todayKey);
+  // v2.3：虚拟池预扣不计入今日流水（统计页可开关）
+  const todayRecords = visibleRecords(records).filter((record) => record.dateKey === todayKey);
   const todayIncome = sumIncome(todayRecords);
   const todayExpense = sumExpense(todayRecords);
   const dayOfYear = Math.floor(

@@ -20,7 +20,7 @@ import {
   shiftDay,
   shiftMonth,
 } from '../../../lib/accounting/stats';
-import { formatAmount, getTodayKey, getCurrentMonthKey } from '../../../lib/accounting';
+import { formatAmount, getTodayKey, getCurrentMonthKey, visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import { StatsBarChart, type BarChartItem } from './StatsBarChart';
 import { CategoryRankList } from './CategoryRankList';
@@ -51,6 +51,13 @@ export function StatsPage() {
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const [year, setYear] = useState(new Date().getFullYear());
   const [rankCategoryId, setRankCategoryId] = useState<string | null>(null);
+  /** v2.3 T-307：虚拟/实际筛选开关 */
+  const [includeVirtual, setIncludeVirtual] = useState(false);
+  const statsOptions = useMemo(() => ({ includeVirtualPool: includeVirtual }), [includeVirtual]);
+  const baseRecords = useMemo(
+    () => (includeVirtual ? records : visibleRecords(records)),
+    [records, includeVirtual],
+  );
 
   // ── 本期 / 上期范围 ─────────────────────────────────────
   const ranges = useMemo(() => {
@@ -70,19 +77,19 @@ export function StatsPage() {
   }, [view, dayKey, monthKey, year]);
 
   const currentRecords = useMemo(
-    () => filterByRange(records, ranges.start, ranges.end),
-    [records, ranges],
+    () => filterByRange(baseRecords, ranges.start, ranges.end),
+    [baseRecords, ranges],
   );
-  const summary = useMemo(() => sumRecords(currentRecords), [currentRecords]);
+  const summary = useMemo(() => sumRecords(currentRecords, statsOptions), [currentRecords, statsOptions]);
   const prevSummary = useMemo(() => {
-    const prevRecords = filterByRange(records, ranges.prevStart, ranges.prevEnd);
-    return sumRecords(prevRecords);
-  }, [records, ranges]);
+    const prevRecords = filterByRange(baseRecords, ranges.prevStart, ranges.prevEnd);
+    return sumRecords(prevRecords, statsOptions);
+  }, [baseRecords, ranges, statsOptions]);
 
   // ── 月视图：每日双柱数据 ────────────────────────────────
   const monthChartItems = useMemo<BarChartItem[]>(() => {
     if (view !== 'month') return [];
-    const byDay = aggregateByDay(currentRecords);
+    const byDay = aggregateByDay(currentRecords, statsOptions);
     const [y, m] = monthKey.split('-').map(Number);
     const days = new Date(y ?? 2026, m ?? 1, 0).getDate();
     return Array.from({ length: days }, (_, i) => {
@@ -90,24 +97,24 @@ export function StatsPage() {
       const slot = byDay.get(key);
       return { key, label: String(i + 1), income: slot?.income ?? 0, expense: slot?.expense ?? 0 };
     });
-  }, [view, currentRecords, monthKey]);
+  }, [view, currentRecords, monthKey, statsOptions]);
 
   // ── 年视图：每月双柱数据 ────────────────────────────────
   const yearChartItems = useMemo<BarChartItem[]>(() => {
     if (view !== 'year') return [];
-    const byMonth = aggregateByMonth(currentRecords);
+    const byMonth = aggregateByMonth(currentRecords, statsOptions);
     return Array.from({ length: 12 }, (_, i) => {
       const key = `${year}-${String(i + 1).padStart(2, '0')}`;
       const slot = byMonth.get(key);
       return { key, label: `${i + 1}月`, income: slot?.income ?? 0, expense: slot?.expense ?? 0 };
     });
-  }, [view, currentRecords, year]);
+  }, [view, currentRecords, year, statsOptions]);
 
   // ── 分类排行（月/年视图） ───────────────────────────────
   const ranks = useMemo(() => {
     if (view === 'day') return [];
-    return aggregateByCategory(currentRecords, type);
-  }, [view, currentRecords, type]);
+    return aggregateByCategory(currentRecords, type, statsOptions);
+  }, [view, currentRecords, type, statsOptions]);
 
   // ── 日视图：记录列表 ────────────────────────────────────
   const dayRecords = useMemo(
@@ -123,6 +130,14 @@ export function StatsPage() {
       <div className={styles.controls}>
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} />
         <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
+        <label className={styles.virtualToggle}>
+          <input
+            type="checkbox"
+            checked={includeVirtual}
+            onChange={(e) => setIncludeVirtual(e.target.checked)}
+          />
+          <span>含虚拟池预扣</span>
+        </label>
       </div>
 
       <div className={styles.summary}>

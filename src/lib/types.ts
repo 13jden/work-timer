@@ -433,7 +433,13 @@ export interface AccountRecord {
   // 池关联
   poolId?: string;
   poolDirection?: 'in' | 'out';
-  poolStatus?: 'virtual' | 'confirmed';
+  /**
+   * v2.3 语义：
+   * - 'virtual'：旧预生成虚拟记录（已废弃生成，仅兼容存量数据）
+   * - 'claimed'：均摊池认领的付款记录（预付性质，不计入消费统计）
+   * - 'confirmed'：存池型存入/取出记录（正常计入统计）
+   */
+  poolStatus?: 'virtual' | 'claimed' | 'confirmed';
   // 分配状态
   assignedFolderId?: string;
   // 分类状态
@@ -481,10 +487,17 @@ export interface PoolConfig {
   id: string;
   name: string;
   type: PoolType;
-  amount: number;          // 每月/每周期总金额
-  cycleMonths: number;     // 周期月数（均摊型）
-  dayRange?: { start: number; end: number };  // 每周期天数范围
+  amount: number;          // 每周期总金额
+  cycleMonths: number;     // 周期月数（均摊型按月模式）
+  dayRange?: { start: number; end: number };  // 按月模式：每月几号到几号
+  /** v2.3:按日模式：完整日期范围（YYYY-MM-DD），可跨月 */
+  dateRange?: { start: string; end: string };
   targetAccountId?: string; // 目标账户（存池型）
+  categoryId?: string;     // v2.3:均摊消费记录挂载的支出分类
+  /** v2.3:周期模式。daily=按日（日历选日期范围）；monthly=按月（每月一周期，几号到几号） */
+  cycleMode?: 'daily' | 'monthly';
+  /** v2.3:用户自填日均金额（可选；不填则由总额/天数推导） */
+  dailyAmount?: number;
   createdAt: number;
 }
 
@@ -505,7 +518,9 @@ export interface PoolCycle {
   monthKey: string;        // YYYY-MM
   totalAmount: number;
   dayCount: number;        // 实际天数
-  dailyVirtual: number;   // 日均虚拟金额
+  dailyVirtual: number;   // 日均均摊金额
+  /** v2.3:已认领（实际支付）总额 */
+  paidAmount: number;
   status: PoolCycleStatus;
   transactions: PoolTransaction[];
 }

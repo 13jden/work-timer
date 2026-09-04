@@ -210,6 +210,7 @@ describe('池计算', () => {
     totalAmount: 3000,
     dayCount: 30,
     dailyVirtual: 100,
+    paidAmount: 0,
     status: 'generating',
     transactions: [],
   };

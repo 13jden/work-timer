@@ -13,7 +13,7 @@
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
-import { formatAmount, sumExpense, sumIncome } from '../../../lib/accounting';
+import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import styles from './TodayRecordsList.module.css';
 
@@ -40,7 +40,8 @@ export function TodayRecordsList({
   const today = useMemo(() => dateKey ?? getTodayKey(), [dateKey]);
 
   const todayRecords = useMemo(
-    () => records
+    // v2.3：虚拟池预扣不出现在今日流水
+    () => visibleRecords(records)
       .filter((r) => r.dateKey === today)
       .sort((a, b) => b.createdAt - a.createdAt),
     [records, today],

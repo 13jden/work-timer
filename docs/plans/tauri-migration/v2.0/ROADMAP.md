@@ -18,9 +18,9 @@ v2.1 记账核心 ── 记录 + 分类 + 线稿图标 + 双主题框架       
     ↓
 v2.2 统计日历 ── 统计页三视图 + 记账日历视图                            ✅ 已交付
     ↓
-v2.3 池机制 ──── 虚拟预扣/预加 + 认领关联（核心难点）                    ← 当前（TASK-039）
+v2.3 池机制 ──── 到期逐日生成 + 认领标记 + 日历选日期范围               ✅ 已交付
     ↓
-v2.4 钱包目标 ── 多账户 + 存钱目标                                      （TASK-040）
+v2.4 钱包目标 ── 多账户 + 存钱目标                                      ← 当前（TASK-040）
     ↓
 v2.5 联调发布 ── 联调 + 打磨 + 发布                                     （TASK-041）
 ```
@@ -38,7 +38,7 @@ v2.5 联调发布 ── 联调 + 打磨 + 发布                               
 | TASK-036 | 图标系统升级（emoji → Phosphor 线稿） | v2.1 | - | ✅ 完成 | [`TASK-036-accounting-phosphor-icons.md`](./TASK-036-accounting-phosphor-icons.md) |
 | TASK-037 | 移动端双主题框架 + 上下滑切换 + 删除确认 | v2.1 | - | ✅ 完成 | [`TASK-037-dual-mode-nav-and-delete-confirm.md`](./TASK-037-dual-mode-nav-and-delete-confirm.md) |
 | TASK-038 | 统计页三视图 + 记账日历视图 | v2.2 | Phase 3 | ✅ 完成 | [`TASK-038-stats-and-calendar.md`](./TASK-038-stats-and-calendar.md) |
-| TASK-039 | 池机制（均摊/存池 + 认领） | v2.3 | Phase 4 | ⏳ 待细化 | [`TASK-039-pool-mechanism.md`](./TASK-039-pool-mechanism.md) |
+| TASK-039 | 池机制（均摊/存池 + 认领） | v2.3 | Phase 4 | ✅ 完成 | [`TASK-039-pool-mechanism.md`](./TASK-039-pool-mechanism.md) |
 | TASK-040 | 多账户钱包 + 存钱目标 | v2.4 | Phase 5 | ⏳ 待细化 | [`TASK-040-wallet-and-goals.md`](./TASK-040-wallet-and-goals.md) |
 | TASK-041 | 联调打磨 + 发布 | v2.5 | Phase 6 | ⏳ 待细化 | [`TASK-041-polish-and-release.md`](./TASK-041-polish-and-release.md) |
 
@@ -53,6 +53,7 @@ v2.5 联调发布 ── 联调 + 打磨 + 发布                               
 | v2.0 ✅ | 数据层 + 记账 MVP（快速记录 / 完整弹窗 / 分类文件夹 / 未分类区 / 今日列表） | `docs/CHANGELOG-v2.0.md` |
 | v2.1 ✅ | 线稿图标系统（IconByKey）+ 双主题框架（上下滑切换）+ 分类删除确认 + 快速记录布局 | `docs/CHANGELOG-v2.1.md` |
 | v2.2 ✅ | TASK-038 统计页三视图 + 记账日历视图 | `docs/CHANGELOG-v2.2.md` |
+| v2.3 ✅ | TASK-039 池机制（到期逐日生成 + 认领标记 + 日历选日期范围） | `docs/CHANGELOG-v2.3.md` |
 
 ---
 
@@ -65,7 +66,7 @@ TASK-037 已搭好双主题框架，记账主题 4 个 tab 的实现进度：
 | 0 | ACCT | AccountingPage（记账首页） | ✅ v2.0/v2.1 |
 | 1 | STATS | 统计页 | ✅ v2.2 |
 | 2 | CAL | 记账日历 | ✅ v2.2 |
-| 3 | MINE | 记账设置（钱包 / 池 / 目标） | TASK-039/040（v2.3/v2.4） |
+| 3 | MINE | 池管理（均摊/存池 + 认领） | ✅ v2.3 |
 
 ---
 
@@ -204,4 +205,4 @@ interface SavingsGoal {
 
 ---
 
-*最后更新：2026-09-03 · v2.1 目录并入，TASK-038 ~ 041 规划落地*
+*最后更新：2026-09-04 · v2.3 池机制交付，TASK-040 进入开发*

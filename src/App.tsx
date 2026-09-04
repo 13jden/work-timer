@@ -12,13 +12,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { bootstrapTheme, useThemeStore } from './store/themeStore';
 import { useAppModeStore } from './store/appModeStore';
+import { useAccountStore } from './store/accountStore';
 import { useIsDesktop } from './hooks/useMediaQuery';
 import { useDesktopScale, BASE_WIDTH, BASE_HEIGHT } from './hooks/useDesktopScale';
 import { type TabId } from './components/Sidebar';
 import { BottomNav, type BottomNavTab } from './components/BottomNav';
-import { PlaceholderPage } from './components/PlaceholderPage';
 import { StatsPage } from './components/Accounting/StatsPage';
 import { AccountingCalendar } from './components/Accounting/AccountingCalendar';
+import { PoolPage } from './components/Accounting/PoolPage';
 import { TodayPage } from './pages/TodayPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { ConvertPage } from './pages/ConvertPage';
@@ -75,13 +76,13 @@ const ACCT_TABS: BottomNavTab[] = [
   { id: 'acct-mine',  label: 'MINE' },
 ];
 
-/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 占位(v2.4) */
+/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 池管理(v2.3) */
 function renderAcctPage(index: number) {
   switch (index) {
     case 0:  return <AccountingPage />;
     case 1:  return <StatsPage />;
     case 2:  return <AccountingCalendar />;
-    default: return <PlaceholderPage title="我的" plannedIn="v2.4" />;
+    default: return <PoolPage />;
   }
 }
 
@@ -96,6 +97,11 @@ export function App() {
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileOverlay, setMobileOverlay] = useState<'convert' | 'fish' | null>(null);
+
+  // v2.3 TASK-039：启动时同步池周期（跨月补齐 + 逾期扫描）
+  useEffect(() => {
+    useAccountStore.getState().syncPoolCycles();
+  }, []);
 
   // 上下滑切换主题:flick 判定(快 + 纵向位移大),避免与列表滚动冲突
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);

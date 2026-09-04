@@ -12,6 +12,9 @@ import type {
   PoolTransaction,
 } from '../types';
 
+// v2.3：默认可见记录过滤（排除池虚拟记录）
+export { visibleRecords } from './stats';
+
 // ── 金额计算 ────────────────────────────────────────────────
 
 /**
