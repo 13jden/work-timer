@@ -1,0 +1,387 @@
+/* ── Page ── */
+.page {
+  min-height: 70vh;
+  min-height: 70dvh;
+  padding-bottom: 120px;
+  background: var(--paper-4, #fffdf6);
+  color: var(--ink, #0F0F0F);
+  overflow-y: auto;
+  animation: pageIn 220ms ease;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 8px;
+  position: sticky;
+  top: 0;
+  background: var(--paper-4, #fffdf6);
+  z-index: 1;
+}
+
+.backBtn {
+  width: 36px;
+  height: 36px;
+  background: var(--paper-2, #EDE9DD);
+  border: none;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink, #0F0F0F);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+}
+
+.backBtn:hover {
+  background: var(--paper-3, #f9f7f0);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink, #0F0F0F);
+}
+
+.moreBtn {
+  width: 36px;
+  height: 36px;
+  background: var(--paper-2, #EDE9DD);
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink, #0F0F0F);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+}
+
+.moreBtn:hover {
+  background: var(--paper-3, #f9f7f0);
+}
+
+/* ── Summary ── */
+.summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 16px;
+}
+
+.bigIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.amount {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink, #0F0F0F);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--ink-muted, #6B6B6B);
+}
+
+/* ── Stats Grid ── */
+.statsGrid {
+  display: flex;
+  align-items: stretch;
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  padding: 14px 8px;
+  margin: 0 18px 18px;
+}
+
+.statBlock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 0 8px;
+}
+
+.statVal {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink, #0F0F0F);
+  letter-spacing: -0.3px;
+}
+
+.statAccent {
+  color: var(--expense, #C04A3A);
+}
+
+.statLbl {
+  font-size: 11px;
+  color: var(--ink-muted, #6B6B6B);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.statDivider {
+  width: 1px;
+  background: var(--line, #D9D4C3);
+}
+
+/* ── List ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 18px;
+}
+
+.dayRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: border-color 180ms, background-color 180ms;
+}
+
+.dayRowOver {
+  border-color: var(--accent-2, #9fcc00);
+  background: color-mix(in srgb, var(--accent-2, #9fcc00) 7%, transparent);
+}
+
+.dayHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 2px;
+}
+
+.dayDate {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted, #6B6B6B);
+  letter-spacing: 0.5px;
+}
+
+.dayTotal {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--expense, #C04A3A);
+}
+
+.dayCards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--paper-3, #f9f7f0);
+  border: 1px solid var(--line-soft, #E7E2D1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 150ms;
+  font-family: inherit;
+  text-align: left;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink, #0F0F0F);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardSub {
+  font-size: 11px;
+  color: var(--ink-muted, #6B6B6B);
+}
+
+.cardAmt {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--expense, #C04A3A);
+  letter-spacing: -0.3px;
+  flex-shrink: 0;
+}
+
+/* ── Empty ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 32px;
+  opacity: 0.4;
+}
+
+.emptyText {
+  font-size: 13px;
+  color: var(--ink-muted, #6B6B6B);
+}
+
+/* 桌面端:面板从右侧滑入 */
+@media (min-width: 1024px) {
+  .overlay {
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+
+  .panel {
+    max-width: 480px;
+    border-radius: 20px 0 0 20px;
+    max-height: 100vh;
+    height: 100vh;
+    animation: slideLeft 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideLeft {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+}
+
+/* v2.1 TASK-037:删除分类确认弹窗 */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.confirmCard {
+  width: min(78%, 320px);
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--card, #fff);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+}
+
+.confirmTitle {
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.confirmText {
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.confirmBtns {
+  display: flex;
+  gap: 10px;
+}
+
+.confirmCancel,
+.confirmDanger {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.confirmCancel {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.confirmDanger {
+  background: var(--danger, #E5484D);
+  color: #fff;
+}
+
+/* v2.2 TASK-038:查看全部记录入口 */
+.viewAllBtn {
+  display: block;
+  width: calc(100% - 36px);
+  margin: 12px 18px 0;
+  border: 1px solid var(--line, #E5E2D8);
+  background: transparent;
+  border-radius: 10px;
+  padding: 9px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ink-muted, #6B6B6B);
+  cursor: pointer;
+}

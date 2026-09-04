@@ -4,6 +4,12 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.5 | 2026-09-04 | 导航手势体验修正 + 存池结算方式 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
+| v2.4 | 2026-09-04 | 多账户钱包 + 存钱目标 + 池自动退休 | [`docs/CHANGELOG-v2.4.md`](./CHANGELOG-v2.4.md) |
+| v2.3 | 2026-09-04 | 池机制(到期逐日生成 + 认领标记 + 日历选日期范围) | [`docs/CHANGELOG-v2.3.md`](./CHANGELOG-v2.3.md) |
+| v2.2 | 2026-09-04 | 统计页三视图 + 记账日历 + 分类记录页 | [`docs/CHANGELOG-v2.2.md`](./CHANGELOG-v2.2.md) |
+| v2.1 | 2026-09-03 | 线稿图标 + 移动端双主题框架(上下滑切换) | [`docs/CHANGELOG-v2.1.md`](./CHANGELOG-v2.1.md) |
+| v2.0 | 2026-09-02 | 独立记账页(快速记录 + 未分类 + 分类文件夹) | [`docs/CHANGELOG-v2.0.md`](./CHANGELOG-v2.0.md) |
 | v1.3.5 | 2026-09-03 | 已赚记录定型 + 自由兼职兼容 + 日视图日期切换 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.3.4-patch3 | 2026-08-31 | 右栏加宽到 1/3 + 撤销 patch2 居中(撑满整个页面) | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |
 | v1.3.4-patch2 | 2026-08-30 | 桌面端主内容 max-width 居中 + 日历页分栏放宽 | [`docs/CHANGELOG-v1.3.md`](./CHANGELOG-v1.3.md) |

@@ -1,0 +1,161 @@
+/* ==========================================================
+   AccountingPage — 独立记账页
+   ========================================================== */
+
+.page {
+  min-height: 70vh;
+  min-height: 70dvh;
+  padding-bottom: 120px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.topbar {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(12px, 2vh, 18px) clamp(16px, 4vw, 22px) clamp(8px, 1.5vh, 14px);
+}
+
+.topbarEyebrowRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(4px, 0.8vh, 8px);
+}
+
+.topbarEyebrow,
+.topbarEnglish,
+.topbarRight,
+.sectionHeader {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.topbarEyebrow {
+  flex: 1;
+  text-align: left;
+}
+
+.topbarEnglish {
+  flex: 2;
+  text-align: center;
+}
+
+.topbarRight {
+  flex: 1;
+  text-align: right;
+}
+
+.topbarCenter {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(24px, 4vh, 30px);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  text-align: center;
+}
+
+.topRow {
+  display: flex;
+  gap: clamp(10px, 1.5vw, 18px);
+  align-items: stretch;
+  margin-bottom: clamp(8px, 1.5vh, 14px);
+}
+
+.timerWrap {
+  flex: 1.4 1 0;
+  min-width: 0;
+  padding: 0 clamp(12px, 3vw, 18px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sideCol {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 12px);
+}
+
+.quoteWrap {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 clamp(12px, 3vw, 18px);
+  box-sizing: border-box;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(8px, 2vw, 14px);
+  padding: 0 clamp(12px, 3vw, 18px);
+  box-sizing: border-box;
+}
+
+.actionWrap,
+.extrasWrap {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.actionWrap {
+  padding: 0 clamp(12px, 3vw, 18px);
+  margin-top: clamp(8px, 2vh, 14px);
+}
+
+.extrasWrap {
+  padding: 0 clamp(12px, 3vw, 18px);
+  margin-top: clamp(12px, 2.5vh, 18px);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+
+.detailOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  overflow: auto;
+  background: var(--paper-4, #fffdf6);
+}
+
+.dragOverlay {
+  padding: 10px 14px;
+  color: var(--ink, #0F0F0F);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--paper-4, #fffdf6);
+  border: 1px solid var(--accent-2, #9fcc00);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+@media (max-width: 680px) {
+  .topRow {
+    display: block;
+  }
+
+  .timerWrap {
+    margin-bottom: 12px;
+  }
+
+  .sideCol {
+    gap: 10px;
+  }
+}

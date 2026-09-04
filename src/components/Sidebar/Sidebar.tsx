@@ -8,7 +8,7 @@ import { useThemeStore } from '../../store/themeStore';
 import { NavIcons } from '../NavIcons';
 import styles from './Sidebar.module.css';
 
-export type TabId = 'today' | 'convert' | 'calendar' | 'fish' | 'settings';
+export type TabId = 'today' | 'accounting' | 'convert' | 'calendar' | 'fish' | 'settings';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'today',    label: '今日' },
+  { id: 'accounting', label: '记账' },
   { id: 'convert',  label: '换算' },
   { id: 'calendar', label: '日历' },
   { id: 'settings', label: '设置' },

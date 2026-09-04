@@ -16,7 +16,7 @@
   align-items: center; 
   justify-content: center; 
   gap: 8px; 
-  margin-bottom: 8px; 
+  margin-bottom: 8px;
 }
 .headEyebrow { 
   font-family: var(--font-mono);

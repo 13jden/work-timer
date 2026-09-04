@@ -1,10 +1,9 @@
 /* ==========================================================
-   TodayPage — v1.3.4-patch4 双布局
-   - 移动端(.page):纵向堆叠
-   - 桌面端(.desktopPage):Timer+Quote/Worth 同行 + Widget + Dashboard
+   TodayPage — 原有今日计时布局
+   - 移动端：纵向流式排列
+   - 桌面端：Timer + Quote/Worth，底部 Widget + Dashboard
    ========================================================== */
 
-/* ── 移动端(原有流式布局) ── */
 .page {
   display: flex;
   flex-direction: column;
@@ -15,7 +14,6 @@
   padding-bottom: 120px;
 }
 
-/* TopBar — 两行结构(仅移动端) */
 .topbar {
   display: flex;
   flex-direction: column;
@@ -30,28 +28,8 @@
   margin-bottom: 8px;
 }
 
-.topbarEyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  flex: 1;
-  text-align: left;
-}
-
-.topbarEnglish {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  flex: 2;
-  text-align: center;
-}
-
+.topbarEyebrow,
+.topbarEnglish,
 .topbarRight {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -59,6 +37,19 @@
   letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
+}
+
+.topbarEyebrow {
+  flex: 1;
+  text-align: left;
+}
+
+.topbarEnglish {
+  flex: 2;
+  text-align: center;
+}
+
+.topbarRight {
   flex: 1;
   text-align: right;
 }
@@ -75,7 +66,6 @@
   margin: 0;
 }
 
-/* ── 移动端各容器 ── */
 .timerWrap {
   flex: 1 1 auto;
   padding: 0 clamp(12px, 3vw, 18px);
@@ -121,8 +111,6 @@
   box-sizing: border-box;
 }
 
-/* Row 1:Timer(左,flex 1.4) + SideCol(右,flex 1)
-   - Timer 占主区水平空间 ~58%,SideCol ~42% */
 .topRow {
   display: flex;
   gap: clamp(10px, 1.5vw, 18px);
@@ -138,7 +126,6 @@
   width: auto;
 }
 
-/* SideCol:竖排 QuoteCard + Worth */
 .sideCol {
   flex: 1 1 0;
   min-width: 0;
@@ -155,7 +142,6 @@
   display: flex;
 }
 
-/* 让 QuoteCard 和 StatCard 填充满高度 */
 .sideCol .quoteWrap > :global(*) {
   flex: 1;
   height: 100%;
@@ -169,7 +155,6 @@
   justify-content: center;
 }
 
-/* Widget 全宽 */
 .desktopPage .slackingWrap {
   padding: 0;
   margin-top: 0;
@@ -178,8 +163,7 @@
   box-sizing: border-box;
 }
 
-/* Dashboard 全宽 */
-.desktopPage .dashboardWrap {
+.dashboardWrap {
   padding: 0;
   margin-bottom: clamp(20px, 3vh, 32px);
   width: 100%;

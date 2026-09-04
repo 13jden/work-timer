@@ -1,0 +1,1 @@
+export { QuickAddRecord } from './QuickAddRecord';

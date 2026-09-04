@@ -46,7 +46,7 @@
 
 /* ── Segmented Control(占满一行) ── */
 .segmentedWrapper {
-  margin: 12px 0 16px;
+  margin: 12px 5px 16px;
 }
 
 .segmented {

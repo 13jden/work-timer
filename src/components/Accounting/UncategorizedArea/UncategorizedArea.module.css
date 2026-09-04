@@ -1,0 +1,123 @@
+/* ==========================================================
+   UncategorizedArea — 未分类区域
+   ========================================================== */
+
+.section {
+  margin-bottom: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted, #6B6B6B);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: var(--paper-2, #EDE9DD);
+  color: var(--ink, #0F0F0F);
+  border-radius: 8px;
+}
+
+.manageBtn {
+  margin-left: auto;
+  padding: 4px 0;
+  color: var(--accent-2, #9fcc00);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.list::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  flex-shrink: 0;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  color: inherit;
+  text-align: left;
+  font-family: inherit;
+  background: var(--paper-3, #f9f7f0);
+  border: 1.5px dashed var(--line, #D9D4C3);
+  border-radius: 12px;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), opacity 180ms, box-shadow 180ms, border-color 180ms;
+}
+
+.card:hover {
+  background: var(--paper-4, #fffdf6);
+  border-color: var(--accent-2, #9fcc00);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.cardDragging {
+  opacity: 0.35;
+  cursor: grabbing;
+  transform: scale(0.96);
+}
+
+.cardName {
+  max-width: 110px;
+  overflow: hidden;
+  color: var(--ink-soft, #3A3A3A);
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardAmount {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.cardAmount.income { color: var(--income, #2D8F5B); }
+.cardAmount.expense { color: var(--expense, #C04A3A); }
+
+.cardTime {
+  color: var(--ink-muted, #6B6B6B);
+  font-size: 9px;
+}
+
+.hint {
+  margin-top: 6px;
+  padding: 0 4px;
+  color: var(--ink-muted, #6B6B6B);
+  font-size: 10px;
+  font-style: italic;
+}

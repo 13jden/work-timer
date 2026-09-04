@@ -385,3 +385,217 @@ export interface NetHoursBreakdown {
   /** 用户 overtime session 累计分钟数(含进行中 dayMin + nightMin) */
   overtimeElapsed: number;
 }
+
+// ── v2.0 Accounting ─────────────────────────────────────────
+
+/**
+ * 账户类型
+ * - alipay: 支付宝
+ * - wechat: 微信
+ * - card: 银行卡
+ * - cash: 现金
+ */
+export type AccountType = 'alipay' | 'wechat' | 'card' | 'cash';
+
+/**
+ * 账户
+ */
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  color: string;
+  order: number;
+  createdAt: number;
+}
+
+/**
+ * 记账记录类型
+ * - income: 收入
+ * - expense: 支出
+ */
+export type RecordType = 'income' | 'expense';
+
+/**
+ * 记账记录
+ */
+export interface AccountRecord {
+  id: string;
+  dateKey: string;        // YYYY-MM-DD
+  amount: number;         // 正数=收入，负数=支出
+  type: RecordType;
+  categoryId: string;
+  note?: string;
+  accountId: string;
+  createdAt: number;
+  updatedAt: number;
+  // 池关联
+  poolId?: string;
+  poolDirection?: 'in' | 'out';
+  /**
+   * v2.3 语义：
+   * - 'virtual'：旧预生成虚拟记录（已废弃生成，仅兼容存量数据）
+   * - 'claimed'：均摊池认领的付款记录（预付性质，不计入消费统计）
+   * - 'confirmed'：存池型存入/取出记录（正常计入统计）
+   */
+  poolStatus?: 'virtual' | 'claimed' | 'confirmed';
+  // v2.4 T-410：池周期快照 — 均摊起止日期与均摊总额（池删除后仍可溯源）
+  poolCycleStart?: string;   // YYYY-MM-DD
+  poolCycleEnd?: string;     // YYYY-MM-DD
+  poolCycleTotal?: number;   // 该周期均摊总额
+  // v2.4 T-410：该周期真实入账/支付的时间与金额（认领满额时回写，虚拟→实际）
+  poolSettledAt?: number;
+  poolSettledAmount?: number;
+  // v2.4 T-410：池名称快照（池自动移除后记录仍能显示关联的是哪个池）
+  poolName?: string;
+  // 存钱目标关联（v2.4 TASK-040）：记录金额（带符号）自动累计到目标进度
+  goalId?: string;
+  // 分配状态
+  assignedFolderId?: string;
+  // 分类状态
+  isUncategorized?: boolean;  // true=未分配分类
+}
+
+/**
+ * 分类（收入/支出各一套）
+ */
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;           // emoji
+  color: string;
+  type: RecordType;
+  parentId?: string;
+  order: number;
+}
+
+/**
+ * 分类文件夹（用于首页分类卡片展示）
+ */
+export interface Folder {
+  id: string;
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  order: number;
+}
+
+// ── Pool ────────────────────────────────────────────────────
+
+/**
+ * 池类型
+ * - equalize: 均摊型（长期循环，日均虚拟记录）
+ * - deposit: 存池型（押金模式，不关联天数）
+ */
+export type PoolType = 'equalize' | 'deposit';
+
+/**
+ * 池配置
+ */
+export interface PoolConfig {
+  id: string;
+  name: string;
+  type: PoolType;
+  amount: number;          // 每周期总金额
+  cycleMonths: number;     // 周期月数（均摊型按月模式）
+  dayRange?: { start: number; end: number };  // 按月模式：每月几号到几号
+  /** v2.3:按日模式：完整日期范围（YYYY-MM-DD），可跨月 */
+  dateRange?: { start: string; end: string };
+  targetAccountId?: string; // 目标账户（存池型）
+  categoryId?: string;     // v2.3:均摊消费记录挂载的支出分类
+  /** v2.3:周期模式。daily=按日（日历选日期范围）；monthly=按月（每月一周期，几号到几号） */
+  cycleMode?: 'daily' | 'monthly';
+  /** v2.3:用户自填日均金额（可选；不填则由总额/天数推导） */
+  dailyAmount?: number;
+  /** v2.4:资金方向。expense=支出池（默认，兼容存量）；income=收入池（逐日生成收入记录） */
+  direction?: 'income' | 'expense';
+  /**
+   * v2.5 T-416：存池型结算方式。
+   * prepay=押金先付（实际已扣，虚拟「待退」计入绿色资产，默认，兼容存量）；
+   * postpay=先用后付（未付部分红色待付，与未分类同框）。
+   */
+  settleMode?: 'prepay' | 'postpay';
+  createdAt: number;
+}
+
+/**
+ * 池周期状态
+ * - generating: 生成中
+ * - confirmed: 已确认
+ * - overdue: 已逾期
+ */
+export type PoolCycleStatus = 'generating' | 'confirmed' | 'overdue';
+
+/**
+ * 池周期记录
+ */
+export interface PoolCycle {
+  id: string;
+  poolId: string;
+  monthKey: string;        // YYYY-MM
+  totalAmount: number;
+  dayCount: number;        // 实际天数
+  dailyVirtual: number;   // 日均均摊金额
+  /** v2.3:已认领（实际支付）总额 */
+  paidAmount: number;
+  status: PoolCycleStatus;
+  transactions: PoolTransaction[];
+}
+
+/**
+ * 池交易状态
+ */
+export type PoolTransactionStatus = 'virtual' | 'confirmed';
+
+/**
+ * 池交易记录
+ */
+export interface PoolTransaction {
+  id: string;
+  cycleId: string;
+  dateKey: string;
+  recordId?: string;      // 关联的 AccountRecord id
+  amount: number;
+  direction: 'in' | 'out';
+  status: PoolTransactionStatus;
+  confirmedAt?: number;
+}
+
+// ── Savings Goal ─────────────────────────────────────────────
+
+/**
+ * 存钱目标
+ */
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetAccountId?: string;
+  deadline?: string;       // YYYY-MM-DD
+  createdAt: number;
+}
+
+// ── Accounting Store State ───────────────────────────────────
+
+/**
+ * 记账 Store 状态
+ */
+export interface AccountingState {
+  // 账户
+  accounts: Account[];
+  // 分类（收入 + 支出）
+  categories: Category[];
+  // 分类文件夹
+  folders: Folder[];
+  // 记账记录
+  records: AccountRecord[];
+  // 池配置
+  pools: PoolConfig[];
+  // 池周期
+  cycles: PoolCycle[];
+  // 存钱目标
+  savingsGoals: SavingsGoal[];
+}
