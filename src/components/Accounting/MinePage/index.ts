@@ -1,0 +1,1 @@
+export { MinePage } from './MinePage';

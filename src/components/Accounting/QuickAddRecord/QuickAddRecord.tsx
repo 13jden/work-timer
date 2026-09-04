@@ -8,6 +8,10 @@
  * - 提交时 **不** 自动选默认分类，而是直接保存到「未分类」区域
  * - 用户可通过"未分类区域 → 拖拽到分类文件夹"完成归类
  * - 通过「详细记录」按钮可指定分类保存
+ *
+ * v2.4 T-410：
+ * - 快速记录同时不绑账户（accountId=''），总资产卡以「未分类」调整项展示，
+ *   之后在统计页拖拽归入账户或编辑指定，余额届时才迁移
  */
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -16,8 +20,6 @@ import styles from './QuickAddRecord.module.css';
 type QuickType = 'expense' | 'income';
 
 interface QuickAddRecordProps {
-  /** 默认账户 ID（默认使用第一个账户） */
-  defaultAccountId?: string;
   /** 提交成功回调 */
   onSubmitted?: (recordId: string) => void;
   /** 打开完整弹窗 */
@@ -25,7 +27,6 @@ interface QuickAddRecordProps {
 }
 
 export function QuickAddRecord({
-  defaultAccountId,
   onSubmitted,
   onOpenFull,
 }: QuickAddRecordProps) {
@@ -33,11 +34,7 @@ export function QuickAddRecord({
   const [type, setType] = useState<QuickType>('expense');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const accounts = useAccountStore((s) => s.accounts);
   const addRecord = useAccountStore((s) => s.addRecord);
-
-  // 默认账户
-  const accountId = defaultAccountId ?? accounts[0]?.id ?? '';
 
   const handleSubmit = useCallback(() => {
     const amount = parseFloat(amountStr);
@@ -45,7 +42,6 @@ export function QuickAddRecord({
       inputRef.current?.focus();
       return;
     }
-    if (!accountId) return;
 
     // 支出存负数，收入存正数
     const signedAmount = type === 'expense' ? -amount : amount;
@@ -60,13 +56,14 @@ export function QuickAddRecord({
       // 占位：使用第一个可用的分类 id（store schema 要求有值）
       // isUncategorized=true 时会在 UI 上识别为"未分类"
       categoryId: getPlaceholderCategoryId(type),
-      accountId,
+      // v2.4 T-410：不绑账户，进总资产「未分类」调整项
+      accountId: '',
       isUncategorized: true,
     });
 
     setAmountStr('');
     onSubmitted?.(record.id);
-  }, [amountStr, type, accountId, addRecord, onSubmitted]);
+  }, [amountStr, type, addRecord, onSubmitted]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {

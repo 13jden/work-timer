@@ -235,6 +235,20 @@
   border-color: var(--accent-2, #9fcc00);
 }
 
+/* v2.4 T-410：池信息只读块（均摊周期 / 总额 / 实际关联） */
+.poolInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--paper-3, #f9f7f0);
+  border: 1px solid var(--line-soft, #E7E2D1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--ink-soft, #3A3A3A);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Error ── */
 .error {
   font-size: 12px;

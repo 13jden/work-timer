@@ -253,4 +253,113 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     expect(useAccountStore.getState().claimToPool(record.id, pool.id)).toBe(100);
     expect(useAccountStore.getState().claimToPool(record.id, pool.id)).toBe(0);
   });
+
+  // ── v2.4 T-410：周期快照 / 结算回写 / 满额过期自动移除 ────
+
+  it('T-410：均摊记录自带周期快照与池名', () => {
+    const { accountId, categoryId } = setupBase();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+    const daily = useAccountStore
+      .getState()
+      .records.filter((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(daily.length).toBeGreaterThan(0);
+    const monthKey = getCurrentMonthKey();
+    const lastDay = new Date(
+      parseInt(monthKey.slice(0, 4), 10),
+      parseInt(monthKey.slice(5, 7), 10),
+      0,
+    ).getDate();
+    expect(daily[0]?.poolCycleStart).toBe(`${monthKey}-01`);
+    expect(daily[0]?.poolCycleEnd).toBe(`${monthKey}-${String(lastDay).padStart(2, '0')}`);
+    expect(daily[0]?.poolCycleTotal).toBe(3000);
+    expect(daily[0]?.poolName).toBe('房租');
+    expect(daily[0]?.poolSettledAt).toBeUndefined();
+  });
+
+  it('T-410：满额且周期已过 → 池自动删除，记录保留完整快照', () => {
+    const { accountId, categoryId } = setupBase();
+    // 上月 25~26 号的按日池（必然整段已过去）
+    const prevMonth = shiftMonthForTest(getCurrentMonthKey(), -1);
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '上月订阅', type: 'equalize', amount: 500, cycleMonths: 1,
+      cycleMode: 'daily',
+      dateRange: { start: `${prevMonth}-25`, end: `${prevMonth}-26` },
+      dailyAmount: 250, categoryId, targetAccountId: accountId,
+    });
+
+    const daily = useAccountStore
+      .getState()
+      .records.filter((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(daily).toHaveLength(2);
+
+    // 真实付款 ¥500 → 周期满额 → 池自动移除
+    const pay = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -500, type: 'expense', categoryId, accountId,
+    });
+    useAccountStore.getState().claimToPool(pay.id, pool.id);
+
+    const state = useAccountStore.getState();
+    expect(state.pools.some((p) => p.id === pool.id)).toBe(false);
+    expect(state.cycles.some((c) => c.poolId === pool.id)).toBe(false);
+
+    // 记录全部保留：2 条均摊 + 1 条认领
+    const kept = state.records.filter((r) => r.poolId === pool.id);
+    expect(kept).toHaveLength(3);
+
+    // 均摊记录「虚拟变实际」：关联时间与金额回写
+    const keptDaily = kept.filter((r) => !r.poolStatus);
+    expect(keptDaily.every((r) => typeof r.poolSettledAt === 'number')).toBe(true);
+    expect(keptDaily.every((r) => r.poolSettledAmount === 500)).toBe(true);
+    expect(keptDaily.every((r) => r.poolCycleStart === `${prevMonth}-25`)).toBe(true);
+    expect(keptDaily.every((r) => r.poolCycleEnd === `${prevMonth}-26`)).toBe(true);
+
+    // 认领记录：已关联池（不参与统计），带周期快照与池名
+    const claimed = state.records.find((r) => r.id === pay.id);
+    expect(claimed?.poolStatus).toBe('claimed');
+    expect(claimed?.poolName).toBe('上月订阅');
+    expect(claimed?.poolCycleStart).toBe(`${prevMonth}-25`);
+    expect(claimed?.poolCycleEnd).toBe(`${prevMonth}-26`);
+    expect(claimed?.poolCycleTotal).toBe(500);
+    expect(visibleRecords(state.records).some((r) => r.id === pay.id)).toBe(false);
+  });
+
+  it('T-410：未满额的过期池不自动删除', () => {
+    const { accountId, categoryId } = setupBase();
+    const prevMonth = shiftMonthForTest(getCurrentMonthKey(), -1);
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '未付清订阅', type: 'equalize', amount: 500, cycleMonths: 1,
+      cycleMode: 'daily',
+      dateRange: { start: `${prevMonth}-25`, end: `${prevMonth}-26` },
+      dailyAmount: 250, categoryId, targetAccountId: accountId,
+    });
+    const pay = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -100, type: 'expense', categoryId, accountId,
+    });
+    useAccountStore.getState().claimToPool(pay.id, pool.id);
+    useAccountStore.getState().retireFinishedPools();
+
+    // 只付了 100/500 → 池保留
+    expect(useAccountStore.getState().pools.some((p) => p.id === pool.id)).toBe(true);
+  });
+
+  it('T-410：编辑/删除均摊记录不移动账户余额', () => {
+    const { accountId, categoryId } = setupBase();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+    const first = useAccountStore
+      .getState()
+      .records.find((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(first).toBeDefined();
+
+    const before = useAccountStore.getState().getAccountBalance(accountId);
+    useAccountStore.getState().updateRecord(first!.id, { amount: -999 });
+    expect(useAccountStore.getState().getAccountBalance(accountId)).toBe(before);
+    useAccountStore.getState().deleteRecord(first!.id);
+    expect(useAccountStore.getState().getAccountBalance(accountId)).toBe(before);
+  });
 });

@@ -13,7 +13,12 @@ import type {
 } from '../types';
 
 // v2.3：默认可见记录过滤（排除池虚拟记录）
-export { visibleRecords } from './stats';
+// v2.4 T-410：列表可见过滤（含认领）+ 余额影响判定
+export { visibleRecords, listableRecords, recordAffectsBalance } from './stats';
+
+// v2.4：虚拟资产分解（实际 + 预付未消耗 + 已赚未到账）
+export { calcVirtualAssets, isPoolDailyRecord } from './virtual';
+export type { VirtualAssetsBreakdown } from './virtual';
 
 // ── 金额计算 ────────────────────────────────────────────────
 

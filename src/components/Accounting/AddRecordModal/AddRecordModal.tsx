@@ -16,6 +16,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
+import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import styles from './AddRecordModal.module.css';
 
@@ -43,6 +44,7 @@ export function AddRecordModal({
   const accounts = useAccountStore((s) => s.accounts);
   const categories = useAccountStore((s) => s.categories);
   const pools = useAccountStore((s) => s.pools);
+  const savingsGoals = useAccountStore((s) => s.savingsGoals);
   const addRecord = useAccountStore((s) => s.addRecord);
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const deleteRecord = useAccountStore((s) => s.deleteRecord);
@@ -57,6 +59,8 @@ export function AddRecordModal({
   const [accountId, setAccountId] = useState<string>('');
   /** v2.3：关联池（认领入口）；''=不关联 */
   const [poolId, setPoolId] = useState<string>('');
+  /** v2.4：关联存钱目标；''=不关联 */
+  const [goalId, setGoalId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -71,6 +75,7 @@ export function AddRecordModal({
       setDateKey(editingRecord.dateKey);
       setAccountId(editingRecord.accountId);
       setPoolId(editingRecord.poolId ?? '');
+      setGoalId(editingRecord.goalId ?? '');
     } else {
       setAmountStr('');
       setType(defaultType ?? 'expense');
@@ -79,6 +84,7 @@ export function AddRecordModal({
       setDateKey(defaultDate ?? getTodayKey());
       setAccountId(accounts[0]?.id ?? '');
       setPoolId('');
+      setGoalId('');
     }
     setError(null);
     const id = setTimeout(() => amountRef.current?.focus(), 350);
@@ -91,9 +97,9 @@ export function AddRecordModal({
     [categories, type],
   );
 
-  // v2.3：可认领的池（支出→全部池；收入→仅存池型取出）
+  // v2.3+v2.4：可认领的池（同方向均摊池 + 任意存池型）
   const claimablePools = useMemo(
-    () => (type === 'expense' ? pools : pools.filter((p) => p.type === 'deposit')),
+    () => pools.filter((p) => p.type === 'deposit' || (p.direction ?? 'expense') === type),
     [pools, type],
   );
 
@@ -117,10 +123,7 @@ export function AddRecordModal({
       setError('请选择分类');
       return;
     }
-    if (!accountId) {
-      setError('请选择账户');
-      return;
-    }
+    // v2.4 T-409：账户可为空（未归入），总资产卡以调整项展示
 
     // 支出存负数，收入存正数
     const signedAmount = type === 'expense' ? -amount : amount;
@@ -133,6 +136,10 @@ export function AddRecordModal({
         note: note.trim() || undefined,
         dateKey,
         accountId,
+        // v2.4：显式传键（'' → undefined = 解除关联）
+        goalId: goalId || undefined,
+        // v2.4 T-410：弹窗内必然选中了真实分类，清除未分类状态
+        isUncategorized: false,
       });
       onSaved?.(editingRecord.id);
     } else {
@@ -143,6 +150,7 @@ export function AddRecordModal({
         categoryId,
         note: note.trim() || undefined,
         accountId,
+        goalId: goalId || undefined,
       });
       // v2.3：关联池认领（未匹配部分正常记账不挂池）
       if (poolId) {
@@ -261,6 +269,7 @@ export function AddRecordModal({
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
               >
+                <option value="">未归入（之后拖拽归入）</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
                     {acc.name}
@@ -270,13 +279,68 @@ export function AddRecordModal({
             </div>
           </div>
 
+          {/* v2.4：存钱目标关联（金额自动累计进进度） */}
+          {(savingsGoals.length > 0 || goalId) && (
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>存钱目标</label>
+              <select
+                className={styles.fieldInput}
+                value={goalId}
+                onChange={(e) => setGoalId(e.target.value)}
+              >
+                <option value="">不关联</option>
+                {savingsGoals.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}（{type === 'income' ? '存入 +' : '动用 −'}）
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* v2.3：池关联（认领入口） */}
-          {editingRecord?.poolStatus === 'claimed' || editingRecord?.poolStatus === 'confirmed' ? (
+          {editingRecord && editingRecord.poolId && !editingRecord.poolStatus ? (
+            /* v2.4 T-410：均摊记录的池信息（只读；池自动移除后靠快照溯源） */
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>均摊池信息 · 只读</label>
+              <div className={styles.poolInfo}>
+                <span>
+                  均摊池：{editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
+                </span>
+                {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
+                  <span>
+                    均摊周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
+                  </span>
+                )}
+                {typeof editingRecord.poolCycleTotal === 'number' && (
+                  <span>周期均摊总额：¥{formatAmount(editingRecord.poolCycleTotal)}</span>
+                )}
+                <span>
+                  实际关联：
+                  {editingRecord.poolSettledAt
+                    ? `${formatDateTime(editingRecord.poolSettledAt)} · ¥${formatAmount(
+                        editingRecord.poolSettledAmount ?? 0,
+                      )}`
+                    : '未关联（虚拟记录，不动账户余额）'}
+                </span>
+              </div>
+            </div>
+          ) : editingRecord?.poolStatus === 'claimed' || editingRecord?.poolStatus === 'confirmed' ? (
             <div className={styles.field}>
               <label className={styles.fieldLabel}>池关联</label>
-              <div className={styles.fieldInput}>
-                已认领 · {pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
-                {editingRecord.poolStatus === 'claimed' ? '（预付 · 不计入消费统计）' : ''}
+              <div className={styles.poolInfo}>
+                <span>
+                  已认领 · {editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
+                  {editingRecord.poolStatus === 'claimed' ? '（预付 · 不计入消费统计）' : ''}
+                </span>
+                {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
+                  <span>
+                    关联周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
+                    {typeof editingRecord.poolCycleTotal === 'number'
+                      ? ` · 总额 ¥${formatAmount(editingRecord.poolCycleTotal)}`
+                      : ''}
+                  </span>
+                )}
               </div>
             </div>
           ) : (
@@ -329,4 +393,11 @@ export function AddRecordModal({
 function getTodayKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/** 时间戳 → "YYYY-MM-DD HH:mm"（实际关联时间展示） */
+function formatDateTime(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

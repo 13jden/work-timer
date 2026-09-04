@@ -27,6 +27,8 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
 
   const [name, setName] = useState('');
   const [type, setType] = useState<PoolType>('equalize');
+  /** v2.4：资金方向（支出池 / 收入池） */
+  const [direction, setDirection] = useState<'expense' | 'income'>('expense');
   const [amountStr, setAmountStr] = useState('');
   const [dailyStr, setDailyStr] = useState('');
   /** 日历选择的日期范围（YYYY-MM-DD） */
@@ -35,20 +37,29 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
   const [categoryId, setCategoryId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const directionCategories = categories.filter((c) => c.type === direction);
 
   useEffect(() => {
     if (!open) return;
     setName('');
     setType('equalize');
+    setDirection('expense');
     setAmountStr('');
     setDailyStr('');
     setPickStart(null);
     setPickEnd(null);
-    setCategoryId(expenseCategories[0]?.id ?? '');
+    setCategoryId(categories.find((c) => c.type === 'expense')?.id ?? '');
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // 方向切换时重置分类选择
+  useEffect(() => {
+    if (!directionCategories.find((c) => c.id === categoryId)) {
+      setCategoryId(directionCategories[0]?.id ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direction]);
 
   if (!open) return null;
 
@@ -87,7 +98,7 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
         setError('请输入押金金额');
         return;
       }
-      createPoolWithCycles({ name: name.trim(), type, amount: amountVal, cycleMonths: 1 });
+      createPoolWithCycles({ name: name.trim(), type, amount: amountVal, cycleMonths: 1, direction });
       onClose();
       return;
     }
@@ -117,6 +128,7 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
       dateRange,
       dailyAmount: hasDaily ? dailyVal : undefined,
       categoryId: categoryId || undefined,
+      direction,
     });
     onClose();
   };
@@ -143,6 +155,29 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
             <span className={styles.typeOptName}>存池型</span>
             <span className={styles.typeOptDesc}>押金 · 存入/取出</span>
           </button>
+        </div>
+
+        {/* v2.4：资金方向 */}
+        <div className={styles.field}>
+          <label className={styles.fieldLabel}>资金方向</label>
+          <div className={styles.typeRow}>
+            <button
+              type="button"
+              className={`${styles.typeOpt} ${direction === 'expense' ? styles.typeOptActive : ''}`}
+              onClick={() => setDirection('expense')}
+            >
+              <span className={styles.typeOptName}>支出</span>
+              <span className={styles.typeOptDesc}>{type === 'equalize' ? '逐日记支出' : '支出=存入'}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.typeOpt} ${direction === 'income' ? styles.typeOptActive : ''}`}
+              onClick={() => setDirection('income')}
+            >
+              <span className={styles.typeOptName}>收入</span>
+              <span className={styles.typeOptDesc}>{type === 'equalize' ? '逐日记收入' : '收入=存入'}</span>
+            </button>
+          </div>
         </div>
 
         <div className={styles.field}>
@@ -207,7 +242,7 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
             <div className={styles.field}>
               <label className={styles.fieldLabel}>挂载分类（每日均摊记录归入）</label>
               <div className={styles.catChips}>
-                {expenseCategories.map((cat) => (
+                {directionCategories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"

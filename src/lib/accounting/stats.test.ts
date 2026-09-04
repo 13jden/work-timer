@@ -13,6 +13,8 @@ import {
   sumRecords,
   shiftDay,
   shiftMonth,
+  listableRecords,
+  recordAffectsBalance,
 } from './stats';
 import type { AccountRecord } from '../types';
 
@@ -170,5 +172,29 @@ describe('sumRecords', () => {
     ];
     expect(sumRecords(records).expense).toBe(10);
     expect(sumRecords(records, { includeVirtualPool: true }).expense).toBe(100);
+  });
+});
+
+describe('listableRecords（v2.4 T-410）', () => {
+  it('保留认领付款记录（列表展示「已关联池」），仅排除存量虚拟预扣', () => {
+    const manual = makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' });
+    const claimed = makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' });
+    const virtual = makeRecord({ dateKey: '2026-09-01', amount: -100, type: 'expense', poolStatus: 'virtual' });
+    const poolDaily = makeRecord({ dateKey: '2026-09-01', amount: -100, type: 'expense', poolId: 'pool-1' });
+    const result = listableRecords([manual, claimed, virtual, poolDaily]);
+    expect(result.map((r) => r.id)).toEqual([manual.id, claimed.id, poolDaily.id]);
+  });
+});
+
+describe('recordAffectsBalance（v2.4 T-410）', () => {
+  it('池逐日均摊记录与存量虚拟预扣不动余额', () => {
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -100, type: 'expense', poolId: 'pool-1' }))).toBe(false);
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -100, type: 'expense', poolStatus: 'virtual' }))).toBe(false);
+  });
+
+  it('手动记录 / 认领付款 / 存池存取动余额', () => {
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' }))).toBe(true);
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' }))).toBe(true);
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -2000, type: 'expense', poolId: 'pool-2', poolStatus: 'confirmed' }))).toBe(true);
   });
 });

@@ -7,10 +7,22 @@
  * - 年：全年 12 月收/支双柱图 + 分类排行；点柱下钻到月
  * 汇总条显示本期总支出/收入与环比上期 ±%。
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { SegmentedControl } from '../../SegmentedControl';
 import { useAccountStore } from '../../../store/accountStore';
-import type { AccountRecord, RecordType } from '../../../lib/types';
+import type { Account, AccountRecord, RecordType } from '../../../lib/types';
 import {
   filterByRange,
   aggregateByDay,
@@ -19,12 +31,14 @@ import {
   sumRecords,
   shiftDay,
   shiftMonth,
+  listableRecords,
 } from '../../../lib/accounting/stats';
 import { formatAmount, getTodayKey, getCurrentMonthKey, visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import { StatsBarChart, type BarChartItem } from './StatsBarChart';
 import { CategoryRankList } from './CategoryRankList';
 import { CategoryRecordsPage } from '../CategoryRecordsPage';
+import { AddRecordModal } from '../AddRecordModal';
 import styles from './StatsPage.module.css';
 
 type StatsView = 'day' | 'month' | 'year';
@@ -44,6 +58,42 @@ const TYPE_OPTIONS: Array<{ value: RecordType; label: string }> = [
 export function StatsPage() {
   const records = useAccountStore((s) => s.records);
   const categories = useAccountStore((s) => s.categories);
+  const accounts = useAccountStore((s) => s.accounts);
+  const updateRecord = useAccountStore((s) => s.updateRecord);
+
+  /** v2.4：拖拽归入账户 — 当前拖动的记录 */
+  const [dragRecord, setDragRecord] = useState<AccountRecord | null>(null);
+  /** v2.4 T-410：点击记录打开编辑弹窗 */
+  const [editingRecord, setEditingRecord] = useState<AccountRecord | null>(null);
+  /** 拖拽一旦启动就抑制随后的 click（避免拖完误触编辑弹窗） */
+  const suppressClickRef = useRef(false);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    suppressClickRef.current = true;
+    const rec = records.find((r) => r.id === event.active.id);
+    setDragRecord(rec ?? null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDragRecord(null);
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
+    const targetAccountId = event.over ? String(event.over.id) : null;
+    if (!targetAccountId) return;
+    const rec = records.find((r) => r.id === event.active.id);
+    if (!rec || rec.accountId === targetAccountId) return;
+    updateRecord(rec.id, { accountId: targetAccountId });
+  };
+
+  const handleOpenRecord = (record: AccountRecord) => {
+    if (suppressClickRef.current) return;
+    setEditingRecord(record);
+  };
 
   const [view, setView] = useState<StatsView>('month');
   const [type, setType] = useState<RecordType>('expense');
@@ -117,9 +167,18 @@ export function StatsPage() {
   }, [view, currentRecords, type, statsOptions]);
 
   // ── 日视图：记录列表 ────────────────────────────────────
+  // v2.4 T-410：列表用 listableRecords —— 认领付款记录保留展示（标「已关联池」），
+  // 仅排除存量虚拟预扣；汇总/图表仍走 baseRecords（visibleRecords）避免重复计算
+  const listBaseRecords = useMemo(
+    () => (includeVirtual ? records : listableRecords(records)),
+    [records, includeVirtual],
+  );
   const dayRecords = useMemo(
-    () => [...currentRecords].sort((a, b) => b.createdAt - a.createdAt),
-    [currentRecords],
+    () =>
+      [...filterByRange(listBaseRecords, ranges.start, ranges.end)].sort(
+        (a, b) => b.createdAt - a.createdAt,
+      ),
+    [listBaseRecords, ranges],
   );
 
   const todayKey = getTodayKey();
@@ -154,7 +213,13 @@ export function StatsPage() {
       </div>
 
       {view === 'day' && (
-        <>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setDragRecord(null)}
+        >
           <PeriodNav
             title={formatDayTitle(dayKey)}
             onPrev={() => setDayKey(shiftDay(dayKey, -1))}
@@ -165,11 +230,22 @@ export function StatsPage() {
           ) : (
             <div className={styles.dayList}>
               {dayRecords.map((record) => (
-                <DayRecordRow key={record.id} record={record} />
+                <DayRecordRow
+                  key={record.id}
+                  record={record}
+                  isDragging={dragRecord?.id === record.id}
+                  onOpen={() => handleOpenRecord(record)}
+                />
               ))}
             </div>
           )}
-        </>
+          {dragRecord && (
+            <AccountDock accounts={accounts} currentAccountId={dragRecord.accountId} />
+          )}
+          <DragOverlay dropAnimation={null}>
+            {dragRecord ? <DragRecordCard record={dragRecord} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {view === 'month' && (
@@ -232,6 +308,13 @@ export function StatsPage() {
           onBack={() => setRankCategoryId(null)}
         />
       )}
+
+      {/* v2.4 T-410：点开记录查看详情、修改金额与分类 */}
+      <AddRecordModal
+        open={editingRecord !== null}
+        editingRecord={editingRecord}
+        onClose={() => setEditingRecord(null)}
+      />
     </div>
   );
 }
@@ -298,8 +381,84 @@ function DeltaText({ current, prev, badWhenUp }: DeltaTextProps) {
   );
 }
 
-/** 日视图记录行：分类图标 + 分类名 + 备注 + 金额 */
-function DayRecordRow({ record }: { record: AccountRecord }) {
+interface DayRecordRowProps {
+  record: AccountRecord;
+  isDragging: boolean;
+  /** v2.4 T-410：点击打开详情编辑 */
+  onOpen: () => void;
+}
+
+/** 日视图记录行：分类图标 + 分类名 + 备注 + 账户标签 + 金额（v2.4：整行可拖拽归入账户，点击编辑） */
+function DayRecordRow({ record, isDragging, onOpen }: DayRecordRowProps) {
+  const categories = useAccountStore((s) => s.categories);
+  const accounts = useAccountStore((s) => s.accounts);
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: record.id });
+  const category = categories.find((c) => c.id === record.categoryId);
+  const account = accounts.find((a) => a.id === record.accountId);
+  const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
+  const icon = record.isUncategorized ? 'package' : (category?.icon ?? '❓');
+  const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+  const isExpense = record.type === 'expense';
+  // v2.4 T-409：池逐日生成的均摊记录（收入=虚拟到账 / 支出=虚拟均摊）
+  const isPoolDaily = !!record.poolId && !record.poolStatus;
+  // v2.4 T-410：均摊记录已关联实际入账/支出（虚拟变实际）
+  const isSettled = isPoolDaily && !!record.poolSettledAt;
+  // v2.4 T-410：认领付款记录（真实流水，已关联池，不参与统计）
+  const isClaimed = record.poolStatus === 'claimed';
+  const cls = [
+    styles.dayRow,
+    styles.dayRowDraggable,
+    isDragging ? styles.dayRowDragging : '',
+  ].filter(Boolean).join(' ');
+  // 副标题优先级：已关联结算信息 > 备注
+  const sub = isSettled
+    ? `已关联 · ${formatSettledDate(record.poolSettledAt!)} · ¥${formatAmount(record.poolSettledAmount ?? Math.abs(record.amount))}`
+    : record.note?.trim() || null;
+  return (
+    <div ref={setNodeRef} className={cls} onClick={onOpen} {...listeners} {...attributes}>
+      <span className={styles.dayRowIcon} style={{ background: color }}>
+        <IconByKey icon={icon} size={16} color="#fff" />
+      </span>
+      <span className={styles.dayRowInfo}>
+        <span className={styles.dayRowName}>
+          {name}
+          {isClaimed && <span className={styles.linkedTag}>已关联池 · 不计统计</span>}
+          {isSettled && <span className={styles.linkedTag}>已关联池</span>}
+          {isPoolDaily && !isSettled && (
+            <span
+              className={record.poolDirection === 'in' ? styles.virtualTagIn : styles.virtualTagOut}
+            >
+              {record.poolDirection === 'in' ? '虚拟到账' : '虚拟均摊'}
+            </span>
+          )}
+        </span>
+        {sub ? <span className={styles.dayRowSub}>{sub}</span> : null}
+      </span>
+      {account ? (
+        <span className={styles.dayRowAcct}>
+          <span className={styles.dayRowAcctDot} style={{ background: account.color }} />
+          {account.name}
+        </span>
+      ) : (
+        <span className={`${styles.dayRowAcct} ${styles.dayRowAcctNone}`}>未归入</span>
+      )}
+      <span className={`${styles.dayRowAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
+        {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
+      </span>
+    </div>
+  );
+}
+
+/** 结算时间戳 → "M月D日"（同年省略年份） */
+function formatSettledDate(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+  return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}年${md}`;
+}
+
+/** v2.4：拖拽时的浮动记录卡（DragOverlay 内容） */
+function DragRecordCard({ record }: { record: AccountRecord }) {
   const categories = useAccountStore((s) => s.categories);
   const category = categories.find((c) => c.id === record.categoryId);
   const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
@@ -307,17 +466,58 @@ function DayRecordRow({ record }: { record: AccountRecord }) {
   const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
   const isExpense = record.type === 'expense';
   return (
-    <div className={styles.dayRow}>
+    <div className={styles.dragCard}>
       <span className={styles.dayRowIcon} style={{ background: color }}>
         <IconByKey icon={icon} size={16} color="#fff" />
       </span>
-      <span className={styles.dayRowInfo}>
-        <span className={styles.dayRowName}>{name}</span>
-        {record.note?.trim() ? <span className={styles.dayRowSub}>{record.note}</span> : null}
-      </span>
+      <span className={styles.dayRowName}>{name}</span>
       <span className={`${styles.dayRowAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
         {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
       </span>
+    </div>
+  );
+}
+
+interface AccountDockProps {
+  accounts: Account[];
+  currentAccountId: string;
+}
+
+/** v2.4：拖拽时底部显示的账户 dock，松手即归入对应账户 */
+function AccountDock({ accounts, currentAccountId }: AccountDockProps) {
+  return (
+    <div className={styles.dockWrap}>
+      <div className={styles.dockHint}>松开手指，归入对应账户</div>
+      {accounts.length === 0 ? (
+        <div className={styles.dockEmpty}>暂无账户，请先在 MINE 页添加</div>
+      ) : (
+        <div className={styles.dockCards}>
+          {accounts.map((account) => (
+            <DockCard
+              key={account.id}
+              account={account}
+              isCurrent={account.id === currentAccountId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DockCard({ account, isCurrent }: { account: Account; isCurrent: boolean }) {
+  const { isOver, setNodeRef } = useDroppable({ id: account.id });
+  const cls = [
+    styles.dockCard,
+    isCurrent ? styles.dockCardCurrent : '',
+    isOver ? styles.dockCardOver : '',
+  ].filter(Boolean).join(' ');
+  return (
+    <div ref={setNodeRef} className={cls}>
+      {isCurrent && <span className={styles.dockCurrentTag}>当前</span>}
+      <span className={styles.dockDot} style={{ background: account.color }} />
+      <span className={styles.dockName}>{account.name}</span>
+      <span className={styles.dockBalance}>¥{formatAmount(account.balance)}</span>
     </div>
   );
 }

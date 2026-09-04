@@ -19,7 +19,7 @@ import { type TabId } from './components/Sidebar';
 import { BottomNav, type BottomNavTab } from './components/BottomNav';
 import { StatsPage } from './components/Accounting/StatsPage';
 import { AccountingCalendar } from './components/Accounting/AccountingCalendar';
-import { PoolPage } from './components/Accounting/PoolPage';
+import { MinePage } from './components/Accounting/MinePage';
 import { TodayPage } from './pages/TodayPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { ConvertPage } from './pages/ConvertPage';
@@ -76,13 +76,13 @@ const ACCT_TABS: BottomNavTab[] = [
   { id: 'acct-mine',  label: 'MINE' },
 ];
 
-/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 池管理(v2.3) */
+/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 钱包+目标+池(v2.4) */
 function renderAcctPage(index: number) {
   switch (index) {
     case 0:  return <AccountingPage />;
     case 1:  return <StatsPage />;
     case 2:  return <AccountingCalendar />;
-    default: return <PoolPage />;
+    default: return <MinePage />;
   }
 }
 

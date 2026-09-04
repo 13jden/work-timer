@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.4 | 2026-09-04 | 多账户钱包 + 存钱目标 + 池自动退休 | [`docs/CHANGELOG-v2.4.md`](./CHANGELOG-v2.4.md) |
 | v2.3 | 2026-09-04 | 池机制(到期逐日生成 + 认领标记 + 日历选日期范围) | [`docs/CHANGELOG-v2.3.md`](./CHANGELOG-v2.3.md) |
 | v2.2 | 2026-09-04 | 统计页三视图 + 记账日历 + 分类记录页 | [`docs/CHANGELOG-v2.2.md`](./CHANGELOG-v2.2.md) |
 | v2.1 | 2026-09-03 | 线稿图标 + 移动端双主题框架(上下滑切换) | [`docs/CHANGELOG-v2.1.md`](./CHANGELOG-v2.1.md) |

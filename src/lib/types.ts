@@ -440,6 +440,17 @@ export interface AccountRecord {
    * - 'confirmed'：存池型存入/取出记录（正常计入统计）
    */
   poolStatus?: 'virtual' | 'claimed' | 'confirmed';
+  // v2.4 T-410：池周期快照 — 均摊起止日期与均摊总额（池删除后仍可溯源）
+  poolCycleStart?: string;   // YYYY-MM-DD
+  poolCycleEnd?: string;     // YYYY-MM-DD
+  poolCycleTotal?: number;   // 该周期均摊总额
+  // v2.4 T-410：该周期真实入账/支付的时间与金额（认领满额时回写，虚拟→实际）
+  poolSettledAt?: number;
+  poolSettledAmount?: number;
+  // v2.4 T-410：池名称快照（池自动移除后记录仍能显示关联的是哪个池）
+  poolName?: string;
+  // 存钱目标关联（v2.4 TASK-040）：记录金额（带符号）自动累计到目标进度
+  goalId?: string;
   // 分配状态
   assignedFolderId?: string;
   // 分类状态
@@ -498,6 +509,8 @@ export interface PoolConfig {
   cycleMode?: 'daily' | 'monthly';
   /** v2.3:用户自填日均金额（可选；不填则由总额/天数推导） */
   dailyAmount?: number;
+  /** v2.4:资金方向。expense=支出池（默认，兼容存量）；income=收入池（逐日生成收入记录） */
+  direction?: 'income' | 'expense';
   createdAt: number;
 }
 

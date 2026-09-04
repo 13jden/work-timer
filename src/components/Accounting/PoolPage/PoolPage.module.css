@@ -1,10 +1,17 @@
 /* PoolPage — 池管理页（v2.3 TASK-039 · 记账主题 MINE tab） */
 
-.page {
-  padding: 16px 16px 24px;
+/* v2.4：作为 MinePage 分区（原 .page 外壳移至 MinePage） */
+.section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.emptySmall {
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
 }
 
 .header {
@@ -133,6 +140,21 @@
   justify-content: space-between;
   font-size: 11px;
   color: var(--muted);
+}
+
+/* v2.4 T-409：收入池未到账标记 */
+.cardMetaRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unreceivedTag {
+  font-style: normal;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
 }
 
 .delBtn {

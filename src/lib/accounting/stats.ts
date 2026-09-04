@@ -63,6 +63,27 @@ export function visibleRecords(records: AccountRecord[]): AccountRecord[] {
 }
 
 /**
+ * 记录列表可见性过滤（v2.4 T-410）：
+ * 与 visibleRecords 不同，认领付款记录保留展示（行内标「已关联池」），
+ * 仅排除存量虚拟预扣。统计求和仍用 visibleRecords，避免重复计算。
+ */
+export function listableRecords(records: AccountRecord[]): AccountRecord[] {
+  return records.filter((r) => r.poolStatus !== 'virtual');
+}
+
+/**
+ * 记录是否真实影响账户余额（v2.4 T-410）。
+ * 池逐日均摊记录（有 poolId、无 poolStatus）与存量虚拟预扣不动余额；
+ * 手动记录、认领付款（claimed）、存池存取（confirmed）才动余额。
+ * 编辑/删除时的余额回退必须以此为据，否则会凭空增减。
+ */
+export function recordAffectsBalance(record: AccountRecord): boolean {
+  if (record.poolStatus === 'virtual') return false;
+  if (record.poolId && !record.poolStatus) return false;
+  return true;
+}
+
+/**
  * 按 dateKey 范围过滤（闭区间，YYYY-MM-DD 字符串可直接比较）。
  * @param records - 记录列表
  * @param startKey - 起始日期（含），如 '2026-09-01'

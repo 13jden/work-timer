@@ -1,7 +1,7 @@
 /**
- * @fileoverview PoolPage — 池管理页（v2.3 · TASK-039）
+ * @fileoverview PoolSection — 池管理区（v2.4 · TASK-040）
  *
- * 记账主题 MINE tab（T-301）：池卡片列表 + 建池弹窗。
+ * MINE 页的池分区（原 v2.3 PoolPage，去掉页面外壳并入 MinePage）。
  * - 均摊型：周期进度条（已确认 / 总额）+ 状态徽标（进行中/已确认/已逾期）
  * - 存池型：池余额（Σ存入 − Σ取出）
  */
@@ -13,8 +13,8 @@ import { equalizeProgress, depositBalance } from '../../../lib/accounting/pool';
 import { AddPoolModal } from './AddPoolModal';
 import styles from './PoolPage.module.css';
 
-/** 池管理页（记账主题 tab 3）。 */
-export function PoolPage() {
+/** 池管理区（MINE 页分区）。 */
+export function PoolSection() {
   const pools = useAccountStore((s) => s.pools);
   const cycles = useAccountStore((s) => s.cycles);
   const deletePool = useAccountStore((s) => s.deletePool);
@@ -26,7 +26,7 @@ export function PoolPage() {
   };
 
   return (
-    <div className={styles.page}>
+    <section className={styles.section}>
       <div className={styles.header}>
         <div>
           <div className={styles.title}>我的池</div>
@@ -38,7 +38,7 @@ export function PoolPage() {
       </div>
 
       {pools.length === 0 ? (
-        <div className={styles.empty}>
+        <div className={styles.emptySmall}>
           还没有池，把房租、会员费、押金交给池管理
         </div>
       ) : (
@@ -63,7 +63,7 @@ export function PoolPage() {
       )}
 
       <AddPoolModal open={addOpen} onClose={() => setAddOpen(false)} />
-    </div>
+    </section>
   );
 }
 
@@ -73,19 +73,23 @@ interface CardProps {
   onDelete: () => void;
 }
 
-/** 均摊型池卡片 */
+/** 均摊型池卡片（v2.4 T-409：收入池显示到账进度 + 未到账标记） */
 function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
   const progress = equalizeProgress(poolCycles);
   const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
   const grandTotal = poolCycles.reduce((sum, c) => sum + c.totalAmount, 0);
   const status = poolOverallStatus(poolCycles);
   const dailyAvg = poolCycles[0]?.dailyVirtual ?? 0;
+  const isIncome = pool.direction === 'income';
+  const remaining = Math.max(0, Math.round((grandTotal - paidTotal) * 100) / 100);
 
   return (
     <div className={styles.card}>
       <div className={styles.cardTop}>
         <span className={styles.cardName}>{pool.name}</span>
-        <span className={`${styles.badge} ${styles.badgeEqualize}`}>均摊</span>
+        <span className={`${styles.badge} ${styles.badgeEqualize}`}>
+          {isIncome ? '均摊·收入' : '均摊'}
+        </span>
         <span className={`${styles.badge} ${STATUS_CLASS[status] ?? ''}`}>{STATUS_LABEL[status]}</span>
         <button type="button" className={styles.delBtn} onClick={onDelete} aria-label="删除池">
           ✕
@@ -100,9 +104,14 @@ function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
       </div>
       <div className={styles.cardMeta}>
         <span>
-          已认领 ¥{formatAmount(paidTotal)} / ¥{formatAmount(grandTotal)}
+          {isIncome ? '已到账' : '已认领'} ¥{formatAmount(paidTotal)} / ¥{formatAmount(grandTotal)}
         </span>
-        <span>{Math.round(progress * 100)}%</span>
+        <span className={styles.cardMetaRight}>
+          {isIncome && remaining > 0 && (
+            <em className={styles.unreceivedTag}>¥{formatAmount(remaining)} 未到账</em>
+          )}
+          {Math.round(progress * 100)}%
+        </span>
       </div>
     </div>
   );
