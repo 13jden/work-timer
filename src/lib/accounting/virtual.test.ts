@@ -75,6 +75,8 @@ describe('calcVirtualAssets', () => {
       prepaidUnconsumed: 0,
       unpaidConsumed: 0,
       earnedUnarrived: 0,
+      depositRefundable: 0,
+      depositPending: 0,
       virtualTotal: 0,
     });
   });
@@ -201,7 +203,7 @@ describe('calcVirtualAssets', () => {
     expect(r.pendingAdjust).toBe(0);
   });
 
-  it('多池合计 + 存池型不参与虚拟分解', () => {
+  it('多池合计 + 押金先付存池计入绿色待退（v2.5 T-416）', () => {
     const acc = makeAccount({ balance: 1000 });
     const rent1 = makePool({ amount: 600, direction: 'expense' });
     const rent2 = makePool({ amount: 300, direction: 'expense' });
@@ -216,6 +218,50 @@ describe('calcVirtualAssets', () => {
     expect(r.prepaidUnconsumed).toBe(600); // rent1 全额预付未消耗
     expect(r.unpaidConsumed).toBe(300); // rent2 消耗 300 未付款
     expect(r.earnedUnarrived).toBe(0);
-    expect(r.virtualTotal).toBe(1600); // 未支付不扣虚拟总额
+    expect(r.depositRefundable).toBe(800); // 押金已付 → 待退
+    expect(r.virtualTotal).toBe(2400); // 未支付不扣虚拟总额，待退计入
+  });
+
+  it('押金先付：存入 2000 取出 500 → 待退 1500', () => {
+    const acc = makeAccount({ balance: 3000 });
+    const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'prepay' });
+    const records: AccountRecord[] = [
+      makeRecord({ accountId: acc.id, amount: -2000, poolId: deposit.id, poolStatus: 'confirmed' }),
+      makeRecord({ accountId: acc.id, amount: 500, type: 'income', poolId: deposit.id, poolStatus: 'confirmed' }),
+    ];
+    const r = calcVirtualAssets({ accounts: [acc], records, pools: [deposit] });
+    expect(r.depositRefundable).toBe(1500);
+    expect(r.depositPending).toBe(0);
+    expect(r.virtualTotal).toBe(4500);
+  });
+
+  it('押金先付：建池即声明已付，无认领记录也显示待退（回归）', () => {
+    const acc = makeAccount({ balance: 3000 });
+    const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'prepay' });
+    const r = calcVirtualAssets({ accounts: [acc], records: [], pools: [deposit] });
+    expect(r.depositRefundable).toBe(2000);
+    expect(r.depositPending).toBe(0);
+    expect(r.virtualTotal).toBe(5000);
+  });
+
+  it('先用后付：押金 2000 未支付 → 待付 2000，不扣虚拟总额', () => {
+    const acc = makeAccount({ balance: 3000 });
+    const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'postpay' });
+    const r = calcVirtualAssets({ accounts: [acc], records: [], pools: [deposit] });
+    expect(r.depositPending).toBe(2000);
+    expect(r.depositRefundable).toBe(0);
+    expect(r.virtualTotal).toBe(3000);
+  });
+
+  it('先用后付部分支付：押金 2000 已存 800 → 待付 1200 + 待退 800', () => {
+    const acc = makeAccount({ balance: 3000 });
+    const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'postpay' });
+    const records: AccountRecord[] = [
+      makeRecord({ accountId: acc.id, amount: -800, poolId: deposit.id, poolStatus: 'confirmed' }),
+    ];
+    const r = calcVirtualAssets({ accounts: [acc], records, pools: [deposit] });
+    expect(r.depositPending).toBe(1200);
+    expect(r.depositRefundable).toBe(800);
+    expect(r.virtualTotal).toBe(3800);
   });
 });

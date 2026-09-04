@@ -511,6 +511,12 @@ export interface PoolConfig {
   dailyAmount?: number;
   /** v2.4:资金方向。expense=支出池（默认，兼容存量）；income=收入池（逐日生成收入记录） */
   direction?: 'income' | 'expense';
+  /**
+   * v2.5 T-416：存池型结算方式。
+   * prepay=押金先付（实际已扣，虚拟「待退」计入绿色资产，默认，兼容存量）；
+   * postpay=先用后付（未付部分红色待付，与未分类同框）。
+   */
+  settleMode?: 'prepay' | 'postpay';
   createdAt: number;
 }
 

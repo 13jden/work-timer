@@ -55,9 +55,10 @@ export function AccountingPage() {
   // v2.2 TASK-038:分类记录页(全部记录)入口
   const [allRecordsCategoryId, setAllRecordsCategoryId] = useState<string | null>(null);
 
+  // v2.5 T-414：触摸拖拽需长按 1 秒才激活（避免滚动/主题下滑手势误触发）
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -120,7 +121,12 @@ export function AccountingPage() {
       const recordId = activeIdValue.slice(RECORD_DRAG_PREFIX.length);
       const folderId = overIdValue.slice(FOLDER_DRAG_PREFIX.length);
       const folder = state.folders.find((item) => item.id === folderId);
-      if (folder) {
+      const record = state.records.find((item) => item.id === recordId);
+      const folderCategory = folder
+        ? state.categories.find((category) => category.id === folder.categoryId)
+        : undefined;
+      // v2.5 T-417：只允许归入同类型（支出/收入）分类，避免串类
+      if (folder && record && folderCategory && folderCategory.type === record.type) {
         state.updateRecord(recordId, { categoryId: folder.categoryId, isUncategorized: false });
       }
       return;
@@ -129,21 +135,22 @@ export function AccountingPage() {
     if (!activeIdValue.startsWith(FOLDER_DRAG_PREFIX) || !overIdValue.startsWith(FOLDER_DRAG_PREFIX)) return;
     if (activeIdValue === overIdValue) return;
 
-    const expenseFolderIds = state.folders
-      .filter((folder) => state.categories.find((category) => category.id === folder.categoryId)?.type === 'expense')
+    // v2.5 T-417：网格已含支出+收入全部文件夹，排序按全集处理
+    const folderIds = state.folders
+      .filter((folder) => state.categories.some((category) => category.id === folder.categoryId))
       .sort((left, right) => left.order - right.order)
       .map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`);
-    const oldIndex = expenseFolderIds.indexOf(activeIdValue);
-    const newIndex = expenseFolderIds.indexOf(overIdValue);
+    const oldIndex = folderIds.indexOf(activeIdValue);
+    const newIndex = folderIds.indexOf(overIdValue);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reorderedExpenseIds = arrayMove(expenseFolderIds, oldIndex, newIndex)
+    const reorderedIds = arrayMove(folderIds, oldIndex, newIndex)
       .map((id) => id.slice(FOLDER_DRAG_PREFIX.length));
     const otherFolderIds = state.folders
-      .filter((folder) => !reorderedExpenseIds.includes(folder.id))
+      .filter((folder) => !reorderedIds.includes(folder.id))
       .sort((left, right) => left.order - right.order)
       .map((folder) => folder.id);
-    state.reorderFolders([...reorderedExpenseIds, ...otherFolderIds]);
+    state.reorderFolders([...reorderedIds, ...otherFolderIds]);
   };
 
   return (
@@ -181,7 +188,7 @@ export function AccountingPage() {
           <UncategorizedArea onPickRecord={handlePickRecord} />
         </section>
 
-        <section className={styles.extrasWrap} aria-label="支出分类">
+        <section className={styles.extrasWrap} aria-label="分类文件夹">
           <div className={styles.sectionHeader}><span>分类文件夹</span><span>{monthKey}</span></div>
           <CategoryFolderGrid
             monthKey={monthKey}

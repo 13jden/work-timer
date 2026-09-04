@@ -11,6 +11,10 @@
  *   例：房租 2100/月（日均 70），4 号已消耗 280、尚未付款 → 欠 280
  *   不并入虚拟总额，与未归入记录同框作为负向调整项展示
  *
+ * 存池分解（v2.5 T-416）：
+ * - 押金先付（prepay，默认）：池内余额实际已扣、概念仍存在 → 待退，绿色资产
+ * - 先用后付（postpay）：未付部分 → 待付，红色调整项（与未分类同框）；已付部分同样计待退
+ *
  * 未归入调整项：实际发生（手动记录 / 认领付款 / 存池存取）但未归入任何账户的
  * 记录，带符号合计。池逐日生成的虚拟记录不参与（已由池分解覆盖）。
  *
@@ -30,7 +34,11 @@ export interface VirtualAssetsBreakdown {
   unpaidConsumed: number;
   /** 收入池已赚未到账合计（≥0） */
   earnedUnarrived: number;
-  /** 虚拟资产 = 实际 + 预付未消耗 + 已赚未到账 */
+  /** v2.5 T-416：存池押金待退合计（≥0）：实际已扣、概念仍存在，绿色资产 */
+  depositRefundable: number;
+  /** v2.5 T-416：存池先用后付未付合计（≥0）：红色待付，与未分类同框，不并入虚拟总额 */
+  depositPending: number;
+  /** 虚拟资产 = 实际 + 预付未消耗 + 已赚未到账 + 押金待退 */
   virtualTotal: number;
 }
 
@@ -74,7 +82,28 @@ export function calcVirtualAssets(params: {
   let prepaidUnconsumed = 0;
   let unpaidConsumed = 0;
   let earnedUnarrived = 0;
+  let depositRefundable = 0;
+  let depositPending = 0;
   for (const pool of pools) {
+    if (pool.type === 'deposit') {
+      // v2.5 T-416：存池分解。confirmed 支出记录=存入，收入记录=取出
+      let paidIn = 0;
+      let takenOut = 0;
+      for (const r of records) {
+        if (r.poolId !== pool.id || r.poolStatus !== 'confirmed') continue;
+        if (r.amount < 0) paidIn += -r.amount;
+        else takenOut += r.amount;
+      }
+      if ((pool.settleMode ?? 'prepay') === 'postpay') {
+        // 先用后付：未付部分红色待付；已付部分实际已扣 → 绿色待退
+        depositPending += Math.max(0, pool.amount - paidIn);
+        depositRefundable += Math.max(0, paidIn - takenOut);
+      } else {
+        // 押金先付：建池即声明已付（不依赖认领记录），取出会减少待退
+        depositRefundable += Math.max(0, pool.amount - takenOut);
+      }
+      continue;
+    }
     if (pool.type !== 'equalize') continue;
     let generated = 0;
     let claimed = 0;
@@ -100,6 +129,8 @@ export function calcVirtualAssets(params: {
     prepaidUnconsumed: round2(prepaidUnconsumed),
     unpaidConsumed: round2(unpaidConsumed),
     earnedUnarrived: round2(earnedUnarrived),
-    virtualTotal: round2(actualTotal + prepaidUnconsumed + earnedUnarrived),
+    depositRefundable: round2(depositRefundable),
+    depositPending: round2(depositPending),
+    virtualTotal: round2(actualTotal + prepaidUnconsumed + earnedUnarrived + depositRefundable),
   };
 }

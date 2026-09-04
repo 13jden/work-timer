@@ -10,11 +10,20 @@ import { formatAmount, calcVirtualAssets } from '../../../lib/accounting';
 import { AccountRow } from './AccountRow';
 import { GoalsSection } from './GoalsSection';
 import { PoolSection } from '../PoolPage/PoolSection';
+import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
 export function MinePage() {
+  const accountCount = useAccountStore((s) => s.accounts.length);
   return (
     <div className={styles.page}>
+      {/* v2.5 T-415：与计时侧设置页位置对应的标题栏 */}
+      <PageTopbar
+        eyebrow="mine"
+        english="What you own"
+        right={`${accountCount} 账户`}
+        title="资产设置"
+      />
       <TotalAssetsCard />
       <GoalsSection />
       <PoolSection />
@@ -37,11 +46,13 @@ function TotalAssetsCard() {
     prepaidUnconsumed,
     unpaidConsumed,
     earnedUnarrived,
+    depositRefundable,
+    depositPending,
     virtualTotal,
   } = useMemo(() => calcVirtualAssets({ accounts, records, pools }), [accounts, records, pools]);
 
-  const hasVirtual = prepaidUnconsumed > 0 || earnedUnarrived > 0;
-  const hasPending = pendingAdjust !== 0 || unpaidConsumed > 0;
+  const hasVirtual = prepaidUnconsumed > 0 || earnedUnarrived > 0 || depositRefundable > 0;
+  const hasPending = pendingAdjust !== 0 || unpaidConsumed > 0 || depositPending > 0;
   const hasBreakdown = hasVirtual || hasPending;
 
   return (
@@ -64,6 +75,10 @@ function TotalAssetsCard() {
               {unpaidConsumed > 0 && (
                 <span className={styles.pendingNeg}>-¥{formatAmount(unpaidConsumed)} 未支付</span>
               )}
+              {/* v2.5 T-416：存池先用后付 → 红色待付，与未分类同框 */}
+              {depositPending > 0 && (
+                <span className={styles.pendingNeg}>-¥{formatAmount(depositPending)} 待付</span>
+              )}
             </span>
           )}
           {prepaidUnconsumed > 0 && (
@@ -71,6 +86,10 @@ function TotalAssetsCard() {
           )}
           {earnedUnarrived > 0 && (
             <span className={styles.chipEarned}>+¥{formatAmount(earnedUnarrived)} 已赚未到账</span>
+          )}
+          {/* v2.5 T-416：押金先付 → 实际已扣、概念仍存在，绿色待退 */}
+          {depositRefundable > 0 && (
+            <span className={styles.chipEarned}>+¥{formatAmount(depositRefundable)} 待退</span>
           )}
         </div>
       )}

@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.5 | 2026-09-04 | 导航手势体验修正 + 存池结算方式 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.4 | 2026-09-04 | 多账户钱包 + 存钱目标 + 池自动退休 | [`docs/CHANGELOG-v2.4.md`](./CHANGELOG-v2.4.md) |
 | v2.3 | 2026-09-04 | 池机制(到期逐日生成 + 认领标记 + 日历选日期范围) | [`docs/CHANGELOG-v2.3.md`](./CHANGELOG-v2.3.md) |
 | v2.2 | 2026-09-04 | 统计页三视图 + 记账日历 + 分类记录页 | [`docs/CHANGELOG-v2.2.md`](./CHANGELOG-v2.2.md) |

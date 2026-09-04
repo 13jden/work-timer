@@ -69,19 +69,21 @@ const TIMER_TABS: BottomNavTab[] = [
   { id: 'settings', label: 'MINE' },
 ];
 
+// v2.5 T-413：与计时侧索引一一对应
+// today↔快速记录 / month↔记账日历 / fish↔日统计 / 设置↔资产
 const ACCT_TABS: BottomNavTab[] = [
   { id: 'accounting', label: 'ACCT' },
-  { id: 'acct-stats', label: 'STATS' },
   { id: 'acct-cal',   label: 'CAL' },
+  { id: 'acct-stats', label: 'STATS' },
   { id: 'acct-mine',  label: 'MINE' },
 ];
 
-/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 钱包+目标+池(v2.4) */
+/** 记账主题页面:0=快速记录,1=记账日历,2=日统计,3=资产(钱包+目标+池) */
 function renderAcctPage(index: number) {
   switch (index) {
     case 0:  return <AccountingPage />;
-    case 1:  return <StatsPage />;
-    case 2:  return <AccountingCalendar />;
+    case 1:  return <AccountingCalendar />;
+    case 2:  return <StatsPage />;
     default: return <MinePage />;
   }
 }
@@ -103,7 +105,8 @@ export function App() {
     useAccountStore.getState().syncPoolCycles();
   }, []);
 
-  // 上下滑切换主题:flick 判定(快 + 纵向位移大),避免与列表滚动冲突
+  // v2.5 T-412：两侧统一「向下滑」切换主题（toggle）
+  // flick 判定(快 + 纵向位移大),避免与列表滚动冲突
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -117,8 +120,10 @@ export function App() {
     const dy = t.clientY - s.y;
     const dx = t.clientX - s.x;
     const dt = Date.now() - s.t;
-    if (dt > 350 || Math.abs(dy) < 70 || Math.abs(dy) < 2 * Math.abs(dx)) return;
-    setMode(dy > 0 ? 'accounting' : 'timer');
+    // 只认向下滑（dy>0）；上滑不再切换，避免与滚动回弹混淆
+    // v2.5 T-415：触发距离 70 → 120，手势更长更不易误触
+    if (dt > 350 || dy < 120 || Math.abs(dy) < 2 * Math.abs(dx)) return;
+    setMode(mode === 'timer' ? 'accounting' : 'timer');
   }
 
   // v1.3.4-patch4:日历页选中日期,提到 App 层让 DesktopRightPanel 共用

@@ -34,20 +34,22 @@ export function CategoryFolderGrid({
   const categories = useAccountStore((state) => state.categories);
   const records = useAccountStore((state) => state.records);
 
-  const expenseFolders = useMemo(
+  // v2.5 T-417：支出 + 收入文件夹都展示（此前仅支出，收入分类建了不显示）
+  const visibleFolders = useMemo(
     () => folders
-      .filter((folder) => categories.find((category) => category.id === folder.categoryId)?.type === 'expense')
+      .filter((folder) => categories.some((category) => category.id === folder.categoryId))
       .sort((left, right) => left.order - right.order),
     [folders, categories],
   );
 
   const statsByFolderId = useMemo(() => {
     const todayKey = getTodayKey();
-    return new Map(expenseFolders.map((folder) => {
+    return new Map(visibleFolders.map((folder) => {
+      const categoryType = categories.find((category) => category.id === folder.categoryId)?.type ?? 'expense';
       // v2.3：虚拟池预扣不计入分类文件夹月度统计
       const monthRecords = visibleRecords(records).filter(
         (record) => record.categoryId === folder.categoryId
-          && record.type === 'expense'
+          && record.type === categoryType
           && record.dateKey.startsWith(monthKey),
       );
       return [folder.id, {
@@ -55,9 +57,9 @@ export function CategoryFolderGrid({
         todayCount: monthRecords.filter((record) => record.dateKey === todayKey).length,
       }];
     }));
-  }, [expenseFolders, monthKey, records]);
+  }, [visibleFolders, categories, monthKey, records]);
 
-  if (expenseFolders.length === 0) {
+  if (visibleFolders.length === 0) {
     return (
       <div className={styles.empty}>
         <span>暂无分类文件夹</span>
@@ -68,9 +70,9 @@ export function CategoryFolderGrid({
 
   return (
     <>
-      <SortableContext items={expenseFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)} strategy={rectSortingStrategy}>
+      <SortableContext items={visibleFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)} strategy={rectSortingStrategy}>
         <div className={styles.grid}>
-          {expenseFolders.map((folder) => (
+          {visibleFolders.map((folder) => (
             <SortableFolder
               key={folder.id}
               folder={folder}

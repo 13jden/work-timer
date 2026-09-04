@@ -39,6 +39,7 @@ import { StatsBarChart, type BarChartItem } from './StatsBarChart';
 import { CategoryRankList } from './CategoryRankList';
 import { CategoryRecordsPage } from '../CategoryRecordsPage';
 import { AddRecordModal } from '../AddRecordModal';
+import { PageTopbar } from '../../PageTopbar';
 import styles from './StatsPage.module.css';
 
 type StatsView = 'day' | 'month' | 'year';
@@ -95,7 +96,8 @@ export function StatsPage() {
     setEditingRecord(record);
   };
 
-  const [view, setView] = useState<StatsView>('month');
+  // v2.5 T-411：默认打开「日」视图（与计时侧 fish 对应「日统计」）
+  const [view, setView] = useState<StatsView>('day');
   const [type, setType] = useState<RecordType>('expense');
   const [dayKey, setDayKey] = useState(getTodayKey());
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
@@ -183,9 +185,17 @@ export function StatsPage() {
 
   const todayKey = getTodayKey();
   const typeLabel = type === 'expense' ? '支出' : '收入';
+  const nowDate = new Date();
 
   return (
     <div className={styles.page}>
+      {/* v2.5 T-415：与计时侧 FISH 页位置对应的标题栏 */}
+      <PageTopbar
+        eyebrow="stats"
+        english="Where it all goes"
+        right={`${nowDate.getMonth() + 1}/${nowDate.getDate()}`}
+        title="日统计"
+      />
       <div className={styles.controls}>
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} />
         <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />

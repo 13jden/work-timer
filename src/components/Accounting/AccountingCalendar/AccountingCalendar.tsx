@@ -15,6 +15,7 @@ import {
 } from '../../../lib/accounting/stats';
 import { formatAmount, getCurrentMonthKey, getTodayKey } from '../../../lib/accounting';
 import { DayDetailSheet } from '../DayDetailSheet';
+import { PageTopbar } from '../../PageTopbar';
 import styles from './AccountingCalendar.module.css';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -54,6 +55,13 @@ export function AccountingCalendar() {
 
   return (
     <div className={styles.page}>
+      {/* v2.5 T-415：与计时侧 MONTH 页位置对应的标题栏 */}
+      <PageTopbar
+        eyebrow="cal"
+        english="When money moves"
+        right={`${parseInt(titleMonth ?? '1', 10)}月`}
+        title="记账日历"
+      />
       <div className={styles.monthNav}>
         <button
           type="button"

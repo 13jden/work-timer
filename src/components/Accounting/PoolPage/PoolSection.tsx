@@ -128,7 +128,9 @@ function DepositCard({ pool, poolCycles, onDelete }: CardProps) {
     <div className={styles.card}>
       <div className={styles.cardTop}>
         <span className={styles.cardName}>{pool.name}</span>
-        <span className={`${styles.badge} ${styles.badgeDeposit}`}>存池</span>
+        <span className={`${styles.badge} ${styles.badgeDeposit}`}>
+          存池{(pool.settleMode ?? 'prepay') === 'postpay' ? ' · 先用后付' : ''}
+        </span>
         <button type="button" className={styles.delBtn} onClick={onDelete} aria-label="删除池">
           ✕
         </button>

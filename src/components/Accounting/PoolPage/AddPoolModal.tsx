@@ -29,6 +29,8 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
   const [type, setType] = useState<PoolType>('equalize');
   /** v2.4：资金方向（支出池 / 收入池） */
   const [direction, setDirection] = useState<'expense' | 'income'>('expense');
+  /** v2.5 T-416：存池结算方式（押金先付 / 先用后付） */
+  const [settleMode, setSettleMode] = useState<'prepay' | 'postpay'>('prepay');
   const [amountStr, setAmountStr] = useState('');
   const [dailyStr, setDailyStr] = useState('');
   /** 日历选择的日期范围（YYYY-MM-DD） */
@@ -44,6 +46,7 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
     setName('');
     setType('equalize');
     setDirection('expense');
+    setSettleMode('prepay');
     setAmountStr('');
     setDailyStr('');
     setPickStart(null);
@@ -98,7 +101,14 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
         setError('请输入押金金额');
         return;
       }
-      createPoolWithCycles({ name: name.trim(), type, amount: amountVal, cycleMonths: 1, direction });
+      createPoolWithCycles({
+        name: name.trim(),
+        type,
+        amount: amountVal,
+        cycleMonths: 1,
+        direction,
+        settleMode,
+      });
       onClose();
       return;
     }
@@ -258,19 +268,43 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
         )}
 
         {type === 'deposit' && (
-          <div className={styles.field}>
-            <label className={styles.fieldLabel}>押金金额（¥）</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              className={styles.fieldInput}
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
+          <>
+            {/* v2.5 T-416：存池结算方式 */}
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>结算方式</label>
+              <div className={styles.typeRow}>
+                <button
+                  type="button"
+                  className={`${styles.typeOpt} ${settleMode === 'prepay' ? styles.typeOptActive : ''}`}
+                  onClick={() => setSettleMode('prepay')}
+                >
+                  <span className={styles.typeOptName}>押金 · 先付</span>
+                  <span className={styles.typeOptDesc}>钱已付出，可退 · 计入绿色资产</span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.typeOpt} ${settleMode === 'postpay' ? styles.typeOptActive : ''}`}
+                  onClick={() => setSettleMode('postpay')}
+                >
+                  <span className={styles.typeOptName}>先用后付</span>
+                  <span className={styles.typeOptDesc}>尚未支付 · 红色待付</span>
+                </button>
+              </div>
+            </div>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>押金金额（¥）</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                className={styles.fieldInput}
+                value={amountStr}
+                onChange={(e) => setAmountStr(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </>
         )}
 
         {error && <div className={styles.error}>{error}</div>}
