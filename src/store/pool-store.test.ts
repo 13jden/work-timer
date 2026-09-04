@@ -362,4 +362,158 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     useAccountStore.getState().deleteRecord(first!.id);
     expect(useAccountStore.getState().getAccountBalance(accountId)).toBe(before);
   });
+
+  // ── T-043：unclaimToPool（编辑模式解绑池关联） ──────────
+
+  it('T-043：均摊池 claimed 付款记录 unclaimToPool → paidAmount 回退 + 池字段清空', () => {
+    const { accountId, categoryId } = setupBase();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+    const record = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -3000, type: 'expense', categoryId, accountId,
+    });
+    useAccountStore.getState().claimToPool(record.id, pool.id);
+
+    // 周期已满 → 池自动退休（记录保留完整快照）
+    const beforePool = useAccountStore.getState().pools.some((p) => p.id === pool.id);
+    const beforeCycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(beforePool).toBe(true);
+    expect(beforeCycle?.paidAmount).toBe(3000);
+
+    // 解绑池关联
+    expect(useAccountStore.getState().unclaimToPool(record.id)).toBe(3000);
+
+    const state = useAccountStore.getState();
+    // 记录上所有池字段清空
+    const after = state.records.find((r) => r.id === record.id);
+    expect(after?.poolId).toBeUndefined();
+    expect(after?.poolStatus).toBeUndefined();
+    expect(after?.poolDirection).toBeUndefined();
+    expect(after?.poolName).toBeUndefined();
+    expect(after?.poolCycleStart).toBeUndefined();
+    expect(after?.poolCycleEnd).toBeUndefined();
+    expect(after?.poolCycleTotal).toBeUndefined();
+    expect(after?.poolSettledAt).toBeUndefined();
+    expect(after?.poolSettledAmount).toBeUndefined();
+    // 其他字段保留
+    expect(after?.amount).toBe(-3000);
+    expect(after?.accountId).toBe(accountId);
+  });
+
+  it('T-043：存池 confirmed 记录 unclaimToPool → 对应 transaction 移除 + 池字段清空', () => {
+    const { accountId } = setupBase();
+    const homeCategory = useAccountStore.getState().addCategory({
+      name: '押金', icon: 'vault', color: '#888', type: 'expense', order: 1,
+    });
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '租房押金', type: 'deposit', amount: 2000, cycleMonths: 1, targetAccountId: accountId,
+    });
+    const pay = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -2000, type: 'expense', categoryId: homeCategory.id, accountId,
+    });
+    useAccountStore.getState().claimToPool(pay.id, pool.id);
+    let cycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(depositBalance(cycle?.transactions ?? [])).toBe(2000);
+
+    // 解绑
+    expect(useAccountStore.getState().unclaimToPool(pay.id)).toBe(2000);
+
+    cycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(depositBalance(cycle?.transactions ?? [])).toBe(0);
+
+    const after = useAccountStore.getState().records.find((r) => r.id === pay.id);
+    expect(after?.poolId).toBeUndefined();
+    expect(after?.poolStatus).toBeUndefined();
+    expect(after?.poolDirection).toBeUndefined();
+  });
+
+  it('T-043：每日均摊记录 unclaimToPool → transaction.recordId 清空（防 sync 重新生成）+ 池字段清空', () => {
+    const { categoryId } = setupBase();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId,
+    });
+    const daily = useAccountStore
+      .getState()
+      .records.find((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(daily).toBeDefined();
+
+    expect(useAccountStore.getState().unclaimToPool(daily!.id)).toBe(100);
+
+    // 对应 transaction 保留但 recordId 清空（防 sync 重新生成）
+    const cycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(cycle?.transactions.some((t) => t.dateKey === daily!.dateKey && !t.recordId)).toBe(true);
+
+    // 记录池字段清空，但记录本身保留（用户可再编辑或删除）
+    const after = useAccountStore.getState().records.find((r) => r.id === daily!.id);
+    expect(after?.poolId).toBeUndefined();
+    expect(after?.poolCycleStart).toBeUndefined();
+    expect(after?.poolName).toBeUndefined();
+  });
+
+  it('T-043：已退休池的均摊记录 unclaimToPool → 池业务跳过，记录池字段清空', () => {
+    const { accountId, categoryId } = setupBase();
+    const prevMonth = shiftMonthForTest(getCurrentMonthKey(), -1);
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '上月订阅', type: 'equalize', amount: 500, cycleMonths: 1,
+      cycleMode: 'daily',
+      dateRange: { start: `${prevMonth}-25`, end: `${prevMonth}-26` },
+      dailyAmount: 250, categoryId, targetAccountId: accountId,
+    });
+    const pay = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -500, type: 'expense', categoryId, accountId,
+    });
+    useAccountStore.getState().claimToPool(pay.id, pool.id);
+    // 池已退休（pools/cycles 都不存在该池）
+    expect(useAccountStore.getState().pools.some((p) => p.id === pool.id)).toBe(false);
+    expect(useAccountStore.getState().cycles.some((c) => c.poolId === pool.id)).toBe(false);
+
+    // 解绑：池业务（paidAmount/transactions）无需处理，记录池字段清空即可
+    expect(useAccountStore.getState().unclaimToPool(pay.id)).toBe(500);
+    const after = useAccountStore.getState().records.find((r) => r.id === pay.id);
+    expect(after?.poolId).toBeUndefined();
+    expect(after?.poolStatus).toBeUndefined();
+    expect(after?.poolName).toBeUndefined();
+  });
+
+  it('T-043：切换池 → unclaim 旧池 + claim 新池，cycles 业务和记录字段正确', () => {
+    const { accountId, categoryId } = setupBase();
+    const poolA = useAccountStore.getState().createPoolWithCycles({
+      name: 'A池', type: 'equalize', amount: 1000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+    const poolB = useAccountStore.getState().createPoolWithCycles({
+      name: 'B池', type: 'equalize', amount: 2000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+
+    const record = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -500, type: 'expense', categoryId, accountId,
+    });
+    useAccountStore.getState().claimToPool(record.id, poolA.id);
+    expect(useAccountStore.getState().cycles.find((c) => c.poolId === poolA.id)?.paidAmount).toBe(500);
+
+    // 切换到 B 池
+    expect(useAccountStore.getState().unclaimToPool(record.id)).toBe(500);
+    expect(useAccountStore.getState().cycles.find((c) => c.poolId === poolA.id)?.paidAmount).toBe(0);
+    expect(useAccountStore.getState().claimToPool(record.id, poolB.id)).toBe(500);
+
+    const after = useAccountStore.getState().records.find((r) => r.id === record.id);
+    expect(after?.poolId).toBe(poolB.id);
+    expect(after?.poolStatus).toBe('claimed');
+    expect(after?.poolName).toBe('B池');
+    expect(useAccountStore.getState().cycles.find((c) => c.poolId === poolB.id)?.paidAmount).toBe(500);
+  });
+
+  it('T-043：未关联池的记录 unclaimToPool → 返回 0，无副作用', () => {
+    const { accountId, categoryId } = setupBase();
+    const record = useAccountStore.getState().addRecord({
+      dateKey: getTodayKey(), amount: -100, type: 'expense', categoryId, accountId,
+    });
+    expect(useAccountStore.getState().unclaimToPool(record.id)).toBe(0);
+    const after = useAccountStore.getState().records.find((r) => r.id === record.id);
+    expect(after?.amount).toBe(-100);
+  });
 });

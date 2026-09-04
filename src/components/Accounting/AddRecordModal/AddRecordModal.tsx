@@ -15,7 +15,7 @@
  */
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import type { AccountRecord, RecordType } from '../../../lib/types';
+import type { AccountRecord, PoolConfig, RecordType } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import styles from './AddRecordModal.module.css';
@@ -49,6 +49,7 @@ export function AddRecordModal({
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const deleteRecord = useAccountStore((s) => s.deleteRecord);
   const claimToPool = useAccountStore((s) => s.claimToPool);
+  const unclaimToPool = useAccountStore((s) => s.unclaimToPool);
 
   // 表单状态
   const [amountStr, setAmountStr] = useState('');
@@ -103,15 +104,34 @@ export function AddRecordModal({
     [pools, type],
   );
 
+  // v2.5-fixbug (T-043)：编辑模式下若当前关联池已退休（不在 pools 里），
+  // 在下拉里追加一项「{poolName}（已退休）」，让用户能保留现状或解绑。
+  const editablePoolOptions = useMemo<PoolConfig[]>(() => {
+    if (!editingRecord?.poolId) return claimablePools;
+    if (claimablePools.find((p) => p.id === editingRecord.poolId)) return claimablePools;
+    const retiredName = editingRecord.poolName ?? '未知池';
+    return [
+        {
+          id: editingRecord.poolId,
+          name: `${retiredName}（已退休）`,
+          type: 'equalize',
+          amount: 0,
+          cycleMonths: 0,
+          createdAt: 0,
+        } as PoolConfig,
+        ...claimablePools,
+      ];
+  }, [claimablePools, editingRecord]);
+
   // 类型切换时重置分类选择（及不再可认领的池）
   useEffect(() => {
     if (!categoryId || !filteredCategories.find((c) => c.id === categoryId)) {
       setCategoryId(filteredCategories[0]?.id ?? '');
     }
-    if (poolId && !claimablePools.find((p) => p.id === poolId)) {
+    if (poolId && !editablePoolOptions.find((p) => p.id === poolId)) {
       setPoolId('');
     }
-  }, [type, filteredCategories, categoryId, claimablePools, poolId]);
+  }, [type, filteredCategories, categoryId, editablePoolOptions, poolId]);
 
   const handleSave = () => {
     const amount = parseFloat(amountStr);
@@ -129,6 +149,8 @@ export function AddRecordModal({
     const signedAmount = type === 'expense' ? -amount : amount;
 
     if (editingRecord) {
+      const oldPoolId = editingRecord.poolId;
+      const newPoolId = poolId || undefined; // '' → undefined 表示解绑
       updateRecord(editingRecord.id, {
         amount: signedAmount,
         type,
@@ -141,6 +163,14 @@ export function AddRecordModal({
         // v2.4 T-410：弹窗内必然选中了真实分类，清除未分类状态
         isUncategorized: false,
       });
+      // v2.5-fixbug (T-043)：编辑模式下处理池关联变化
+      // 先解绑旧池（含 cycles[].paidAmount / transactions 回退），再认领到新池
+      if (oldPoolId && oldPoolId !== newPoolId) {
+        unclaimToPool(editingRecord.id);
+      }
+      if (newPoolId && newPoolId !== oldPoolId) {
+        claimToPool(editingRecord.id, newPoolId);
+      }
       onSaved?.(editingRecord.id);
     } else {
       const record = addRecord({
@@ -298,70 +328,71 @@ export function AddRecordModal({
             </div>
           )}
 
-          {/* v2.3：池关联（认领入口） */}
-          {editingRecord && editingRecord.poolId && !editingRecord.poolStatus ? (
-            /* v2.4 T-410：均摊记录的池信息（只读；池自动移除后靠快照溯源） */
+          {/* v2.5-fixbug (T-043)：池关联下拉（添加 + 编辑共用），保留 v2.4 G 段的快照只读展示 */}
+          {editablePoolOptions.length > 0 && (
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>均摊池信息 · 只读</label>
-              <div className={styles.poolInfo}>
-                <span>
-                  均摊池：{editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
-                </span>
-                {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
-                  <span>
-                    均摊周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
-                  </span>
-                )}
-                {typeof editingRecord.poolCycleTotal === 'number' && (
-                  <span>周期均摊总额：¥{formatAmount(editingRecord.poolCycleTotal)}</span>
-                )}
-                <span>
-                  实际关联：
-                  {editingRecord.poolSettledAt
-                    ? `${formatDateTime(editingRecord.poolSettledAt)} · ¥${formatAmount(
-                        editingRecord.poolSettledAmount ?? 0,
-                      )}`
-                    : '未关联（虚拟记录，不动账户余额）'}
-                </span>
-              </div>
+              <label className={styles.fieldLabel}>
+                池关联
+                {editingRecord && editingRecord.poolStatus === 'claimed' && '（已认领，预付不计入统计）'}
+                {editingRecord && editingRecord.poolStatus === 'confirmed' && '（已确认存池交易）'}
+                {editingRecord && !editingRecord.poolStatus && editingRecord.poolId && '（均摊记录，池快照只读）'}
+              </label>
+              {/* v2.4 G：池快照只读（保留溯源价值） */}
+              {editingRecord && editingRecord.poolId && (
+                <div className={styles.poolInfo}>
+                  {editingRecord.poolStatus === 'claimed' || editingRecord.poolStatus === 'confirmed' ? (
+                    <>
+                      <span>
+                        关联池：{editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
+                      </span>
+                      {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
+                        <span>
+                          关联周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
+                          {typeof editingRecord.poolCycleTotal === 'number'
+                            ? ` · 总额 ¥${formatAmount(editingRecord.poolCycleTotal)}`
+                            : ''}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        均摊池：{editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
+                      </span>
+                      {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
+                        <span>
+                          均摊周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
+                        </span>
+                      )}
+                      {typeof editingRecord.poolCycleTotal === 'number' && (
+                        <span>周期均摊总额：¥{formatAmount(editingRecord.poolCycleTotal)}</span>
+                      )}
+                      <span>
+                        实际关联：
+                        {editingRecord.poolSettledAt
+                          ? `${formatDateTime(editingRecord.poolSettledAt)} · ¥${formatAmount(
+                              editingRecord.poolSettledAmount ?? 0,
+                            )}`
+                          : '未关联（虚拟记录，不动账户余额）'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              {/* v2.3 E：池关联下拉（v2.5-fixbug T-043 起编辑模式也用同一个下拉） */}
+              <select
+                className={styles.fieldInput}
+                value={poolId}
+                onChange={(e) => setPoolId(e.target.value)}
+              >
+                <option value="">不关联</option>
+                {editablePoolOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}（{p.type === 'equalize' ? '均摊认领' : '存池'}）
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : editingRecord?.poolStatus === 'claimed' || editingRecord?.poolStatus === 'confirmed' ? (
-            <div className={styles.field}>
-              <label className={styles.fieldLabel}>池关联</label>
-              <div className={styles.poolInfo}>
-                <span>
-                  已认领 · {editingRecord.poolName ?? pools.find((p) => p.id === editingRecord.poolId)?.name ?? '未知池'}
-                  {editingRecord.poolStatus === 'claimed' ? '（预付 · 不计入消费统计）' : ''}
-                </span>
-                {editingRecord.poolCycleStart && editingRecord.poolCycleEnd && (
-                  <span>
-                    关联周期：{editingRecord.poolCycleStart} ~ {editingRecord.poolCycleEnd}
-                    {typeof editingRecord.poolCycleTotal === 'number'
-                      ? ` · 总额 ¥${formatAmount(editingRecord.poolCycleTotal)}`
-                      : ''}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            !editingRecord &&
-            claimablePools.length > 0 && (
-              <div className={styles.field}>
-                <label className={styles.fieldLabel}>池关联（认领）</label>
-                <select
-                  className={styles.fieldInput}
-                  value={poolId}
-                  onChange={(e) => setPoolId(e.target.value)}
-                >
-                  <option value="">不关联</option>
-                  {claimablePools.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}（{p.type === 'equalize' ? '均摊认领' : '存池'}）
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )
           )}
         </div>
 

@@ -109,6 +109,16 @@ interface AccountStore {
    * （记录自带周期快照与实际关联时间/金额）。
    */
   retireFinishedPools: () => void;
+  /**
+   * v2.5-fixbug (T-043)：解除记录的池关联（含回退池业务）。
+   * - 均摊付款（claimed）：回退 cycles[].paidAmount，对齐 deleteRecord 行为
+   * - 存池确认（confirmed）：移除对应 transactions
+   * - 每日均摊（!poolStatus）：仅清空对应 transaction 的 recordId（防 sync 重新生成）
+   * 最后清空记录上所有池字段（poolId/poolStatus/poolDirection/poolName
+   *   /poolCycleStart/End/Total/poolSettledAt/Amount）
+   * @returns 解除的金额；不存在的记录返回 0
+   */
+  unclaimToPool: (recordId: string) => number;
 
   // ── Savings 操作 ──
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => SavingsGoal;
@@ -689,6 +699,83 @@ export const useAccountStore = create<AccountStore>()(
 
         // 满额且周期已过 → 池自动移除（记录保留）
         get().retireFinishedPools();
+        return amount;
+      },
+
+      unclaimToPool: (recordId) => {
+        const state = get();
+        const record = state.records.find((r) => r.id === recordId);
+        if (!record || !record.poolId) return 0;
+
+        const pool = state.pools.find((p) => p.id === record.poolId);
+        const now = Date.now();
+        const amount = Math.abs(record.amount);
+
+        // 池业务回退（三分支对齐 deleteRecord 的池处理，但保留记录）
+        if (pool && record.poolStatus === 'claimed') {
+          // 均摊付款：认领额回退（只扣第一个含该额度的周期）
+          const todayKey = getTodayKey();
+          let deducted = false;
+          set((s) => ({
+            cycles: s.cycles.map((c) => {
+              if (c.poolId !== record.poolId) return c;
+              if (!deducted && (c.paidAmount ?? 0) + 1e-9 >= amount) {
+                deducted = true;
+                const updated = {
+                  ...c,
+                  paidAmount: Math.round(((c.paidAmount ?? 0) - amount) * 100) / 100,
+                };
+                return refreshEqualizeCycleStatus(updated, pool, todayKey);
+              }
+              return c;
+            }),
+          }));
+        } else if (pool?.type === 'deposit' && record.poolStatus === 'confirmed') {
+          // 存池确认：移除对应 transaction
+          set((s) => ({
+            cycles: s.cycles.map((c) =>
+              c.poolId === record.poolId
+                ? { ...c, transactions: c.transactions.filter((t) => t.recordId !== record.id) }
+                : c,
+            ),
+          }));
+        } else if (!record.poolStatus) {
+          // 每日均摊：仅清空 transaction.recordId（防 sync 重新生成）
+          set((s) => ({
+            cycles: s.cycles.map((c) =>
+              c.poolId === record.poolId
+                ? {
+                    ...c,
+                    transactions: c.transactions.map((t) =>
+                      t.recordId === record.id ? { ...t, recordId: undefined } : t,
+                    ),
+                  }
+                : c,
+            ),
+          }));
+        }
+
+        // 清空记录上所有池字段（保留其他业务字段如 amount/accountId/goalId）
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === recordId
+              ? {
+                  ...r,
+                  poolId: undefined,
+                  poolDirection: undefined,
+                  poolStatus: undefined,
+                  poolName: undefined,
+                  poolCycleStart: undefined,
+                  poolCycleEnd: undefined,
+                  poolCycleTotal: undefined,
+                  poolSettledAt: undefined,
+                  poolSettledAmount: undefined,
+                  updatedAt: now,
+                }
+              : r,
+          ),
+        }));
+
         return amount;
       },
 
