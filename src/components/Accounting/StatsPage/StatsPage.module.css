@@ -1,0 +1,348 @@
+/* StatsPage — 统计页三视图（v2.2 TASK-038） */
+
+.page {
+  padding: 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── 顶部切换 ─────────────────────────────── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── 汇总条 ─────────────────────────────── */
+.summary {
+  display: flex;
+  gap: 10px;
+}
+
+.summaryBlock {
+  flex: 1;
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.summaryValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryDelta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.deltaBad {
+  color: var(--danger);
+}
+
+.deltaGood {
+  color: var(--accent-deep);
+}
+
+/* ── 期切换（‹ 2026年9月 ›，复用日视图日期切换尺寸） ── */
+.periodNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.periodBtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.periodTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 120px;
+  text-align: center;
+}
+
+/* ── 柱状图 ─────────────────────────────── */
+.chartCard {
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  padding: 14px 10px 10px;
+}
+
+.chartLegend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 4px 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.legendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.legendExpense {
+  background: var(--danger);
+}
+
+.legendIncome {
+  background: var(--accent);
+}
+
+.chartScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 100%;
+}
+
+.chartCol {
+  flex: 1 0 22px;
+  min-width: 22px;
+  border: none;
+  background: transparent;
+  padding: 0 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.chartColActive .barsWrap {
+  background: var(--paper-2, #EDE9DD);
+}
+
+.barsWrap {
+  height: 140px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+.bar {
+  width: 7px;
+  border-radius: 2px 2px 0 0;
+  min-height: 0;
+}
+
+.barExpense {
+  background: var(--danger);
+}
+
+.barIncome {
+  background: var(--accent);
+}
+
+.chartLabel {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.chartEmpty {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── 分类排行 ─────────────────────────────── */
+.rankCard {
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rankTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rankRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rankIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rankMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rankNameLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rankName {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rankAmt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.rankBarTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-2, #EDE9DD);
+  overflow: hidden;
+}
+
+.rankBarFill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.rankPct {
+  font-size: 11px;
+  color: var(--muted);
+  width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── 日视图记录列表 ─────────────────────────── */
+.dayList {
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  padding: 6px 14px;
+}
+
+.dayRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.dayRow:last-child {
+  border-bottom: none;
+}
+
+.dayRowIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dayRowInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.dayRowName {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.dayRowSub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dayRowAmt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amtExpense {
+  color: var(--danger);
+}
+
+.amtIncome {
+  color: var(--accent-deep);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 0;
+  color: var(--muted);
+  font-size: 13px;
+}

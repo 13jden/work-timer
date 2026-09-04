@@ -370,3 +370,18 @@
   background: var(--danger, #E5484D);
   color: #fff;
 }
+
+/* v2.2 TASK-038:查看全部记录入口 */
+.viewAllBtn {
+  display: block;
+  width: calc(100% - 36px);
+  margin: 12px 18px 0;
+  border: 1px solid var(--line, #E5E2D8);
+  background: transparent;
+  border-radius: 10px;
+  padding: 9px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ink-muted, #6B6B6B);
+  cursor: pointer;
+}

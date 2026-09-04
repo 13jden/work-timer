@@ -29,6 +29,7 @@ import { AddRecordModal } from '../components/Accounting/AddRecordModal';
 import { AccountingTopCard } from '../components/Accounting/AccountingTopCard';
 import { AddCategoryModal } from '../components/Accounting/AddCategoryModal';
 import { CategoryDetailPanel } from '../components/Accounting/CategoryDetailPanel';
+import { CategoryRecordsPage } from '../components/Accounting/CategoryRecordsPage';
 import { CategoryFolderGrid, FOLDER_DRAG_PREFIX } from '../components/Accounting/CategoryFolderGrid';
 import { QuickAddRow } from '../components/Accounting/QuickAddRow';
 import { SavingsQuote } from '../components/Accounting/SavingsQuote';
@@ -44,11 +45,14 @@ function formatDate(date: Date): string {
 export function AccountingPage() {
   const now = useNow(60_000);
   const records = useAccountStore((state) => state.records);
+  const categories = useAccountStore((state) => state.categories);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AccountRecord | null>(null);
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // v2.2 TASK-038:分类记录页(全部记录)入口
+  const [allRecordsCategoryId, setAllRecordsCategoryId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -209,9 +213,19 @@ export function AccountingPage() {
             onClose={handleCloseCategory}
             onPickRecord={handlePickRecord}
             onDeleteCategory={handleEditCategory}
+            onShowAllRecords={(categoryId) => setAllRecordsCategoryId(categoryId)}
           />
           <AddRecordModal open={modalOpen} editingRecord={editingRecord} onClose={closeEditor} />
         </div>
+      )}
+      {allRecordsCategoryId && (
+        <CategoryRecordsPage
+          categoryId={allRecordsCategoryId}
+          type={
+            categories.find((c) => c.id === allRecordsCategoryId)?.type ?? 'expense'
+          }
+          onBack={() => setAllRecordsCategoryId(null)}
+        />
       )}
       <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }}>
         {activeId?.startsWith(RECORD_DRAG_PREFIX) ? <div className={styles.dragOverlay}>拖到分类文件夹归类</div> : null}

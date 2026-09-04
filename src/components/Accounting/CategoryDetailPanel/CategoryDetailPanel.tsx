@@ -15,6 +15,8 @@ interface CategoryDetailPanelProps {
   onPickRecord?: (recordId: string) => void;
   onEditCategory?: (categoryId: string) => void;
   onDeleteCategory?: (categoryId: string) => void;
+  /** v2.2 TASK-038：查看全部记录入口（分类记录页） */
+  onShowAllRecords?: (categoryId: string) => void;
 }
 
 /** 分类详情页：查看分类统计，编辑记录，拖动记录调整日期。 */
@@ -25,6 +27,7 @@ export function CategoryDetailPanel({
   onPickRecord,
   onEditCategory,
   onDeleteCategory,
+  onShowAllRecords,
 }: CategoryDetailPanelProps) {
   const records = useAccountStore((s) => s.records);
   const categories = useAccountStore((s) => s.categories);
@@ -167,6 +170,16 @@ export function CategoryDetailPanel({
           <div className={styles.statLbl}>占总支出</div>
         </div>
       </div>
+
+      {onShowAllRecords && (
+        <button
+          type="button"
+          className={styles.viewAllBtn}
+          onClick={() => onShowAllRecords(category.id)}
+        >
+          查看全部记录
+        </button>
+      )}
 
       {groupedByDay.length === 0 ? (
         <div className={styles.empty}>

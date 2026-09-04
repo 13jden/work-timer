@@ -17,6 +17,8 @@ import { useDesktopScale, BASE_WIDTH, BASE_HEIGHT } from './hooks/useDesktopScal
 import { type TabId } from './components/Sidebar';
 import { BottomNav, type BottomNavTab } from './components/BottomNav';
 import { PlaceholderPage } from './components/PlaceholderPage';
+import { StatsPage } from './components/Accounting/StatsPage';
+import { AccountingCalendar } from './components/Accounting/AccountingCalendar';
 import { TodayPage } from './pages/TodayPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { ConvertPage } from './pages/ConvertPage';
@@ -73,12 +75,12 @@ const ACCT_TABS: BottomNavTab[] = [
   { id: 'acct-mine',  label: 'MINE' },
 ];
 
-/** 记账主题页面:0=ACCT,其余占位(v2.2–v2.4) */
+/** 记账主题页面:0=ACCT,1=STATS,2=CAL(v2.2),3=MINE 占位(v2.4) */
 function renderAcctPage(index: number) {
   switch (index) {
     case 0:  return <AccountingPage />;
-    case 1:  return <PlaceholderPage title="统计" plannedIn="v2.2" />;
-    case 2:  return <PlaceholderPage title="账单日历" plannedIn="v2.3" />;
+    case 1:  return <StatsPage />;
+    case 2:  return <AccountingCalendar />;
     default: return <PlaceholderPage title="我的" plannedIn="v2.4" />;
   }
 }
