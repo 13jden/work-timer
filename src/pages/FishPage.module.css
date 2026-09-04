@@ -263,7 +263,7 @@
 }
 .darkValue { 
   font: 600 19px/1 var(--font-mono); 
-  color: var(--gold-bright); 
+  color: var(--accent); 
   letter-spacing: -0.5px; 
 }
 
@@ -326,7 +326,7 @@
 }
 .fishValue { 
   font: 600 17px var(--font-mono); 
-  color: var(--gold); 
+  color: var(--accent-deep); 
   letter-spacing: -0.5px; 
 }
 

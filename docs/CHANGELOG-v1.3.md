@@ -42,6 +42,13 @@
 - **日历批量生成**: 今日和未来日期不可选（仅过去的工作日可生成）
 - **DaySheet 单日生成**: 仅过去的工作日显示已赚生成区块，今日自动实时计算
 
+### F · 主题色审计 + 曜石青重设计 + DaySheet 保存自动定型（APK 1.3.5 同发）
+- **`src/styles/tokens.css`**: 新增 `--accent-glow` / `--accent-tint` 语义变量；暗色主题由「暗紫」重设计为「曜石青」——中性石墨底 + 青色 accent，文字 / 边框 / muted 对比度全面提高，补齐缺失的 `--card-hover`
+- **`src/lib/constants.ts`**: 主题元数据同步（label 曜石青、accent `#2DD4BF`、paper `#101318`），id 保持 `obsidian`，localStorage 无缝兼容
+- **主题色审计（8 处硬编码修复）**: TimerCard 右上光晕、SettingsPage 保存脉冲 / 模板 hover、DaySheet 模式 chip、SlackingDetailPage 夜班徽章与反转深色块（改 `currentColor` / `var(--paper)` 自动适配）、ItemSheet focus 圈、TimeTrackerWidget 开始按钮（暗色主题青底深字覆盖）
+- **`src/pages/FishPage.module.css`**: 深色卡金额文字 `--gold-bright` → `var(--accent)`，摸鱼总薪资 `--gold` → `var(--accent-deep)`，金额跟随主题
+- **`src/components/DaySheet/DaySheet.tsx`**: 移除弹窗「已赚生成」区块；过去日期保存即自动定型——工作 / 加班 / 兼职生成快照，休息 / 请假清除旧快照；修复工作日 / 加班保存后薪资不记录的 bug（原仅兼职自动生成）
+
 ---
 
 ## [v1.3.0] · 2026-08-29 · 增强版薪资模型(Enhanced Time Model)

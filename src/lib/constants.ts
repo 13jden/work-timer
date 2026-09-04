@@ -117,7 +117,7 @@ export interface ThemeMeta {
 
 export const THEMES: Record<ThemeMeta['id'], ThemeMeta> = {
   paper:    { id: 'paper',    label: '柠檬黄',   accent: '#C8FF00', paper: '#F5F2EA' },
-  obsidian: { id: 'obsidian', label: '靛蓝',     accent: '#7C6FF7', paper: '#131320' },
+  obsidian: { id: 'obsidian', label: '曜石青',   accent: '#2DD4BF', paper: '#101318' },
   gold:     { id: 'gold',     label: '香槟金',   accent: '#C9A84C', paper: '#FAF9F6' },
 };
 

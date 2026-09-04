@@ -360,7 +360,17 @@
 }
 
 .actionBtnStart:hover {
-  background: #1a1e26;
+  background: var(--surface-dark);
+}
+
+/* 曜石青主题:ink 为浅色,按钮反转,改用青底深字保证对比度 */
+:global([data-theme='obsidian']) .actionBtnStart {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+:global([data-theme='obsidian']) .actionBtnStart:hover {
+  background: var(--accent-deep);
 }
 
 .actionBtnStop {

@@ -219,7 +219,7 @@
 .popupRowTotal {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px dashed rgba(245, 242, 234, 0.25);
+  border-top: 1px dashed currentColor;
   opacity: 0.85;
   font: 500 10px var(--font-mono);
 }
@@ -286,7 +286,8 @@
 
 .sumLabel {
   font: 400 10px var(--font-mono);
-  color: rgba(245, 242, 234, 0.5);
+  color: var(--paper);
+  opacity: 0.5;
   letter-spacing: 0.5px;
   margin-bottom: 2px;
 }
@@ -651,7 +652,7 @@
   margin-left: 8px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(124, 111, 247, 0.12);
+  background: var(--accent-tint);
   color: var(--accent-deep, #9FCC00);
   font: 600 10px var(--font-mono);
   letter-spacing: 0.4px;

@@ -256,9 +256,16 @@ export function DaySheet({
     }
 
     onSave(key, entry);
-    // 自由兼职 + 过去日期：保存即生成已赚记录（UI 不显示，静默处理）
-    if (isFreelance && isPast && onGenerateEarned) {
-      setTimeout(() => onGenerateEarned(), 0);
+    // 过去日期：保存即自动定型已赚记录(工作/加班/兼职生成;休息/请假清除旧记录)
+    if (isPast) {
+      const earns =
+        selectedType === 'work' ||
+        selectedType === 'paid_overtime' ||
+        selectedType === 'freelance';
+      setTimeout(() => {
+        if (earns) onGenerateEarned?.();
+        else onCancelEarned?.();
+      }, 0);
     }
     onClose();
   }
@@ -461,44 +468,6 @@ export function DaySheet({
                   : '今日值这么多'}
           </div>
         </div>
-
-        {/* ── 已赚生成（仅过去的工作日显示；自由兼职保存即定型，不单独显示） ── */}
-        {isPast && isWork && !isFreelance && !isLeave && onGenerateEarned && (
-          <div className={styles.earnedSection}>
-            <div className={styles.earnedRow}>
-              <div className={styles.earnedInfo}>
-                <Coins size={14} weight="regular" style={{ marginRight: 6, verticalAlign: '-2px' }} />
-                <span className={styles.earnedLabel}>已赚记录</span>
-              </div>
-              {currentEntry?.earnedGenerated && currentEntry.earnedAmount != null ? (
-                <div className={styles.earnedAmount}>
-                  ¥{currentEntry.earnedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              ) : (
-                <div className={styles.earnedEmpty}>未生成</div>
-              )}
-            </div>
-            <div className={styles.earnedActions}>
-              {currentEntry?.earnedGenerated ? (
-                <>
-                  <button type="button" className={styles.earnedBtnSecondary} onClick={onCancelEarned}>
-                    取消生成
-                  </button>
-                  <button type="button" className={styles.earnedBtnPrimary} onClick={onGenerateEarned}>
-                    重新生成
-                  </button>
-                </>
-              ) : (
-                <button type="button" className={styles.earnedBtnPrimary} onClick={onGenerateEarned}>
-                  生成已赚
-                </button>
-              )}
-            </div>
-            <div className={styles.earnedHint}>
-              生成后记录定型，后续修改配置不影响；可手动重新生成覆盖。
-            </div>
-          </div>
-        )}
 
         {/* ── 操作按钮 ── */}
         <div className={styles.actions}>

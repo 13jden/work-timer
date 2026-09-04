@@ -234,8 +234,8 @@
   animation: savePulse 1.8s ease-in-out infinite;
 }
 @keyframes savePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 255, 0, 0.35); }
-  50%      { box-shadow: 0 0 0 6px rgba(200, 255, 0, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-shadow); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
 }
 /* ══ Toggle switch ══ */
 .toggle {
@@ -494,7 +494,7 @@
 
 .templateModalBtn:hover {
   border-color: var(--accent);
-  background: rgba(200, 255, 0, 0.04);
+  background: var(--accent-tint);
 }
 
 .templateListItem {
