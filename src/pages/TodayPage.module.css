@@ -85,6 +85,7 @@
   margin-top: clamp(8px, 2vh, 14px);
   width: 100%;
   box-sizing: border-box;
+  margin-top: -4px;
 }
 
 .statsRow {
