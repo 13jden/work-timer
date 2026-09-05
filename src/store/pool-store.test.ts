@@ -104,6 +104,31 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     expect(state.records.filter((r) => r.poolId === pool.id)).toHaveLength(expectedDue);
   });
 
+  // v2.5-patch3 T-473：均摊池跨月 → 总金额不应被复制到每个 cycle
+  it('T-473：跨月总额按各月天数比例分配,cycle totalAmount 之和 = pool.amount', () => {
+    const { categoryId } = setupBase();
+    const monthKey = getCurrentMonthKey();
+    const nextMonth = shiftMonthForTest(monthKey, 1);
+    const nextNextMonth = shiftMonthForTest(nextMonth, 1);
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '跨 3 月房租', type: 'equalize', amount: 3000, cycleMonths: 3,
+      cycleMode: 'daily',
+      // 当月 25 号 ~ 次次月 5 号（跨 3 个自然月）
+      dateRange: { start: `${monthKey}-25`, end: `${nextNextMonth}-05` },
+      categoryId,
+    });
+    const state = useAccountStore.getState();
+    const cycles = state.cycles.filter((c) => c.poolId === pool.id);
+    expect(cycles).toHaveLength(3);
+    // 各 cycle.totalAmount 之和 = pool.amount（不被复制成 3000 × 3 = 9000）
+    const sumCycleTotals = cycles.reduce((s, c) => s + c.totalAmount, 0);
+    expect(sumCycleTotals).toBeCloseTo(3000, 2);
+    // 每个 cycle.dailyVirtual 必须 = 该月 totalAmount / 该月天数
+    for (const c of cycles) {
+      expect(c.dailyVirtual).toBeCloseTo(c.totalAmount / c.dayCount, 2);
+    }
+  });
+
   it('syncPoolCycles 幂等：重复调用不重复生成', () => {
     const { categoryId } = setupBase();
     const pool = useAccountStore.getState().createPoolWithCycles({
@@ -829,5 +854,191 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     expect(state.records.filter((r) => r.poolId === poolId)).toHaveLength(0);
     // 账户余额：partial claim 部分 700 被回退,联动 records 不扣
     expect(state.getAccountBalance(account.id)).toBe(0);
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// v2.5-patch4 N-483：池可编辑（rebuildPoolCycles）
+// ────────────────────────────────────────────────────────────
+
+describe('accountStore · 池可编辑 (N-483)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAccountStore.getState().reset();
+  });
+
+  /** 当前是几号 */
+  const todayDay = parseInt(getTodayKey().slice(8), 10);
+
+  it('N-483：updatePool 改 amount → 自动重建 cycles，新 dailyVirtual 按新总额/天数', () => {
+    const { categoryId } = (() => {
+      const s = useAccountStore.getState();
+      const cat = s.addCategory({ name: '房租', icon: 'house', color: '#C04A3A', type: 'expense', order: 0 });
+      return { categoryId: cat.id };
+    })();
+    const monthKey = getCurrentMonthKey();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId,
+    });
+    // 初始 cycle：总额 3000
+    const cycle0 = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(cycle0?.totalAmount).toBe(3000);
+
+    // 改金额为 4500
+    useAccountStore.getState().updatePool(pool.id, { amount: 4500 });
+    const cycle1 = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
+    expect(cycle1?.totalAmount).toBe(4500);
+    // dailyVirtual 按当月天数等分
+    const days = new Date(
+      parseInt(monthKey.slice(0, 4), 10),
+      parseInt(monthKey.slice(5, 7), 10),
+      0,
+    ).getDate();
+    expect(cycle1?.dailyVirtual).toBeCloseTo(4500 / days, 2);
+  });
+
+  it('N-483：updatePool 改非结构字段（name）→ 不重建 cycles', () => {
+    const { categoryId } = (() => {
+      const cat = useAccountStore.getState().addCategory({
+        name: '房租', icon: 'house', color: '#C04A3A', type: 'expense', order: 0,
+      });
+      return { categoryId: cat.id };
+    })();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId,
+    });
+    const cycleIdBefore = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id)?.id;
+
+    useAccountStore.getState().updatePool(pool.id, { name: '房租改' });
+    const cycleIdAfter = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id)?.id;
+    // 周期 id 不变（未重建）
+    expect(cycleIdAfter).toBe(cycleIdBefore);
+    expect(useAccountStore.getState().pools.find((p) => p.id === pool.id)?.name).toBe('房租改');
+  });
+
+  it('N-483：rebuildPoolCycles 直接调用 → 清掉该池所有 cycles 并按当前 pool 配置重建', () => {
+    const { categoryId } = (() => {
+      const cat = useAccountStore.getState().addCategory({
+        name: '房租', icon: 'house', color: '#C04A3A', type: 'expense', order: 0,
+      });
+      return { categoryId: cat.id };
+    })();
+    const monthKey = getCurrentMonthKey();
+    const nextMonth = shiftMonthForTest(monthKey, 1);
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '跨月', type: 'equalize', amount: 1000, cycleMonths: 2,
+      cycleMode: 'daily',
+      dateRange: { start: `${monthKey}-15`, end: `${nextMonth}-14` },
+      categoryId,
+    });
+    expect(useAccountStore.getState().cycles.filter((c) => c.poolId === pool.id)).toHaveLength(2);
+
+    // 缩短日期范围
+    useAccountStore.getState().updatePool(pool.id, {
+      dateRange: { start: `${monthKey}-20`, end: `${monthKey}-25` },
+    });
+    const cyclesAfter = useAccountStore.getState().cycles.filter((c) => c.poolId === pool.id);
+    // 跨月池缩到当月只剩 6 天 → 重建后只剩 1 个 cycle
+    expect(cyclesAfter).toHaveLength(1);
+    expect(cyclesAfter[0]?.monthKey).toBe(monthKey);
+    // 该 cycle.totalAmount = 1000 × (6 / totalDays in original range) ≈ 1000 × 6/31
+    expect(cyclesAfter[0]?.dayCount).toBe(6);
+  });
+
+  it('N-483：重建 cycles 不会丢失已生成的均摊 record（保留 poolCycleStart/End 快照）', () => {
+    const { categoryId } = (() => {
+      const cat = useAccountStore.getState().addCategory({
+        name: '房租', icon: 'house', color: '#C04A3A', type: 'expense', order: 0,
+      });
+      return { categoryId: cat.id };
+    })();
+    const pool = useAccountStore.getState().createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId,
+    });
+    const recordsBefore = useAccountStore
+      .getState()
+      .records.filter((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(recordsBefore).toHaveLength(todayDay);
+
+    // 改 amount 触发 rebuild
+    useAccountStore.getState().updatePool(pool.id, { amount: 6000 });
+
+    // 旧 record 仍在：rebuild 不删 record,但 rebuild 末尾 syncPoolCycles
+    // 会按新 pool 配置重新生成已到期的均摊 record。
+    // 这里验证:重建前生成的 5 条 record 全部保留(原 amount / poolCycleStart/End 不变),
+    // 且总数 ≥ todayDay(sync 可能补齐未生成的剩余天数,但 today 之前的都已存在)。
+    const recordsAfter = useAccountStore
+      .getState()
+      .records.filter((r) => r.poolId === pool.id && !r.poolStatus);
+    expect(recordsAfter.length).toBeGreaterThanOrEqual(todayDay);
+
+    // 重建前已存在的 dateKey + amount 全部保留
+    const beforeByDate = new Map(recordsBefore.map((r) => [r.dateKey, r.amount]));
+    for (const r of recordsAfter) {
+      if (beforeByDate.has(r.dateKey)) {
+        expect(r.amount).toBe(beforeByDate.get(r.dateKey));
+      }
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// v2.5-patch4 N-484：资产清零（resetAssets）
+// ────────────────────────────────────────────────────────────
+
+describe('accountStore · resetAssets (N-484)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAccountStore.getState().reset();
+  });
+
+  it('N-484：把所有账户余额清零，records / pools / cycles 全部保留', () => {
+    const s = useAccountStore.getState();
+    const acc1 = s.addAccount({ name: '支付宝', balance: 1000, color: '#888', type: 'alipay', order: 0 });
+    const acc2 = s.addAccount({ name: '微信', balance: 500, color: '#888', type: 'wechat', order: 1 });
+    const cat = s.addCategory({ name: '午饭', icon: 'fork', color: '#FFA', type: 'expense', order: 0 });
+
+    // 记一笔支出，让余额变
+    s.addRecord({ dateKey: getTodayKey(), amount: -200, type: 'expense', categoryId: cat.id, accountId: acc1.id });
+    expect(useAccountStore.getState().getAccountBalance(acc1.id)).toBe(800);
+    expect(useAccountStore.getState().getAccountBalance(acc2.id)).toBe(500);
+
+    // 加一个池
+    const pool = s.createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId: cat.id, targetAccountId: acc1.id,
+    });
+
+    // 重置资产
+    useAccountStore.getState().resetAssets();
+
+    const after = useAccountStore.getState();
+    expect(after.getAccountBalance(acc1.id)).toBe(0);
+    expect(after.getAccountBalance(acc2.id)).toBe(0);
+    // record 保留
+    expect(after.records.find((r) => r.accountId === acc1.id)).toBeDefined();
+    // pool 保留
+    expect(after.pools.some((p) => p.id === pool.id)).toBe(true);
+    // cycles 保留
+    expect(after.cycles.filter((c) => c.poolId === pool.id)).toHaveLength(1);
+  });
+
+  it('N-484：清零后 calcVirtualAssets 的 actualTotal 为 0（账户余额合计为 0）', () => {
+    const s = useAccountStore.getState();
+    const acc = s.addAccount({ name: '卡', balance: 5000, color: '#888', type: 'card', order: 0 });
+    expect(useAccountStore.getState().getAccountBalance(acc.id)).toBe(5000);
+
+    useAccountStore.getState().resetAssets();
+
+    const after = useAccountStore.getState();
+    const breakdown = calcVirtualAssets({
+      accounts: after.accounts,
+      records: after.records,
+      pools: after.pools,
+    });
+    expect(breakdown.actualTotal).toBe(0);
   });
 });

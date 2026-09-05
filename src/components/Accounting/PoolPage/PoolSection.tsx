@@ -4,6 +4,8 @@
  * MINE 页的池分区（原 v2.3 PoolPage，去掉页面外壳并入 MinePage）。
  * - 均摊型：周期进度条（已确认 / 总额）+ 状态徽标（进行中/已确认/已逾期）
  * - 存池型：池余额（Σ存入 − Σ取出）
+ *
+ * v2.5-patch4 N-483：每张池卡片加 ✎ 编辑按钮 → 打开 EditPoolModal。
  */
 import { useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -11,6 +13,8 @@ import type { PoolConfig, PoolCycle } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { equalizeProgress, depositBalance } from '../../../lib/accounting/pool';
 import { AddPoolModal } from './AddPoolModal';
+import { EditPoolModal } from './EditPoolModal';
+import { PencilSimple } from '@phosphor-icons/react';
 import styles from './PoolPage.module.css';
 
 /** 池管理区（MINE 页分区）。 */
@@ -19,6 +23,7 @@ export function PoolSection() {
   const cycles = useAccountStore((s) => s.cycles);
   const deletePool = useAccountStore((s) => s.deletePool);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingPoolId, setEditingPoolId] = useState<string | null>(null);
 
   const handleDelete = (pool: PoolConfig) => {
     if (!window.confirm(`删除池「${pool.name}」？关联周期与认领关系将一并移除。`)) return;
@@ -50,6 +55,7 @@ export function PoolSection() {
               pool={pool}
               poolCycles={poolCycles}
               onDelete={() => handleDelete(pool)}
+              onEdit={() => setEditingPoolId(pool.id)}
             />
           ) : (
             <DepositCard
@@ -57,12 +63,18 @@ export function PoolSection() {
               pool={pool}
               poolCycles={poolCycles}
               onDelete={() => handleDelete(pool)}
+              onEdit={() => setEditingPoolId(pool.id)}
             />
           );
         })
       )}
 
       <AddPoolModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <EditPoolModal
+        open={editingPoolId != null}
+        poolId={editingPoolId}
+        onClose={() => setEditingPoolId(null)}
+      />
     </section>
   );
 }
@@ -71,10 +83,11 @@ interface CardProps {
   pool: PoolConfig;
   poolCycles: PoolCycle[];
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 /** 均摊型池卡片（v2.4 T-409：收入池显示到账进度 + 未到账标记） */
-function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
+function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
   const records = useAccountStore((s) => s.records);
   const progress = equalizeProgress(poolCycles);
   const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
@@ -128,6 +141,10 @@ function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
           {isIncome ? '均摊·收入' : '均摊'}
         </span>
         <span className={`${styles.badge} ${STATUS_CLASS[status] ?? ''}`}>{STATUS_LABEL[status]}</span>
+        {/* v2.5-patch4 N-483：编辑入口 */}
+        <button type="button" className={styles.editBtn} onClick={onEdit} aria-label="编辑池" title="编辑">
+          <PencilSimple size={14} weight="regular" />
+        </button>
         <button type="button" className={styles.delBtn} onClick={onDelete} aria-label="删除池">
           ✕
         </button>
@@ -157,7 +174,7 @@ function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
 }
 
 /** 存池型池卡片 */
-function DepositCard({ pool, poolCycles, onDelete }: CardProps) {
+function DepositCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
   const allTx = poolCycles.flatMap((c) => c.transactions);
   const balance = depositBalance(allTx);
   const inCount = allTx.filter((t) => t.direction === 'in' && t.status === 'confirmed').length;
@@ -170,6 +187,10 @@ function DepositCard({ pool, poolCycles, onDelete }: CardProps) {
         <span className={`${styles.badge} ${styles.badgeDeposit}`}>
           存池{(pool.settleMode ?? 'prepay') === 'postpay' ? ' · 先用后付' : ''}
         </span>
+        {/* v2.5-patch4 N-483：编辑入口 */}
+        <button type="button" className={styles.editBtn} onClick={onEdit} aria-label="编辑池" title="编辑">
+          <PencilSimple size={14} weight="regular" />
+        </button>
         <button type="button" className={styles.delBtn} onClick={onDelete} aria-label="删除池">
           ✕
         </button>

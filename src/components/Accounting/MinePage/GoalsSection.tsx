@@ -1,16 +1,21 @@
 /**
- * GoalsSection — 月度目标区（v2.5-patch2 T-507）
+ * GoalsSection — 结余目标（v2.5-patch5 N-485 redesign）
  *
- * 单值目标（结余目标），与 AccountingTopCard 显示的「本月结余目标」共享同一个值。
- * 数据源：useMonthlyGoalStore.monthlyGoal（与 time 模式月度收入目标同 store，
- * 但语义在 accounting 侧展示为「结余目标」）。
+ * 视觉设计：
+ * - 黑底英雄卡（与上方 TotalAssetsCard 同源 → 视觉延续）
+ * - 巨型数字（display font, 44px, tabular-nums）作为视觉重心
+ * - 11px mono uppercase eyebrow + 副标，键盘节奏感
+ * - 右上角 ✎ 极简图标做编辑入口（无文字"编辑"按钮，节省视觉重量）
+ * - 底部 1px accent 极细线，提示「目标」性质
+ * - 数字与下方水平线呼应：目标是个锚点
  *
- * - 点卡片或 ✎ 按钮 → 输入金额，保存即同步给首页大卡
- * - 未设置(null) → 卡片显示「点击设置结余目标」
- * - 不再有多目标 / 进度 / 截止日期概念
+ * 数据流：
+ * - 数据源 useMonthlyGoalStore.monthlyGoal
+ * - 点卡片或 ✎ → 弹小窗编辑，保存即同步给首页大卡
+ * - 未设置(null) → 卡片显示默认 12000 与「点击设置」提示
  */
 import { useState } from 'react';
-import { useAccountStore } from '../../../store/accountStore';
+import { PencilSimple } from '@phosphor-icons/react';
 import { useMonthlyGoalStore } from '../../../store/monthlyGoalStore';
 import { formatAmount } from '../../../lib/accounting';
 import styles from './MinePage.module.css';
@@ -18,19 +23,13 @@ import styles from './MinePage.module.css';
 const DEFAULT_GOAL = 12000;
 
 export function GoalsSection() {
-  const records = useAccountStore((s) => s.records);
   const monthlyGoal = useMonthlyGoalStore((s) => s.monthlyGoal);
   const setMonthlyGoal = useMonthlyGoalStore((s) => s.setGoal);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
   const effectiveGoal = monthlyGoal ?? DEFAULT_GOAL;
-
-  // 当前结余 = 本月收入 - 本月支出（仅 expense/income 主线，不含虚拟池预扣）
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const monthRecords = records.filter((r) => r.dateKey.startsWith(monthKey));
-  const balance = monthRecords.reduce((sum, r) => sum + r.amount, 0);
-  const pct = Math.max(0, Math.min(100, (balance / effectiveGoal) * 100));
+  const isUnset = monthlyGoal == null;
 
   const openEdit = () => {
     setDraft(monthlyGoal != null ? String(monthlyGoal) : String(DEFAULT_GOAL));
@@ -54,42 +53,30 @@ export function GoalsSection() {
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>月度目标</div>
-        <button type="button" className={styles.addBtn} onClick={openEdit}>
-          {monthlyGoal != null ? '编辑' : '设置'}
-        </button>
-      </div>
-
-      <button type="button" className={styles.goalCard} onClick={openEdit}>
-        <div className={styles.goalTop}>
-          <span className={styles.goalName}>本月结余目标</span>
-          {monthlyGoal == null && (
-            <span className={`${styles.badge} ${styles.badgeOverdue}`}>未设置</span>
-          )}
-        </div>
-
-        <div className={styles.goalAmtRow}>
-          <span className={styles.goalAmt}>¥{formatAmount(effectiveGoal, true)}</span>
-          <span className={styles.goalAmtLabel}>
-            当前 ¥{formatAmount(balance, true)} · {Math.floor(pct)}%
+      <button type="button" className={styles.goalHeroCard} onClick={openEdit}>
+        <div className={styles.goalHeroEyebrowRow}>
+          <span className={styles.goalHeroEyebrow}>GOAL · 月度</span>
+          <span className={styles.goalHeroEdit} aria-label="编辑结余目标" title="编辑">
+            <PencilSimple size={14} weight="regular" />
           </span>
         </div>
 
-        <div className={styles.progressTrack}>
-          <div className={styles.progressFill} style={{ width: `${pct}%` }} />
-        </div>
+        <div className={styles.goalHeroLabel}>结余目标</div>
 
-        <div className={styles.goalMeta}>
-          <span>{monthlyGoal == null ? '点击设置 · 默认 ¥12,000' : '点击调整'}</span>
-          <span>与首页结余同步</span>
+        <div className={styles.goalHeroAmt}>¥{formatAmount(effectiveGoal, true)}</div>
+
+        <div className={styles.goalHeroFooter}>
+          <span className={styles.goalHeroHint}>
+            {isUnset ? '点击设置 · 默认 ¥12,000' : '点击调整目标'}
+          </span>
+          <span className={styles.goalHeroSlash} aria-hidden />
         </div>
       </button>
 
       {editing && (
         <div className={styles.goalEditOverlay} onClick={() => setEditing(false)}>
           <div className={styles.goalEditModal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.goalEditTitle}>本月结余目标</div>
+            <div className={styles.goalEditTitle}>结余目标</div>
             <div className={styles.goalEditAmt}>
               <span className={styles.goalEditCurrency}>¥</span>
               <input

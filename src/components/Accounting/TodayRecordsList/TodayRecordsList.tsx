@@ -122,7 +122,7 @@ function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress }: 
       onTouchEnd={handleTouchEnd}
     >
       <span className={styles.icon}>
-        <IconByKey icon={categoryIcon} size={17} />
+        <IconByKey icon={categoryIcon} size={17} weight="regular" />
       </span>
       <div className={styles.info}>
         <span className={styles.name}>

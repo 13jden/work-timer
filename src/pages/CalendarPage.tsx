@@ -14,7 +14,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { useAccountStore } from '../store/accountStore';
 import { HOLIDAYS } from '../lib/constants';
-import { dailySalary, daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
+import { daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
@@ -33,6 +33,16 @@ interface CalendarPageProps {
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+/**
+ * 解析 'YYYY-MM-DD' 为 [y, mIdx(0-11), d]，非法返回 null。
+ * 用本地时区（避免 'YYYY-MM-DD' 直接 Date 构造被当 UTC 导致月份偏移）。
+ */
+function parseLocalDateKey(key: string): [number, number, number] | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]) - 1, Number(m[3])];
+}
 
 /**
  * 智能格式化金额：
@@ -97,15 +107,6 @@ export function CalendarPage({
     year > now.getFullYear() ||
     (year === now.getFullYear() && month > now.getMonth());
 
-  // 快照日均
-  const daily = useMemo(
-    () => {
-      if (snapshot) return snapshot.dailyRate;
-      return dailySalary(year, month, effectiveConfig, overrides, HOLIDAYS);
-    },
-    [year, month, effectiveConfig, overrides, snapshot],
-  );
-
   // 快照月薪
   const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
 
@@ -167,6 +168,19 @@ export function CalendarPage({
     return count;
   }, [year, month, effectiveConfig, overrides]);
 
+  // 快照日均
+  // v2.5-patch3 T-474：用户期望"日均 = 当月已赚总数 ÷ 非休息日模式的天数"。
+  // - 已有月度快照：保留快照的 dailyRate（用户锁定当天口径，不被后续配置影响）
+  // - 无快照：用 monthEarned / 本月工作日数（isWorkday 为 true 的天数）
+  const daily = useMemo(
+    () => {
+      if (snapshot) return snapshot.dailyRate;
+      if (workdaysCount <= 0) return 0;
+      return Math.round((monthEarned / workdaysCount) * 100) / 100;
+    },
+    [snapshot, monthEarned, workdaysCount],
+  );
+
   // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
   // 计算「本月每个工作日的 earnedAmount」：
   //  - 已生成的快照:读 overrides[key].earnedAmount(快照不受后续配置影响)
@@ -199,6 +213,10 @@ export function CalendarPage({
   // 首帧在「联动开启」时也要同步过去日期(仅跳过今日实时值,避免每秒回灌)。
   // v2.5-patch2 T-506：批量取消也要联动 —— prev 里有但 monthlyEarnedMap
   // 里消失的 key,视为 amount=0 调 upsert,触发联动 record 删除 / cycle 累减。
+  // v2.5-patch3 T-471：仅当「key 仍在当前月、仍是工作日」才回写 0。
+  // 修复"切月份 / 休息日 / 未来日"被误删的联动 record —— 那些场景下 key
+  // 本来就不会出现在 monthlyEarnedMap（map 只装工作日），属于预期行为，不删。
+  // 真正应回写的场景只有「该日仍属当月工作日，但用户取消已赚」。
   const prevMonthlyRef = useRef<Record<string, number>>({});
   useEffect(() => {
     if (!config.salaryLinkageEnabled) {
@@ -214,14 +232,22 @@ export function CalendarPage({
       if (isFirst && key === todayKey) continue;
       if (prev[key] !== value) upsert(key, value);
     }
-    // 取消 / 消失：把 prev 里存在但当前不在 map 中的 key 视为 0
+    // 取消 / 消失：把 prev 里存在但当前不在 map 中的 key 视为 0 —— 仅在
+    // 「key 仍属当月工作日」时执行,避免切月 / 休息日误删联动。
     if (!isFirst) {
       for (const key of Object.keys(prev)) {
-        if (!(key in monthlyEarnedMap)) upsert(key, 0);
+        if (key in monthlyEarnedMap) continue;
+        const parsed = parseLocalDateKey(key);
+        if (!parsed) continue;
+        const [y, m, d] = parsed;
+        if (y !== year || m !== month) continue; // 不是当前月：跨月查看，不删
+        const date = new Date(y, m, d);
+        if (!isWorkday(date, effectiveConfig, overrides, HOLIDAYS)) continue; // 非工作日预期
+        upsert(key, 0);
       }
     }
     prevMonthlyRef.current = monthlyEarnedMap;
-  }, [monthlyEarnedMap, config.salaryLinkageEnabled]);
+  }, [monthlyEarnedMap, config.salaryLinkageEnabled, year, month, now, effectiveConfig, overrides]);
 
   // 网格
   const firstDow = new Date(year, month, 1).getDay();

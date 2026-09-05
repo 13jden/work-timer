@@ -21,6 +21,7 @@ import {
   equalizeProgress,
   isVirtualPoolRecord,
   isPoolPrepaidRecord,
+  splitPoolTotalAcrossMonths,
 } from './pool';
 import type { PoolConfig, PoolCycle, PoolTransaction } from '../types';
 
@@ -178,6 +179,89 @@ describe('buildEqualizeCycleDraft', () => {
     const draft = buildEqualizeCycleDraft(pool, '2026-09');
     expect(draft.dayCount).toBe(10);
     expect(draft.dailyVirtual).toBe(300);
+  });
+
+  // v2.5-patch3 T-473：overrideTotalAmount 在「按日模式跨月」场景下避免重复
+  it('overrideTotalAmount：按日模式单月，totalAmount 取 override 而非 pool.amount', () => {
+    const pool = makePool({
+      amount: 3000,
+      cycleMode: 'daily',
+      dateRange: { start: '2026-09-01', end: '2026-09-30' },
+    });
+    const draft = buildEqualizeCycleDraft(pool, '2026-09', { overrideTotalAmount: 900 });
+    expect(draft.totalAmount).toBe(900);
+    // dailyVirtual 按 override 算,不再被 pool.amount 3000 干扰
+    expect(draft.dailyVirtual).toBe(30);
+  });
+
+  it('overrideTotalAmount：跨月场景,各月 dailyVirtual 都基于本月的 override', () => {
+    const pool = makePool({
+      amount: 2100,
+      cycleMode: 'daily',
+      dateRange: { start: '2026-09-25', end: '2026-10-05' },
+    });
+    const sept = buildEqualizeCycleDraft(pool, '2026-09', { overrideTotalAmount: 1260 });
+    const oct = buildEqualizeCycleDraft(pool, '2026-10', { overrideTotalAmount: 840 });
+    expect(sept.totalAmount).toBe(1260);
+    expect(sept.dayCount).toBe(6); // 9/25 ~ 9/30
+    expect(sept.dailyVirtual).toBe(210);
+    expect(oct.totalAmount).toBe(840);
+    expect(oct.dayCount).toBe(5); // 10/1 ~ 10/5
+    expect(oct.dailyVirtual).toBe(168);
+  });
+});
+
+// ── splitPoolTotalAcrossMonths（v2.5-patch3 T-473） ─────
+
+describe('splitPoolTotalAcrossMonths', () => {
+  it('单月：直接返回 [pool.amount]', () => {
+    const pool = makePool({
+      amount: 3000,
+      cycleMode: 'daily',
+      dateRange: { start: '2026-09-01', end: '2026-09-30' },
+    });
+    expect(splitPoolTotalAcrossMonths(pool, ['2026-09'])).toEqual([3000]);
+  });
+
+  it('跨月：按各月在范围内天数比例分配,尾差补到最后一月', () => {
+    const pool = makePool({
+      amount: 2100,
+      cycleMode: 'daily',
+      dateRange: { start: '2026-09-25', end: '2026-10-05' },
+    });
+    const result = splitPoolTotalAcrossMonths(pool, ['2026-09', '2026-10']);
+    // 9 月 6 天 / 10 月 5 天,11 天总
+    // 9 月分到 2100 × 6 / 11 = 1145.45；10 月补尾差 = 954.55
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBeCloseTo(1145.45, 2);
+    expect(result[1]).toBeCloseTo(954.55, 2);
+    // 合计 = pool.amount（无丢失精度）
+    expect(result[0]! + result[1]!).toBeCloseTo(2100, 2);
+  });
+
+  it('跨 3 月：按比例分配,各月日均 = 总额 / 总天数一致', () => {
+    const pool = makePool({
+      amount: 3000,
+      cycleMode: 'daily',
+      dateRange: { start: '2026-08-01', end: '2026-10-31' },
+    });
+    const result = splitPoolTotalAcrossMonths(pool, ['2026-08', '2026-09', '2026-10']);
+    expect(result).toHaveLength(3);
+    // 31 + 30 + 31 = 92 天
+    expect(result[0]).toBeCloseTo((3000 * 31) / 92, 1);
+    expect(result[1]).toBeCloseTo((3000 * 30) / 92, 1);
+    expect(result[2]).toBeCloseTo(3000 - result[0]! - result[1]!, 2);
+    expect(result[0]! + result[1]! + result[2]!).toBeCloseTo(3000, 2);
+  });
+
+  it('总额 0 或 0 天 → 全部返回 0', () => {
+    const pool = makePool({ amount: 0 });
+    expect(splitPoolTotalAcrossMonths(pool, ['2026-09', '2026-10'])).toEqual([0, 0]);
+  });
+
+  it('空 monthKeys 数组 → 返回空数组', () => {
+    const pool = makePool({ amount: 3000 });
+    expect(splitPoolTotalAcrossMonths(pool, [])).toEqual([]);
   });
 });
 

@@ -141,9 +141,10 @@ export interface Config {
    */
   workTemplates?: WorkTemplate[];
   /**
-   * v2.5 TASK-046 T-501-3:time → accounting 联动开关。
+   * v2.5 TASK-046 T-501-3：time → accounting 联动开关。
    * 开启时,time 模式日历页「当日已赚」作为 income record 同步写入「工资池」。
-   * 关闭时,仅保留已存在的联动记录;后续新增 / 更新停止。默认 true。
+   * 关闭时,仅保留已存在的联动记录;后续新增 / 更新停止。
+   * v2.5-patch4 N-481：默认改 false（用户取消联动展示与写入）。
    */
   salaryLinkageEnabled?: boolean;
 }

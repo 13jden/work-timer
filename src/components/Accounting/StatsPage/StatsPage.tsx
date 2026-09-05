@@ -427,7 +427,7 @@ function DayRecordRow({ record, isDragging, onOpen }: DayRecordRowProps) {
   return (
     <div ref={setNodeRef} className={cls} onClick={onOpen} {...listeners} {...attributes}>
       <span className={styles.dayRowIcon} style={{ background: color }}>
-        <IconByKey icon={icon} size={16} color="#fff" />
+        <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
       </span>
       <span className={styles.dayRowInfo}>
         <span className={styles.dayRowName}>
@@ -478,7 +478,7 @@ function DragRecordCard({ record }: { record: AccountRecord }) {
   return (
     <div className={styles.dragCard}>
       <span className={styles.dayRowIcon} style={{ background: color }}>
-        <IconByKey icon={icon} size={16} color="#fff" />
+        <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
       </span>
       <span className={styles.dayRowName}>{name}</span>
       <span className={`${styles.dayRowAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>

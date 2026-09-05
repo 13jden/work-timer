@@ -161,7 +161,7 @@ function SortableFolder({ folder, stat, isRecordDragging, onClickCategory }: Sor
         {...listeners}
       >
         <span className={styles.icon}>
-          <IconByKey icon={folder.icon} size={20} color="var(--folder-color, #9CA3AF)" />
+          <IconByKey icon={folder.icon} size={20} weight="regular" color="var(--folder-color, #9CA3AF)" />
         </span>
         <span className={styles.name}>{folder.name}</span>
         <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>

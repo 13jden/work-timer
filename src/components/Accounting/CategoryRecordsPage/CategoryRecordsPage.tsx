@@ -83,7 +83,7 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
 
       <div className={styles.summary}>
         <div className={styles.bigIcon} style={{ background: color }}>
-          <IconByKey icon={icon} size={26} color="#fff" />
+          <IconByKey icon={icon} size={26} weight="regular" color="#fff" />
         </div>
         <div className={styles.amount}>¥{formatAmount(total)}</div>
         <div className={styles.meta}>

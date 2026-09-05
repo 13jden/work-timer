@@ -36,6 +36,7 @@ import {
   getCycleDateKeys,
   eachMonthInRange,
   splitDailyAmount,
+  splitPoolTotalAcrossMonths,
   planDailyRecords,
   deriveCycleStatus,
   isCycleEnded,
@@ -186,6 +187,20 @@ interface AccountStore {
 
   // ── 重置 ──
   reset: () => void;
+  /**
+   * v2.5-patch4 N-483：池编辑后重建周期元数据
+   * —— 删除该池所有 cycles,按当前 pool.cycleMode / dateRange / dayRange 重新生成
+   * (transactions 引用的 record 不删,保留 poolCycleStart/End 快照可溯源)。
+   * 调完后应再调 syncPoolCycles 让新范围的到期日补 record。
+   */
+  rebuildPoolCycles: (poolId: string) => void;
+  /**
+   * v2.5-patch4 N-484：把资产清零 —— 所有账户余额置 0。
+   * 记账 records / pools / cycles / savingsGoals 全部保留（已发生事实不能抹去）。
+   * 与 deleteRecord 路径不同：resetAssets 不回退任何余额，因为没有 record 在被删除。
+   * 仅触发 UI 重新渲染，所有订阅 accounts 的组件同步刷新到 0。
+   */
+  resetAssets: () => void;
 }
 
 // ── ID 生成器 ──────────────────────────────────────────────
@@ -615,9 +630,81 @@ export const useAccountStore = create<AccountStore>()(
       },
 
       updatePool: (id, patch) => {
+        // v2.5-patch4 N-483：检测结构性字段变化 → 自动重建 cycles
+        const before = get().pools.find((p) => p.id === id);
+        const beforeAny = before as unknown as Record<string, unknown> | undefined;
+        const patchAny = patch as unknown as Record<string, unknown>;
+        const structuralKeys = ['cycleMode', 'dateRange', 'dayRange', 'cycleMonths', 'amount'];
+        const isStructural =
+          beforeAny &&
+          structuralKeys.some((k) => patchAny[k] !== undefined && patchAny[k] !== beforeAny[k]);
         set((s) => ({
           pools: s.pools.map((p) => (p.id === id ? { ...p, ...patch } : p)),
         }));
+        if (isStructural) {
+          get().rebuildPoolCycles(id);
+        }
+      },
+
+      // v2.5-patch4 N-483：删除指定池的全部 cycles,按当前 pool 配置重建
+      // 不动 records（已生成均摊记录保留 poolCycleStart/End 快照,即使所属 cycle 消失也能溯源）
+      rebuildPoolCycles: (poolId) => {
+        const state = get();
+        const pool = state.pools.find((p) => p.id === poolId);
+        if (!pool) return;
+
+        // 0. 收集该池已有的 transaction（按 dateKey）→ 复用避免 rebuild 后 sync
+        //    把已生成的日期视为「未生成」重新生成。
+        const txByDate = new Map<string, PoolTransaction>();
+        for (const cycle of state.cycles.filter((c) => c.poolId === poolId)) {
+          for (const tx of cycle.transactions) {
+            if (tx.status === 'confirmed' && !txByDate.has(tx.dateKey)) {
+              txByDate.set(tx.dateKey, tx);
+            }
+          }
+        }
+
+        // 1. 删除该池所有 cycles
+        set((s) => ({ cycles: s.cycles.filter((c) => c.poolId !== poolId) }));
+
+        // 2. 按当前配置重建 cycle 元数据 + 复用已有 transactions
+        if (pool.type === 'equalize') {
+          const currentMonth = getCurrentMonthKey();
+          if (pool.cycleMode === 'daily' && pool.dateRange) {
+            const monthKeys = eachMonthInRange(pool.dateRange);
+            const totalByMonth = splitPoolTotalAcrossMonths(pool, monthKeys);
+            for (let i = 0; i < monthKeys.length; i += 1) {
+              const monthKey = monthKeys[i];
+              if (!monthKey) continue;
+              const draft = buildEqualizeCycleDraft(pool, monthKey, {
+                overrideTotalAmount: totalByMonth[i],
+              });
+              const cycle = materializeCycle(poolId, draft);
+              // 把落在该月范围内的已有 transactions 复用到新 cycle
+              const dateKeySet = new Set(draft.dateKeys);
+              cycle.transactions = [...txByDate.values()].filter((tx) => dateKeySet.has(tx.dateKey));
+              set((s) => ({ cycles: [...s.cycles, cycle] }));
+            }
+          } else {
+            for (let i = 0; i < Math.max(1, pool.cycleMonths); i += 1) {
+              const monthKey = shiftMonth(currentMonth, i);
+              const draft = buildEqualizeCycleDraft(pool, monthKey);
+              const cycle = materializeCycle(poolId, draft);
+              const dateKeySet = new Set(draft.dateKeys);
+              cycle.transactions = [...txByDate.values()].filter((tx) => dateKeySet.has(tx.dateKey));
+              set((s) => ({ cycles: [...s.cycles, cycle] }));
+            }
+          }
+        } else {
+          const currentMonth = getCurrentMonthKey();
+          const draft = buildDepositCycleDraft(pool, currentMonth);
+          const cycle = materializeCycle(poolId, draft);
+          cycle.transactions = [...txByDate.values()];
+          set((s) => ({ cycles: [...s.cycles, cycle] }));
+        }
+
+        // 3. 让新范围的到期日补 record（已通过 transactions 标记的日期会被跳过）
+        get().syncPoolCycles();
       },
 
       deletePool: (id) => {
@@ -662,9 +749,16 @@ export const useAccountStore = create<AccountStore>()(
           // 只生成周期元数据，不生成任何记录
           if (pool.cycleMode === 'daily' && pool.dateRange) {
             // 按日模式：完整日期范围按自然月拆周期
+            // v2.5-patch3 T-473：跨月时把 pool.amount 按各月在范围内天数比例分配，
+            // 避免总额被复制到每个 cycle（"总额 × 周期月数"bug）
             const monthKeys = eachMonthInRange(pool.dateRange);
-            for (const monthKey of monthKeys) {
-              const draft = buildEqualizeCycleDraft(pool, monthKey);
+            const totalByMonth = splitPoolTotalAcrossMonths(pool, monthKeys);
+            for (let i = 0; i < monthKeys.length; i += 1) {
+              const monthKey = monthKeys[i] ?? '';
+              if (!monthKey) continue;
+              const draft = buildEqualizeCycleDraft(pool, monthKey, {
+                overrideTotalAmount: totalByMonth[i],
+              });
               set((s) => ({ cycles: [...s.cycles, materializeCycle(pool.id, draft)] }));
             }
           } else {
@@ -1351,6 +1445,15 @@ export const useAccountStore = create<AccountStore>()(
       // ── 重置 ──
       reset: () => {
         set(buildInitialState());
+      },
+
+      // v2.5-patch4 N-484：资产清零
+      // 仅把 accounts[].balance 全部置 0，records / pools / cycles / savingsGoals 不动。
+      // 已发生的事实（已记的账、已建的池）保留，不与 reset() 等价。
+      resetAssets: () => {
+        set((s) => ({
+          accounts: s.accounts.map((a) => ({ ...a, balance: 0 })),
+        }));
       },
     }),
     {

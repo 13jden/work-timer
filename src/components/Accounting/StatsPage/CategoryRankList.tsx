@@ -48,7 +48,7 @@ export function CategoryRankList({ ranks, categories, typeLabel, onSelect }: Cat
             onClick={() => onSelect(rank.categoryId)}
           >
             <span className={styles.rankIcon} style={{ background: color }}>
-              <IconByKey icon={icon} size={16} color="#fff" />
+              <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
             </span>
             <span className={styles.rankMain}>
               <span className={styles.rankNameLine}>

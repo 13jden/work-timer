@@ -122,24 +122,65 @@ export interface CycleDraft {
 /**
  * 均摊型池单周期草稿：只有元数据 + 生效日期列表，**不生成任何记录**。
  * 日均 = 用户自填 dailyAmount 优先，否则总额/天数。
+ *
+ * @param params.overrideTotalAmount 可选：本周期在「按日模式跨多自然月」下的分配额。
+ *   未传则用 `pool.amount`（兼容按月模式 / 单月场景）。
+ *   配合 `splitPoolTotalAcrossMonths` 使用，避免总额被复制到每个 cycle。
  */
 export function buildEqualizeCycleDraft(
   pool: PoolConfig,
   monthKey: string,
+  options?: { overrideTotalAmount?: number },
 ): CycleDraft {
   const dateKeys = getCycleDateKeys(pool, monthKey);
   const dayCount = dateKeys.length;
+  const totalAmount = options?.overrideTotalAmount ?? pool.amount;
   const dailyVirtual =
-    pool.dailyAmount ?? (dayCount > 0 ? Math.round((pool.amount / dayCount) * 100) / 100 : 0);
+    pool.dailyAmount ?? (dayCount > 0 ? Math.round((totalAmount / dayCount) * 100) / 100 : 0);
   return {
     monthKey,
-    totalAmount: pool.amount,
+    totalAmount,
     dayCount,
     dailyVirtual,
     paidAmount: 0,
     status: 'generating',
     dateKeys,
   };
+}
+
+/**
+ * v2.5-patch3 T-473：均摊池「按日模式 + 跨月」时，把总额按各月"在范围内天数 / 总天数"拆分。
+ * - 单月：直接返回 `[pool.amount]`
+ * - 跨月：返回长度 = 月份数，每个元素 = `pool.amount × (该月天数 / 总天数)`，尾差补最后一个月
+ *
+ * 调用方把结果以 `overrideTotalAmount` 传给 `buildEqualizeCycleDraft`，
+ * 避免 `pool.amount` 被复制到每个 cycle 造成重复均摊（"总额 × 周期月数"bug）。
+ */
+export function splitPoolTotalAcrossMonths(
+  pool: PoolConfig,
+  monthKeys: string[],
+): number[] {
+  if (monthKeys.length === 0) return [];
+  // 计算每个月的"在范围内天数"
+  const dayCounts = monthKeys.map((mk) => getCycleDateKeys(pool, mk).length);
+  const totalDays = dayCounts.reduce((s, n) => s + n, 0);
+  if (totalDays <= 0 || pool.amount <= 0) {
+    return monthKeys.map(() => 0);
+  }
+  if (monthKeys.length === 1) {
+    return [Math.round(pool.amount * 100) / 100];
+  }
+  // 按比例分配,余数补到最后一月
+  const result: number[] = [];
+  let allocated = 0;
+  for (let i = 0; i < monthKeys.length - 1; i += 1) {
+    const ratio = dayCounts[i] ?? 0;
+    const slice = Math.round((pool.amount * ratio / totalDays) * 100) / 100;
+    result.push(slice);
+    allocated += slice;
+  }
+  result.push(Math.round((pool.amount - allocated) * 100) / 100);
+  return result;
 }
 
 /**

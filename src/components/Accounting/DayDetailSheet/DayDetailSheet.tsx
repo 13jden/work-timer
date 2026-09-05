@@ -73,7 +73,7 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
                   onClick={() => setActionRecord(record)}
                 >
                   <span className={styles.rowIcon} style={{ background: color }}>
-                    <IconByKey icon={icon} size={16} color="#fff" />
+                    <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
                   </span>
                   <span className={styles.rowInfo}>
                     <span className={styles.rowName}>{name}</span>

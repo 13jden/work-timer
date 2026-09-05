@@ -116,8 +116,8 @@ interface IconByKeyProps {
   icon: string;
   /** 图标尺寸(px),默认 18 */
   size?: number;
-  /** 字重,默认 thin */
-  weight?: 'thin' | 'light' | 'regular';
+  /** 字重,默认 regular（v2.5-patch6 N-490：账单分类图标整体加重） */
+  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
   /** 颜色,默认继承 currentColor */
   color?: string;
   className?: string;
@@ -126,7 +126,7 @@ interface IconByKeyProps {
 /**
  * 按 key 渲染线稿图标;未命中回退 emoji 文本(兼容老数据)。
  */
-export function IconByKey({ icon, size = 18, weight = 'thin', color, className }: IconByKeyProps) {
+export function IconByKey({ icon, size = 18, weight = 'regular', color, className }: IconByKeyProps) {
   const Cmp = ICON_MAP[icon];
   if (!Cmp) {
     return (

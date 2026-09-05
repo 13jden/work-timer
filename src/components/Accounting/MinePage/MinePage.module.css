@@ -18,6 +18,9 @@
 }
 
 .totalLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: color-mix(in srgb, var(--paper) 62%, transparent);
   letter-spacing: 1px;
@@ -40,6 +43,32 @@
   letter-spacing: 0;
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
+}
+
+/* v2.5-patch4 N-484：资产重置图标按钮 */
+.totalResetBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
+  background: color-mix(in srgb, var(--paper) 6%, transparent);
+  color: color-mix(in srgb, var(--paper) 60%, transparent);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.totalResetBtn:hover {
+  color: color-mix(in srgb, var(--danger) 75%, var(--paper));
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.totalResetBtn:active {
+  transform: scale(0.94);
 }
 
 .virtualRow {
@@ -122,87 +151,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── v2.5 TASK-046 T-501-3：time → accounting 联动开关 ── */
-.toggleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--line);
-  background: var(--paper-3, #f9f7f0);
-  border-radius: 12px;
-  padding: 12px 14px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-}
-
-.toggleOn {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-
-.toggleInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.toggleName {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.toggleHint {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.toggleSwitch {
-  width: 40px;
-  height: 22px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
-  position: relative;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-
-.toggleOn .toggleSwitch {
-  background: var(--accent-deep);
-}
-
-.toggleDot {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--paper);
-  transition: transform 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-}
-
-.toggleOn .toggleDot {
-  transform: translateX(18px);
-}
-
-.linkageStats {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--muted);
-  padding: 0 4px;
-}
-
-.linkageDiv {
-  color: color-mix(in srgb, var(--muted) 50%, transparent);
-}
+/* ── v2.5-patch4 N-481：time 联动开关样式已废弃（LinkageSection 整体移除），保留空段方便后续回退 */
 
 .addBtn {
   border: none;
@@ -313,88 +262,115 @@
   cursor: pointer;
 }
 
-/* ── 目标卡片 ─────────────────────────────── */
-.goalCard {
-  background: var(--paper-3, #f9f7f0);
+/* ── v2.5-patch5 N-485 redesign：结余目标 — 浅色极简卡 ── */
+.goalHeroCard {
+  position: relative;
+  background: var(--paper-3, #faf7f0);
+  border: 1px solid var(--line-soft, #E7E2D1);
   border-radius: 14px;
-  padding: 14px;
+  padding: 14px 18px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 180ms ease, background 180ms ease;
 }
 
-.goalTop {
+.goalHeroCard:hover {
+  background: var(--paper-2, #EDE9DD);
+  border-color: var(--line, #D9D4C3);
+}
+
+/* 极细下划线 — 提示「目标」性质的视觉签名 */
+.goalHeroCard::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 8px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.35;
+  transition: opacity 180ms;
+}
+
+.goalHeroCard:hover::after {
+  opacity: 0.7;
+}
+
+.goalHeroEyebrowRow {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.goalName {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.badge {
-  flex-shrink: 0;
+.goalHeroEyebrow {
+  font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 10px;
-  padding: 2px 8px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--ink-muted, #6B6B6B);
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.goalHeroEdit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  background: var(--paper-2, #EDE9DD);
-  color: var(--muted);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-muted, #6B6B6B);
+  opacity: 0.5;
+  transition: all 150ms;
 }
 
-.badgeDone {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent-deep);
+.goalHeroCard:hover .goalHeroEdit {
+  opacity: 1;
+  border-color: var(--line-soft, #E7E2D1);
+  background: var(--paper-4, #fffdf6);
 }
 
-.badgeOverdue {
-  background: color-mix(in srgb, var(--danger) 14%, transparent);
-  color: var(--danger);
+.goalHeroLabel {
+  font-size: 12px;
+  color: var(--ink-muted, #6B6B6B);
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
-.goalAmtRow {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.goalAmt {
-  font-size: 18px;
+.goalHeroAmt {
+  font-family: var(--font-display);
+  font-size: 36px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--ink, #0F0F0F);
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.8px;
 }
 
-.goalAmtLabel {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.progressTrack {
-  height: 5px;
-  border-radius: 3px;
-  background: var(--paper-2, #EDE9DD);
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent-deep);
-}
-
-.goalMeta {
+.goalHeroFooter {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.goalHeroHint {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--ink-muted, #6B6B6B);
+  opacity: 0.7;
+}
+
+.goalHeroSlash {
+  display: none;
 }
 
 /* ── 月度目标编辑弹窗（v2.5-patch2 T-507） ─────────── */

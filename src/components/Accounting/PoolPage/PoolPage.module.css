@@ -166,6 +166,25 @@
   cursor: pointer;
 }
 
+/* v2.5-patch4 N-483：编辑按钮（铅笔图标） */
+.editBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.editBtn:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -280,6 +299,152 @@
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
+}
+
+/* ── v2.5-patch5 N-485：顶部分类 chip（与记账模态同规格） ── */
+.catHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.catHeaderLabel {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.typeToggleInline {
+  display: inline-flex;
+  background: var(--paper-2, #EDE9DD);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.typeChip {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.typeChip:hover {
+  color: var(--ink);
+}
+
+.typeChipActive {
+  background: var(--paper, #fffdf6);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.catGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.catGridEmpty {
+  display: none;
+}
+
+.catChipPool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--paper-3, #f9f7f0);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.catChipPool:hover {
+  background: var(--paper-2, #EDE9DD);
+}
+
+.catName {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── v2.5-patch5 N-485：方向 ± 大按钮（与记账模态同规格） ── */
+.amountWrapNew {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 4px 4px;
+}
+
+.amtSignBtn {
+  flex-shrink: 0;
+  width: 48px;
+  border: 1px solid var(--line);
+  background: var(--paper-3, #f9f7f0);
+  border-radius: 14px;
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.amtSignBtn:hover {
+  background: var(--paper-2, #EDE9DD);
+}
+
+.amtSignMinus.amtSignActive {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  color: var(--danger);
+}
+
+.amtSignPlus.amtSignActive {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--accent-deep);
+}
+
+.amtField {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--paper-3, #f9f7f0);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.amtFieldText {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .submitBtn {

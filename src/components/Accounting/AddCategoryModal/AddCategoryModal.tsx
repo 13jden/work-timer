@@ -127,7 +127,7 @@ export function AddCategoryModal({
         <div className={styles.preview}>
           <div className={styles.previewFolder} style={{ background: color }}>
             <span className={styles.previewIcon}>
-              <IconByKey icon={iconKey} size={20} color="#fff" />
+              <IconByKey icon={iconKey} size={20} weight="regular" color="#fff" />
             </span>
             <span className={styles.previewName}>{name.trim() || '新分类'}</span>
           </div>
@@ -178,7 +178,7 @@ export function AddCategoryModal({
                       onClick={() => setIconKey(key)}
                       aria-label={`选择图标 ${key}`}
                     >
-                      <IconByKey icon={key} size={18} />
+                      <IconByKey icon={key} size={18} weight="regular" />
                     </button>
                   ))}
                 </div>

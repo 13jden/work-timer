@@ -73,10 +73,12 @@ export const DEFAULT_CONFIG: Config = {
       workSegment: { start: '09:00', end: '18:00' },
     },
   ],
-  // ── v2.5 TASK-046 T-501-3:time → accounting 联动开关(默认开) ──
+  // ── v2.5-patch4 N-481：time → accounting 联动默认关 ──
+  // 用户反馈「首页记账关联存款记录」功能取消。开关保留(store action / 类型不变)，
+  // 默认关闭；用户未来想恢复可在设置页手动开启。
   // 关闭后:time 模式日历页已赚不再写入 accountStore;
   // 已存在的联动记录依然保留,删除 / 编辑需要手动处理。
-  salaryLinkageEnabled: true,
+  salaryLinkageEnabled: false,
 };
 
 // ── 静态数据 ────────────────────────────────────────────────

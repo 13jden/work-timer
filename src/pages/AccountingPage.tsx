@@ -56,8 +56,10 @@ export function AccountingPage() {
   const [allRecordsCategoryId, setAllRecordsCategoryId] = useState<string | null>(null);
 
   // v2.5 T-414：触摸拖拽需长按 1 秒才激活（避免滚动/主题下滑手势误触发）
+  // v2.5-patch6 N-489：桌面 pointer 也走 1 秒长按才激活（防点击误拖）；
+  // 兼容未分类记录 → 文件夹的 drop（仍由 useDroppable 提供，sensor 改动只影响 drag start 阈值）
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );

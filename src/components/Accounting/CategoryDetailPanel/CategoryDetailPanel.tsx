@@ -149,7 +149,7 @@ export function CategoryDetailPanel({
 
       <div className={styles.summary}>
         <div className={styles.bigIcon} style={{ background: folder.color }}>
-          <IconByKey icon={folder.icon} size={26} color="#fff" />
+          <IconByKey icon={folder.icon} size={26} weight="regular" color="#fff" />
         </div>
         <div className={styles.amount}>¥{formatAmount(stats.total)}</div>
         <div className={styles.meta}>本月 {stats.count} 笔 · 日均 ¥{formatAmount(stats.dailyAvg)}</div>
@@ -224,7 +224,7 @@ export function CategoryDetailPanel({
                       }}
                     >
                       <div className={styles.cardIcon} style={{ background: folder.color }}>
-                        <IconByKey icon={folder.icon} size={15} color="#fff" />
+                        <IconByKey icon={folder.icon} size={15} weight="regular" color="#fff" />
                       </div>
                       <div className={styles.cardInfo}>
                         <div className={styles.cardName}>{record.note?.trim() || category.name}</div>

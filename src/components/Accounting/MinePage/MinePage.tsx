@@ -3,14 +3,18 @@
  *
  * 记账主题第 4 个 tab，分区纵向排列：
  * 总资产卡（含横向账户卡）→ 存钱目标 → 池管理。
+ *
+ * v2.5-patch4：
+ * - N-481：移除 LinkageSection 整块（time → accounting 联动展示取消）。
+ * - N-484：TotalAssetsCard 右上角增加「重置资产」图标，二次确认后调 accountStore.resetAssets。
  */
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { formatAmount, calcVirtualAssets } from '../../../lib/accounting';
+import { ArrowCounterClockwise } from '@phosphor-icons/react';
 import { AccountRow } from './AccountRow';
 import { GoalsSection } from './GoalsSection';
 import { PoolSection } from '../PoolPage/PoolSection';
-import { LinkageSection } from './LinkageSection';
 import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
@@ -27,8 +31,10 @@ export function MinePage() {
       />
       <TotalAssetsCard />
       <GoalsSection />
-      {/* v2.5 TASK-046 T-501-3：time → accounting 联动开关 + 工资池当前余额 */}
-      <LinkageSection />
+      {/* v2.5-patch4 N-481：取消「time → accounting 联动」展示入口。
+          联动功能本身保留在 store（ensureSalaryPool / upsertSalaryLinkageForDate），
+          默认开关=false，CalendarPage 不再写入联动 record。
+          未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
       <PoolSection />
     </div>
   );
@@ -42,6 +48,7 @@ function TotalAssetsCard() {
   const accounts = useAccountStore((s) => s.accounts);
   const records = useAccountStore((s) => s.records);
   const pools = useAccountStore((s) => s.pools);
+  const resetAssets = useAccountStore((s) => s.resetAssets);
 
   const {
     actualTotal,
@@ -58,11 +65,30 @@ function TotalAssetsCard() {
   const hasPending = pendingAdjust !== 0 || unpaidConsumed > 0 || depositPending > 0;
   const hasBreakdown = hasVirtual || hasPending;
 
+  // v2.5-patch4 N-484：二次确认后调 resetAssets（仅余额归零，记录保留）。
+  const handleResetAssets = () => {
+    const confirmed = window.confirm(
+      '重置资产？\n\n所有账户余额将归零（记账记录、池、目标全部保留）。',
+    );
+    if (!confirmed) return;
+    resetAssets();
+  };
+
   return (
     <div className={styles.totalCard}>
       <div className={styles.totalLabel}>
-        总资产
+        <span>总资产</span>
         {hasVirtual && <span className={styles.totalVirtualTag}>虚拟</span>}
+        {/* v2.5-patch4 N-484：资产清零入口 —— 右上角小图标 */}
+        <button
+          type="button"
+          className={styles.totalResetBtn}
+          onClick={handleResetAssets}
+          title="重置资产（账户余额归零，记录保留）"
+          aria-label="重置资产"
+        >
+          <ArrowCounterClockwise size={14} weight="regular" />
+        </button>
       </div>
       <div className={styles.totalAmount}>¥{formatAmount(virtualTotal, true)}</div>
       {hasBreakdown && (
