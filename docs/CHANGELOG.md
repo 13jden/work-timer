@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.5-patch3 | 2026-09-05 | 休息日 NetHoursDashboard 工时口径补漏 (T-508 patch) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5 | 2026-09-04 | 导航手势体验修正 + 存池结算方式 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-patch2 | 2026-09-05 | time → accounting 联动 + 多 bug 修复 (TASK-046) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-patch1 | 2026-09-04 | 均摊池资产口径修正 + UX 微调 (TASK-043 patch) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |

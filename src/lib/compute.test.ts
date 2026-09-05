@@ -1352,8 +1352,8 @@ describe('overtimeSessionSplit · 加班 session 日间 / 夜班分钟拆分', (
   });
 
   it('非加班 session 跳过,只算加班', () => {
-    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
-    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const start = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 23, 30, 0).getTime();
     const slack: SlackingSession = {
       id: 'slack', dateKey: '2026-08-30', label: 'slack',
       startTs: start, endTs: end, nightShift: false,
@@ -1405,10 +1405,13 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     lunchMinutes: 60,
     lunchEnabled: true,
   };
-  const dateKey = '2026-08-30';
+  const dateKey = '2026-08-31';
   // v1.3.4-patch1:测试 now=19:00(已收工),此时 effectiveGross=gross=540
   //   → 新旧算法结果一致,无需修改期望值
-  const now = new Date('2026-08-30T19:00:00');
+  // v2.5-patch2 T-508:dateKey 改 2026-08-31(周一),此前 8-30 是周日,
+  //   默认 restMode=2 下 isWorkday=false → computeNetHours 入口短路归零,
+  //   「普通工作日」 fixture 与 name 语义不一致,一并修正。
+  const now = new Date('2026-08-31T19:00:00');
 
   it('普通工作日:添加 30 min 加班 → netMinutes 同步增加', () => {
     // 基线:无加班记录
@@ -1426,7 +1429,7 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
       overrides: {},
       holidays: {},
       slackingSessions: [
-        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 30, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 30, 14, 30, 0).getTime(), nightShift: false },
+        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 31, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 31, 14, 30, 0).getTime(), nightShift: false },
       ],
     });
     // patch6:日间加班 = dayMin × multiplier = 30 × 1 = 30
@@ -1457,7 +1460,7 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
       },
       holidays: {},
       slackingSessions: [
-        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 30, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 30, 14, 30, 0).getTime(), nightShift: false },
+        { id: '1', dateKey, label: 'overtime', startTs: new Date(2026, 7, 31, 14, 0, 0).getTime(), endTs: new Date(2026, 7, 31, 14, 30, 0).getTime(), nightShift: false },
       ],
     });
     // patch6:日间加班 = dayMin × multiplier = 30 × 2 = 60
@@ -1472,8 +1475,8 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     // session 20:00–23:30 → dayMin=120(20-22),nightMin=90(22-23:30)
     // 普通工作日 multiplier=1:
     //   userOvertimeBonus = 120×1 + 90×1×1.5 = 120 + 135 = 255 min
-    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
-    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const start = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 23, 30, 0).getTime();
     const r = computeNetHours({
       date: now,
       config: baseConfig,
@@ -1496,8 +1499,8 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     // session 20:00–23:30 → dayMin=120,nightMin=90
     // 加班日 multiplier=2:
     //   userOvertimeBonus = 120×2 + 90×2×1.5 = 240 + 270 = 510 min
-    const start = new Date(2026, 7, 30, 20, 0, 0).getTime();
-    const end = new Date(2026, 7, 30, 23, 30, 0).getTime();
+    const start = new Date(2026, 7, 31, 20, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 23, 30, 0).getTime();
     const r = computeNetHours({
       date: now,
       config: baseConfig,
@@ -1519,8 +1522,8 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     // session 19:00–20:00 → 全日间(dayMin=60,nightMin=0)
     // 普通工作日 multiplier=1:
     //   userOvertimeBonus = 60×1 + 0×1×1.5 = 60 min
-    const start = new Date(2026, 7, 30, 19, 0, 0).getTime();
-    const end = new Date(2026, 7, 30, 20, 0, 0).getTime();
+    const start = new Date(2026, 7, 31, 19, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 20, 0, 0).getTime();
     const r = computeNetHours({
       date: now,
       config: baseConfig,
@@ -1537,8 +1540,8 @@ describe('computeNetHours · 加班 session 影响净工时', () => {
     // session 22:00–23:00 → 全夜班(dayMin=0,nightMin=60)
     // 普通工作日 multiplier=1:
     //   userOvertimeBonus = 0×1 + 60×1×1.5 = 90 min
-    const start = new Date(2026, 7, 30, 22, 0, 0).getTime();
-    const end = new Date(2026, 7, 30, 23, 0, 0).getTime();
+    const start = new Date(2026, 7, 31, 22, 0, 0).getTime();
+    const end = new Date(2026, 7, 31, 23, 0, 0).getTime();
     const r = computeNetHours({
       date: now,
       config: baseConfig,

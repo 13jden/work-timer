@@ -1068,6 +1068,29 @@ export function computeNetHours(input: {
   slackingSessions: SlackingSession[];
 }): NetHoursBreakdown {
   const { date, config, overrides, slackingSessions } = input;
+
+  // v2.5-patch2 T-508：休息日不参与统计 —— 与 effectiveDailyRate 同口径,
+  // 直接返回全零 breakdown,不让默认工时模板(9h 总工时)污染 Dashboard /
+  // TimeTrackerDetailPage 的「总工时 / 摸鱼 / 加班」卡片。
+  // 注意:paid_overtime / leave / freelance / work override 已经让 isWorkday=true,
+  // 这里只对「默认周末 + 法定节假日且无 override」短路。
+  if (!isWorkday(date, config, overrides, input.holidays)) {
+    return {
+      grossMinutes: 0,
+      lunchMinutes: 0,
+      slackingMinutes: 0,
+      slackUnionLunch: 0,
+      overtimeBonus: 0,
+      nightBonus: 0,
+      nightShiftFlag: false,
+      netMinutes: 0,
+      grossElapsed: 0,
+      lunchElapsed: 0,
+      slackingElapsed: 0,
+      overtimeElapsed: 0,
+    };
+  }
+
   const now = date;
   void input.holidays; // 保留参数以备扩展,当前算法不需要
 
@@ -1523,8 +1546,8 @@ export function computeRangeStats(
         : isGeneratedHistory
           ? entry.earnedAmount!
           : effectiveDailyRate(date, config, overrides, holidays),
-      slackMinutes: breakdown.slackingMinutes,
-      compMinutes: breakdown.overtimeBonus + breakdown.nightBonus,
+      slackMinutes: isRest ? 0 : breakdown.slackingMinutes,
+      compMinutes: isRest ? 0 : breakdown.overtimeBonus + breakdown.nightBonus,
       isRest,
     });
     cursor.setDate(cursor.getDate() + 1);

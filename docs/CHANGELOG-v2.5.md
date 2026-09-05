@@ -179,4 +179,30 @@
 
 ---
 
+## [v2.5-patch3] · 2026-09-05 · 休息日 NetHoursDashboard 工时口径补漏
+
+基线 v2.5-patch2 (TASK-046)。用户验收 v2.5-patch2 后发现休息日仍按工时模板算出非零工时,
+本轮定位 root cause 并补漏。同步 v2.5 独立 changelog。
+
+### A · computeNetHours 入口 isWorkday 短路 (T-508 patch)
+
+- `compute.ts:computeNetHours` 入口新增守卫:
+  `if (!isWorkday(date, config, overrides, holidays)) return { 全零 breakdown }`
+- 与 `effectiveDailyRate` 同口径(`effectiveDailyRate` 早已对休息日 return 0),
+  让所有下游(NetHoursDashboard / TimeTrackerDetailPage)的「总工时 / 摸鱼 / 加班 / 净工时」卡片在休息日全部归零
+- `paid_overtime` / `leave` / `freelance` / `work` override 已经让 `isWorkday` 返回 true,不会被误伤
+- `paid_overtime` 日仍按倍率计入加班(「加班日」语义保留)
+
+### 配套
+
+- `compute.test.ts` v1.3.3 patch6 加班 block fixture `dateKey` 2026-08-30(周日)→ 2026-08-31(周一),
+  关联 `startTs/endTs` 同步调整。原 fixture 与 describe name「普通工作日」语义矛盾,本次一并修正
+
+### 验证
+
+- typecheck 0 错误、**394 单测全过**
+- 用户浏览器验收通过(2026-09-05)
+
+---
+
 *创建于 2026-09-04*
