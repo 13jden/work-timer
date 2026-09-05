@@ -1,4 +1,4 @@
-/* AccountingCalendar — 记账月历（v2.2 TASK-038） */
+﻿/* AccountingCalendar — 记账月历（v2.2 TASK-038） */
 
 .page {
   padding: 16px 16px 24px;
@@ -20,7 +20,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 8px;
   font-size: 14px;
   color: var(--muted);
@@ -40,7 +40,7 @@
 
 /* ── 月历 ─────────────────────────────── */
 .grid {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 10px 8px;
 }
@@ -77,16 +77,16 @@
 }
 
 .cellFilled {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 /* v2.5 TASK-046 T-502：当天以某一类收支为主时, 给底色带柔和类型 tint */
 .cellIncome {
-  background: color-mix(in srgb, var(--accent-deep) 10%, var(--paper-2, #EDE9DD));
+  background: color-mix(in srgb, var(--accent-deep) 10%, var(--paper-2));
 }
 
 .cellExpense {
-  background: color-mix(in srgb, var(--danger) 8%, var(--paper-2, #EDE9DD));
+  background: color-mix(in srgb, var(--danger) 8%, var(--paper-2));
 }
 
 .cellToday {
@@ -116,7 +116,7 @@
 
 /* ── 本月小结 ─────────────────────────────── */
 .footer {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;

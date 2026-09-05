@@ -1,10 +1,10 @@
-/* ── Page ── */
+﻿/* ── Page ── */
 .page {
   min-height: 70vh;
   min-height: 70dvh;
   padding-bottom: 120px;
-  background: var(--paper-4, #fffdf6);
-  color: var(--ink, #0F0F0F);
+  background: var(--paper-4);
+  color: var(--ink);
   overflow-y: auto;
   animation: pageIn 220ms ease;
 }
@@ -22,19 +22,19 @@
   padding: 14px 18px 8px;
   position: sticky;
   top: 0;
-  background: var(--paper-4, #fffdf6);
+  background: var(--paper-4);
   z-index: 1;
 }
 
 .backBtn {
   width: 36px;
   height: 36px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   border: none;
   border-radius: 50%;
   font-size: 22px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -43,25 +43,25 @@
 }
 
 .backBtn:hover {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
 }
 
 .title {
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
 }
 
 .moreBtn {
   width: 36px;
   height: 36px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   border: none;
   border-radius: 50%;
   font-size: 18px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -70,7 +70,7 @@
 }
 
 .moreBtn:hover {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
 }
 
 /* ── Summary ── */
@@ -97,21 +97,21 @@
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
 
 .meta {
   font-size: 12px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 /* ── Stats Grid ── */
 .statsGrid {
   display: flex;
   align-items: stretch;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 14px 8px;
   margin: 0 18px 18px;
@@ -131,17 +131,17 @@
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   letter-spacing: -0.3px;
 }
 
 .statAccent {
-  color: var(--expense, #C04A3A);
+  color: var(--expense);
 }
 
 .statLbl {
   font-size: 11px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -150,7 +150,7 @@
 
 .statDivider {
   width: 1px;
-  background: var(--line, #D9D4C3);
+  background: var(--line);
 }
 
 /* ── List ── */
@@ -172,8 +172,8 @@
 }
 
 .dayRowOver {
-  border-color: var(--accent-2, #9fcc00);
-  background: color-mix(in srgb, var(--accent-2, #9fcc00) 7%, transparent);
+  border-color: var(--accent-deep);
+  background: color-mix(in srgb, var(--accent-deep) 7%, transparent);
 }
 
 .dayHead {
@@ -187,7 +187,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 0.5px;
 }
 
@@ -195,7 +195,7 @@
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
-  color: var(--expense, #C04A3A);
+  color: var(--expense);
 }
 
 .dayCards {
@@ -210,8 +210,8 @@
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   cursor: pointer;
   transition: all 150ms;
@@ -250,7 +250,7 @@
 .cardName {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -258,14 +258,14 @@
 
 .cardSub {
   font-size: 11px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 .cardAmt {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
-  color: var(--expense, #C04A3A);
+  color: var(--expense);
   letter-spacing: -0.3px;
   flex-shrink: 0;
 }
@@ -287,7 +287,7 @@
 
 .emptyText {
   font-size: 13px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 /* 桌面端:面板从右侧滑入 */
@@ -367,7 +367,7 @@
 }
 
 .confirmDanger {
-  background: var(--danger, #E5484D);
+  background: var(--danger);
   color: #fff;
 }
 
@@ -376,12 +376,12 @@
   display: block;
   width: calc(100% - 36px);
   margin: 12px 18px 0;
-  border: 1px solid var(--line, #E5E2D8);
+  border: 1px solid var(--line);
   background: transparent;
   border-radius: 10px;
   padding: 9px;
   font-size: 12px;
   font-family: inherit;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
 }

@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    TodayRecordsList — 今日记录列表
    ========================================================== */
 
@@ -18,7 +18,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
@@ -32,18 +32,18 @@
 }
 
 .summaryIncome {
-  color: var(--income, #2D8F5B);
+  color: var(--income);
 }
 
 .expense {
-  color: var(--expense, #C04A3A);
+  color: var(--expense);
 }
 
 .list {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--line-soft, #E7E2D1);
+  border: 1px solid var(--line-soft);
 }
 
 .row {
@@ -51,7 +51,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--line-soft, #E7E2D1);
+  border-bottom: 1px solid var(--line-soft);
   width: 100%;
   background: transparent;
   border-left: none;
@@ -69,18 +69,18 @@
 }
 
 .row:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .row:active {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .icon {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,7 +99,7 @@
   gap: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -110,8 +110,8 @@
   font-size: 9px;
   font-weight: 600;
   padding: 2px 5px;
-  background: var(--paper-2, #EDE9DD);
-  color: var(--ink-muted, #6B6B6B);
+  background: var(--paper-2);
+  color: var(--ink-muted);
   border-radius: 4px;
   letter-spacing: 0.3px;
   flex-shrink: 0;
@@ -121,8 +121,8 @@
   font-size: 9px;
   font-weight: 600;
   padding: 2px 5px;
-  background: #FFF4E0;
-  color: #A86A1F;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-deep);
   border-radius: 4px;
   letter-spacing: 0.3px;
   flex-shrink: 0;
@@ -130,7 +130,7 @@
 
 .sub {
   font-size: 11px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 .amount {
@@ -142,11 +142,11 @@
 }
 
 .amount.income {
-  color: var(--income, #2D8F5B);
+  color: var(--income);
 }
 
 .amount.expense {
-  color: var(--expense, #C04A3A);
+  color: var(--expense);
 }
 
 /* ── 空状态 ── */
@@ -156,9 +156,9 @@
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
-  border: 1px dashed var(--line-soft, #E7E2D1);
+  border: 1px dashed var(--line-soft);
   gap: 4px;
 }
 
@@ -170,11 +170,11 @@
 
 .emptyText {
   font-size: 13px;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   font-weight: 500;
 }
 
 .emptyHint {
   font-size: 11px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }

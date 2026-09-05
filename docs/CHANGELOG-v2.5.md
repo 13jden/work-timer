@@ -205,4 +205,51 @@
 
 ---
 
+## [v2.5-patch6] · 2026-09-05 · account 模式三主题适配 (TASK-049)
+
+基线 v2.5-patch5。用户反馈「account 模式切到 obsidian / gold 主题后,
+原本 lemon yellow 上的浅色组件、墨黑大卡的光晕都失效/难看」(time 模式 SettingsPage
+三主题适配干净,account 模式散落大量硬编码颜色回退)。
+
+### A · tokens.css 补齐缺失 token (T-491)
+
+- **`--paper-3` / `--paper-4`** —— 三主题都补全:
+  - paper: `#f9f7f0` / `#fffdf6`(保留原 fallback 语义,不变)
+  - obsidian: `#1C212C` / `#242B38`(深色面 elev 提升,等同 `--card` / `--card-hover`)
+  - gold: `#FFFFFF` / `#FFFCF2`(更亮的白卡面)
+- **`--ink-muted` / `--ink-soft`** —— 三主题补全(原 CSS 大量 `var(--ink-muted, #6B6B6B)` fallback)
+- **`--income` / `--expense`** —— 三主题补全(记账红绿语义色,不再硬编码 `#C04A3A` / `#2D8F5B`)
+- **`--ink-on-dark` / `--ink-on-dark-muted`** —— 新增「深色卡面正文」token,用于墨黑大卡、QuickAddRow 暗卡等场景,三主题都取一致的浅色
+
+### B · 移除 Account 组件 CSS 硬编码回退 (T-492~495)
+
+- 13 个 `Accounting/**.module.css` 文件批量替换 `var(--paper-3, #f9f7f0)` `var(--paper-2, #EDE9DD)` `var(--paper-4, #fffdf6)` `var(--ink-muted, #6B6B6B)` `var(--ink, #0F0F0F)` `var(--line-soft, #E7E2D1)` `var(--line, #D9D4C3)` `var(--accent-2, #9fcc00)` `var(--accent, #C8FF00)` `var(--accent-deep, #6c8a00)` `var(--danger, #e5484d)` `var(--paper, #fffdf6)` `var(--muted, #8B8B82)` `var(--ink-soft, #3A3A3A)` `var(--expense, #C04A3A)` `var(--income, #2D8F5B)` 为纯 token 引用
+- 收尾遗留硬编码:
+  - `var(--folder-color, #9CA3AF) 14%, white` → `var(--folder-color) 14%, var(--paper)`
+  - `MinePage.goalEditClear` 的 `var(--accent, #c04a3a)` 误用 → `var(--danger)`
+  - `TodayRecordsList.virtualTag` 的 `#FFF4E0` / `#A86A1F` → `color-mix(var(--accent))`
+  - `RecordActionSheet.danger:hover` 的 `#fef2f2` → `color-mix(var(--danger) 8%, transparent)`
+  - `QuickAddRecord` 全部 rgba(255,255,255,X) → `color-mix(var(--ink-on-dark) X%, transparent)`,`#F2F1EA` → `var(--ink-on-dark)`,`#FF6B6B` → `var(--danger)`,`#4ADE80` → `var(--income)`
+  - `AccountingTopCard` `#FFFFFF` → `var(--ink-on-dark)`
+
+### C · 墨黑大卡 obsidian 反转 (T-496)
+
+参照 `TimerCard.module.css` 的 obsidian override 模式,为以下组件加 `:global([data-theme='obsidian'])` 反转,
+保留「墨黑 hero 卡」视觉签名(不被 `--ink` 自动反转成亮卡):
+
+- `AccountingTopCard.card` / `.status` / `.label` / `.shift` / `.range` / `.progress`
+- `MinePage.totalCard` + `.totalAmount` / `.totalLabel` / `.virtualActual` / `.totalResetBtn` / `.accountMini` / `.accountName` / `.accountBalance`
+- `QuickAddRow.quickCard`
+
+### D · AccountingTopCard 光晕主题色 (T-498)
+
+`.card::before` 的右上角径向光晕从硬编码 `rgba(200, 255, 0, 0.18)` 改为 `var(--accent-glow)`,
+三主题自动切换:lemon lime / 曜石青 / 香槟金,完全对齐 `TimerCard` 同源实现。
+
+### 验证
+
+- typecheck 0 错误、408 单测全过(本次未新增业务单测,纯 CSS token 适配)
+
+---
+
 *创建于 2026-09-04*

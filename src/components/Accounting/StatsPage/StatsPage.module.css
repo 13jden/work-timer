@@ -1,4 +1,4 @@
-/* StatsPage — 统计页三视图（v2.2 TASK-038） */
+﻿/* StatsPage — 统计页三视图（v2.2 TASK-038） */
 
 .page {
   padding: 16px 16px 24px;
@@ -37,7 +37,7 @@
 
 .summaryBlock {
   flex: 1;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;
@@ -83,7 +83,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 8px;
   font-size: 14px;
   color: var(--muted);
@@ -103,7 +103,7 @@
 
 /* ── 柱状图 ─────────────────────────────── */
 .chartCard {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 14px 10px 10px;
 }
@@ -160,7 +160,7 @@
 }
 
 .chartColActive .barsWrap {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .barsWrap {
@@ -204,7 +204,7 @@
 
 /* ── 分类排行 ─────────────────────────────── */
 .rankCard {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 14px;
   display: flex;
@@ -273,7 +273,7 @@
 .rankBarTrack {
   height: 4px;
   border-radius: 2px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   overflow: hidden;
 }
 
@@ -292,7 +292,7 @@
 
 /* ── 日视图记录列表 ─────────────────────────── */
 .dayList {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 6px 14px;
 }
@@ -419,7 +419,7 @@
   max-width: 92px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
@@ -507,7 +507,7 @@
   min-width: 78px;
   padding: 12px 12px 10px;
   border-radius: 12px;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border: 1.5px solid transparent;
   transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
@@ -518,7 +518,7 @@
 
 .dockCardOver {
   border-color: var(--accent-deep);
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   transform: scale(1.06);
 }
 

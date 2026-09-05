@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    QuickAddRecord — 快速记录条
    v2.1 优化:移动端不溢出，输入区自适应伸缩
    ========================================================== */
@@ -8,9 +8,9 @@
   gap: 6px;
   align-items: center;
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--ink-on-dark) 4%, transparent);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 6%, transparent);
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
@@ -22,8 +22,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--ink-on-dark) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
   border-radius: 8px;
   padding: 0 8px;
   height: 38px;
@@ -34,7 +34,7 @@
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
-  color: rgba(242, 241, 234, 0.5);
+  color: var(--ink-on-dark-muted);
   flex-shrink: 0;
 }
 
@@ -47,7 +47,7 @@
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 600;
-  color: #F2F1EA;
+  color: var(--ink-on-dark);
   padding: 0;
   width: 100%;
   letter-spacing: -0.3px;
@@ -60,13 +60,13 @@
 }
 
 .input::placeholder {
-  color: rgba(242, 241, 234, 0.4);
+  color: color-mix(in srgb, var(--ink-on-dark) 40%, transparent);
 }
 
 /* ── 类型切换 ── */
 .toggleWrap {
   display: flex;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--ink-on-dark) 6%, transparent);
   border-radius: 8px;
   padding: 2px;
   flex-shrink: 0;
@@ -80,7 +80,7 @@
   padding: 4px 8px;
   border: none;
   background: transparent;
-  color: rgba(242, 241, 234, 0.5);
+  color: var(--ink-on-dark-muted);
   border-radius: 6px;
   cursor: pointer;
   transition: all 150ms;
@@ -88,20 +88,20 @@
 }
 
 .toggleBtn:hover {
-  color: rgba(242, 241, 234, 0.8);
+  color: color-mix(in srgb, var(--ink-on-dark) 80%, transparent);
 }
 
 .toggleActive {
-  background: rgba(255, 255, 255, 0.1);
-  color: #F2F1EA;
+  background: color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+  color: var(--ink-on-dark);
 }
 
 .toggleActive.expense {
-  color: #FF6B6B;
+  color: var(--danger);
 }
 
 .toggleActive.income {
-  color: #4ADE80;
+  color: var(--income);
 }
 
 /* ── 提交按钮 ── */
@@ -111,8 +111,8 @@
   flex-shrink: 0;
   border: none;
   border-radius: 8px;
-  background: var(--accent, #C8FF00);
-  color: var(--ink, #0F0F0F);
+  background: var(--accent);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 400;
   cursor: pointer;
@@ -141,10 +141,10 @@
   height: 38px;
   padding: 0 10px;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 15%, transparent);
   border-radius: 8px;
   background: transparent;
-  color: rgba(242, 241, 234, 0.85);
+  color: color-mix(in srgb, var(--ink-on-dark) 85%, transparent);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -153,7 +153,7 @@
 }
 
 .fullBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--ink-on-dark) 6%, transparent);
 }
 
 /* 桌面端留一些呼吸空间 */

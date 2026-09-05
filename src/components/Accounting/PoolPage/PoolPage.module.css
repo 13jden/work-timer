@@ -1,4 +1,4 @@
-/* PoolPage — 池管理页（v2.3 TASK-039 · 记账主题 MINE tab） */
+﻿/* PoolPage — 池管理页（v2.3 TASK-039 · 记账主题 MINE tab） */
 
 /* v2.4：作为 MinePage 分区（原 .page 外壳移至 MinePage） */
 .section {
@@ -45,7 +45,7 @@
 
 /* ── 池卡片 ─────────────────────────────── */
 .card {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 14px;
   display: flex;
@@ -74,7 +74,7 @@
   font-size: 10px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   color: var(--muted);
 }
 
@@ -125,7 +125,7 @@
 .progressTrack {
   height: 5px;
   border-radius: 3px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   overflow: hidden;
 }
 
@@ -237,7 +237,7 @@
 
 .fieldInput {
   border: 1px solid var(--line);
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 14px;
@@ -265,7 +265,7 @@
 
 .typeOptActive {
   border-color: var(--ink);
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
 }
 
 .typeOptName {
@@ -320,7 +320,7 @@
 
 .typeToggleInline {
   display: inline-flex;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   border-radius: 999px;
   padding: 2px;
 }
@@ -342,7 +342,7 @@
 }
 
 .typeChipActive {
-  background: var(--paper, #fffdf6);
+  background: var(--paper);
   color: var(--ink);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -363,7 +363,7 @@
   align-items: center;
   gap: 4px;
   padding: 10px 6px;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border: 1px solid transparent;
   border-radius: 12px;
   font-size: 11px;
@@ -374,7 +374,7 @@
 }
 
 .catChipPool:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .catName {
@@ -398,7 +398,7 @@
   flex-shrink: 0;
   width: 48px;
   border: 1px solid var(--line);
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   font-size: 28px;
   font-weight: 300;
@@ -413,7 +413,7 @@
 }
 
 .amtSignBtn:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .amtSignMinus.amtSignActive {
@@ -434,7 +434,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px 12px;
@@ -512,7 +512,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   display: flex;
   flex-direction: column;
   gap: 8px;

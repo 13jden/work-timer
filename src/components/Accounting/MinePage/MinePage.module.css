@@ -1,4 +1,4 @@
-/* MinePage — MINE 页（v2.4 TASK-040 · 总资产 + 钱包 + 存钱目标 + 池） */
+﻿/* MinePage — MINE 页（v2.4 TASK-040 · 总资产 + 钱包 + 存钱目标 + 池） */
 
 .page {
   padding: 16px 16px 24px;
@@ -32,6 +32,35 @@
   color: var(--paper);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
+}
+
+/* v2.5-patch6 T-496：obsidian 主题反转总资产墨黑大卡，
+   避免 --ink 自动变浅；保留 hero 卡视觉签名（与 TimerCard 一致） */
+:global([data-theme='obsidian']) .totalCard {
+  background: var(--surface-dark);
+}
+:global([data-theme='obsidian']) .totalAmount {
+  color: var(--ink-on-dark);
+}
+:global([data-theme='obsidian']) .totalLabel {
+  color: color-mix(in srgb, var(--ink-on-dark) 62%, transparent);
+}
+:global([data-theme='obsidian']) .virtualActual {
+  color: color-mix(in srgb, var(--ink-on-dark) 62%, transparent);
+}
+:global([data-theme='obsidian']) .totalResetBtn {
+  border-color: color-mix(in srgb, var(--ink-on-dark) 18%, transparent);
+  background: color-mix(in srgb, var(--ink-on-dark) 6%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+}
+:global([data-theme='obsidian']) .accountMini {
+  background: color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+}
+:global([data-theme='obsidian']) .accountName {
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+}
+:global([data-theme='obsidian']) .accountBalance {
+  color: var(--ink-on-dark);
 }
 
 /* ── 虚拟资产分解（T-409） ─────────────────── */
@@ -155,7 +184,7 @@
 
 .addBtn {
   border: none;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   color: var(--ink);
   border-radius: 10px;
   padding: 6px 12px;
@@ -265,8 +294,8 @@
 /* ── v2.5-patch5 N-485 redesign：结余目标 — 浅色极简卡 ── */
 .goalHeroCard {
   position: relative;
-  background: var(--paper-3, #faf7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   padding: 14px 18px 16px;
   display: flex;
@@ -280,8 +309,8 @@
 }
 
 .goalHeroCard:hover {
-  background: var(--paper-2, #EDE9DD);
-  border-color: var(--line, #D9D4C3);
+  background: var(--paper-2);
+  border-color: var(--line);
 }
 
 /* 极细下划线 — 提示「目标」性质的视觉签名 */
@@ -313,7 +342,7 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 1.5px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   text-transform: uppercase;
   opacity: 0.65;
 }
@@ -327,20 +356,20 @@
   border-radius: 999px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   opacity: 0.5;
   transition: all 150ms;
 }
 
 .goalHeroCard:hover .goalHeroEdit {
   opacity: 1;
-  border-color: var(--line-soft, #E7E2D1);
-  background: var(--paper-4, #fffdf6);
+  border-color: var(--line-soft);
+  background: var(--paper-4);
 }
 
 .goalHeroLabel {
   font-size: 12px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 0.5px;
   font-weight: 500;
 }
@@ -349,7 +378,7 @@
   font-family: var(--font-display);
   font-size: 36px;
   font-weight: 700;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
   letter-spacing: -0.8px;
@@ -365,7 +394,7 @@
 
 .goalHeroHint {
   font-size: 11px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   opacity: 0.7;
 }
 
@@ -458,7 +487,7 @@
 }
 
 .goalEditClear {
-  color: var(--accent, #c04a3a);
+  color: var(--danger);
 }
 
 /* ── 弹窗（账户 / 目标通用） ────────────────── */
@@ -503,7 +532,7 @@
 
 .fieldInput {
   border: 1px solid var(--line);
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 14px;
@@ -531,7 +560,7 @@
 
 .typeOptActive {
   border-color: var(--ink);
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   color: var(--ink);
 }
 

@@ -25,7 +25,9 @@
   right: -20%;
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(200, 255, 0, 0.18) 0%, transparent 60%);
+  /* v2.5-patch6 T-498：光晕改用 var(--accent-glow)，三主题适配
+     （与 TimerCard.module.css 同源 —— lemon/obsidian/gold 各自取对应 accent） */
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
@@ -62,7 +64,7 @@
   font-size: clamp(24px, 4.6vh, 40px);
   line-height: 1.08;
   font-weight: 300;
-  color: #FFFFFF;
+  color: var(--ink-on-dark);
   letter-spacing: -1.2px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -97,7 +99,7 @@
 }
 
 .shiftLeft strong {
-  color: #FFFFFF;
+  color: var(--ink-on-dark);
   font-weight: 600;
 }
 
@@ -137,6 +139,28 @@
 
 .range span {
   font-variant-numeric: tabular-nums;
+}
+
+/* v2.5-patch6 T-497：obsidian 主题反转「墨黑大卡」语义，
+   保持 hero 卡的视觉签名（不被 --ink 自动变浅）。对照 TimerCard.module.css */
+:global([data-theme='obsidian']) .card {
+  background: var(--surface-dark);
+  color: var(--ink-on-dark);
+}
+:global([data-theme='obsidian']) .status {
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+}
+:global([data-theme='obsidian']) .label {
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+}
+:global([data-theme='obsidian']) .shift {
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+}
+:global([data-theme='obsidian']) .range {
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+}
+:global([data-theme='obsidian']) .progress {
+  background: color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
 }
 
 /* 桌面端(宽高比≥3:2,与 useIsDesktop 一致):允许随视口高度收缩 */

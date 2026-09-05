@@ -8,6 +8,11 @@
   --ink:          #0F0F0F;
   --ink-2:        #1A1A1A;
   --ink-3:        #2A2A2A;
+  --ink-muted:    #6B6B6B;
+  --ink-soft:     #3A3A3A;
+  /* 三主题都一致的「深色卡片正文字」（用于深色 hero 卡 / dark surface） */
+  --ink-on-dark:  #F2F1EA;
+  --ink-on-dark-muted: rgba(242, 241, 234, 0.6);
   --accent:       #C8FF00;
   --accent-deep:  #9FCC00;
   --accent-shadow:rgba(200, 255, 0, 0.25);
@@ -15,13 +20,17 @@
   --accent-tint:  rgba(200, 255, 0, 0.06);
   --paper:        #F5F2EA;
   --paper-2:      #ECEAE0;
+  --paper-3:      #f9f7f0;
+  --paper-4:      #fffdf6;
   --card:         #FFFFFF;
-  --card-hover:  #F5F2EA;
+  --card-hover:   #F5F2EA;
   --line:         #E5E2D8;
   --line-soft:    #EFEEE6;
   --muted:        #8B8B82;
   --muted-2:      #B8B6AB;
   --danger:       #E5484D;
+  --income:       #2D8F5B;
+  --expense:      #C04A3A;
   --accent-name:  '柠檬黄';
 
   --faint:        #C5C2B8;
@@ -35,6 +44,12 @@
   --ink:          #F2F4F8;
   --ink-2:        #C9D0DD;
   --ink-3:        #9AA4B8;
+  --ink-muted:    #9AA4B8;
+  --ink-soft:     #C9D0DD;
+  /* 深色卡上文字 — obsidian 主题本身偏暗,卡面是深色面(--surface-dark),
+     这里用比 paper 主题更亮的暖白以避免暗底沉没 */
+  --ink-on-dark:  #ECEFF4;
+  --ink-on-dark-muted: rgba(236, 239, 244, 0.65);
   --accent:       #2DD4BF;
   --accent-deep:  #5EEAD4;  /* 暗底卡片上的文字需要更亮才可读 */
   --accent-shadow: rgba(45, 212, 191, 0.35);
@@ -42,6 +57,8 @@
   --accent-tint:  rgba(45, 212, 191, 0.12);
   --paper:        #101318;
   --paper-2:      #171B23;
+  --paper-3:      #1C212C;
+  --paper-4:      #242B38;
   --card:         #1C212C;
   --card-hover:   #242B38;
   --line:         #333C4D;
@@ -49,6 +66,8 @@
   --muted:        #8E99AE;
   --muted-2:      #B7C0D0;
   --danger:       #FF7A82;
+  --income:       #34D399;
+  --expense:      #FF7A82;
   --accent-name:  '曜石青';
 
   --faint:        #4E586C;
@@ -61,6 +80,11 @@
   --ink:          #2A2520;
   --ink-2:        #3D3530;
   --ink-3:        #524840;
+  --ink-muted:    #6B6358;
+  --ink-soft:     #524840;
+  /* 深色卡上文字 — gold 主题的暗面是暖棕,这里用与 paper 主题一致的暖白 */
+  --ink-on-dark:  #F2F1EA;
+  --ink-on-dark-muted: rgba(242, 241, 234, 0.6);
   --accent:       #C9A84C;
   --accent-deep:  #A8882E;
   --accent-shadow: rgba(201, 168, 76, 0.22);
@@ -68,13 +92,17 @@
   --accent-tint:  rgba(201, 168, 76, 0.08);
   --paper:        #FAF9F6;
   --paper-2:      #F5F2EB;
+  --paper-3:      #FFFFFF;
+  --paper-4:      #FFFCF2;
   --card:         #FFFFFF;
-  --card-hover:  #F5F2EA;
+  --card-hover:   #F5F2EA;
   --line:         #E8E4D8;
   --line-soft:    #F0EDE5;
   --muted:        #8C8070;
   --muted-2:      #B0A898;
   --danger:       #C84040;
+  --income:       #2D8F5B;
+  --expense:      #C04A3A;
   --accent-name:  '香槟金';
 
   --faint:        #C0B8A8;

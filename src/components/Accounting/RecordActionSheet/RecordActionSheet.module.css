@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    RecordActionSheet — 记录操作底部 sheet
    ========================================================== */
 
@@ -21,7 +21,7 @@
 .sheet {
   width: 100%;
   max-width: 480px;
-  background: var(--paper-4, #fffdf6);
+  background: var(--paper-4);
   border-radius: 20px 20px 0 0;
   padding: 8px 16px 24px;
   animation: slideUp 280ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -35,7 +35,7 @@
 .handle {
   width: 36px;
   height: 4px;
-  background: var(--line-soft, #E7E2D1);
+  background: var(--line-soft);
   border-radius: 2px;
   margin: 8px auto 16px;
 }
@@ -48,7 +48,7 @@
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   text-align: center;
 }
 
@@ -65,19 +65,19 @@
   width: 100%;
   height: 52px;
   padding: 0 16px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   cursor: pointer;
   transition: all 150ms;
 }
 
 .actionBtn:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .actionBtn:active {
@@ -94,21 +94,21 @@
 }
 
 .danger {
-  color: var(--danger, #e5484d);
-  border-color: var(--line-soft, #E7E2D1);
+  color: var(--danger);
+  border-color: var(--line-soft);
 }
 
 .danger:hover {
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 .cancel {
   justify-content: center;
   background: transparent;
   border-color: transparent;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 .cancel:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }

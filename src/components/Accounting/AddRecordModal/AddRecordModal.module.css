@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    AddRecordModal — v2.5-patch6 完整重做
    设计语言：极简 · 浅色 · 无黑色块
    - 顶部：极细关闭按钮 + 居中小标题
@@ -28,7 +28,7 @@
 .modal {
   width: 100%;
   max-width: 480px;
-  background: var(--paper-4, #fffdf6);
+  background: var(--paper-4);
   border-radius: 24px 24px 0 0;
   padding: 14px 20px calc(20px + env(safe-area-inset-bottom));
   display: flex;
@@ -61,7 +61,7 @@
   border-radius: 50%;
   font-size: 16px;
   font-weight: 300;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -70,15 +70,15 @@
 }
 
 .closeBtn:hover {
-  background: var(--paper-2, #EDE9DD);
-  color: var(--ink, #0F0F0F);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 
 .topTitle {
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 1.5px;
   text-transform: uppercase;
   opacity: 0.85;
@@ -100,12 +100,12 @@
 .typeBackBtn {
   width: 38px;
   flex-shrink: 0;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   font-size: 18px;
   font-weight: 400;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -115,9 +115,9 @@
 }
 
 .typeBackBtn:hover {
-  background: var(--paper-2, #EDE9DD);
-  color: var(--ink, #0F0F0F);
-  border-color: var(--line, #D9D4C3);
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: var(--line);
 }
 
 .typeBtn {
@@ -127,20 +127,20 @@
   justify-content: center;
   gap: 6px;
   height: 38px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .typeBtn:hover {
-  border-color: var(--line, #D9D4C3);
-  color: var(--ink, #0F0F0F);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .typeSign {
@@ -151,23 +151,23 @@
 }
 
 .typeBtnExpenseActive {
-  background: color-mix(in srgb, var(--danger, #e5484d) 8%, transparent);
-  border-color: color-mix(in srgb, var(--danger, #e5484d) 35%, transparent);
-  color: var(--danger, #e5484d);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
 }
 
 .typeBtnIncomeActive {
-  background: color-mix(in srgb, var(--accent, #C8FF00) 22%, transparent);
-  border-color: color-mix(in srgb, var(--accent, #C8FF00) 55%, transparent);
-  color: var(--accent-deep, #6c8a00);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent-deep);
 }
 
 /* ── 备注 + 金额 一行：左侧备注，右侧数字（只读，由 numpad 驱动） ── */
 .noteAmountRow {
   display: flex;
   align-items: stretch;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   overflow: hidden;
   min-height: 56px;
@@ -185,7 +185,7 @@
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 56px;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
@@ -199,14 +199,14 @@
 }
 
 .minimalNote::placeholder {
-  color: color-mix(in srgb, var(--ink-muted, #6B6B6B) 65%, transparent);
+  color: color-mix(in srgb, var(--ink-muted) 65%, transparent);
   line-height: normal;
 }
 
 .noteAmountRow > .minimalNoteDivider,
 .noteAmountRowDivider {
   width: 1px;
-  background: var(--line-soft, #E7E2D1);
+  background: var(--line-soft);
   margin: 8px 0;
   flex-shrink: 0;
 }
@@ -225,7 +225,7 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: -0.5px;
 }
 
@@ -234,7 +234,7 @@
   font-weight: 700;
   font-size: 22px;
   line-height: 1;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   letter-spacing: -0.8px;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -259,7 +259,7 @@
 }
 
 .amountDisplayPlaceholder {
-  color: color-mix(in srgb, var(--ink-muted, #6B6B6B) 35%, transparent);
+  color: color-mix(in srgb, var(--ink-muted) 35%, transparent);
   font-weight: 400;
 }
 
@@ -272,13 +272,13 @@
 
 .numpadKey {
   height: 42px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   cursor: pointer;
   transition: background 120ms, transform 80ms;
   display: flex;
@@ -288,54 +288,54 @@
 }
 
 .numpadKey:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .numpadKey:active {
   transform: scale(0.96);
-  background: var(--line, #D9D4C3);
+  background: var(--line);
 }
 
 .numpadKey:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
 }
 
 /* 操作键：⌫ / + / −（行尾的功能键） */
 .numpadKeyAction {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   font-size: 18px;
   font-weight: 500;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
 }
 
 .numpadKeyAction:hover {
-  background: var(--line, #D9D4C3);
-  color: var(--ink, #0F0F0F);
+  background: var(--line);
+  color: var(--ink);
 }
 
 /* 「再记」— 次按钮（保留弹窗，继续录入） */
 .numpadKeyAgain {
   background: transparent;
-  border: 1px dashed var(--line, #D9D4C3);
-  color: var(--ink-muted, #6B6B6B);
+  border: 1px dashed var(--line);
+  color: var(--ink-muted);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 1px;
 }
 
 .numpadKeyAgain:hover:not(:disabled) {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-style: solid;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
 }
 
 /* 「完成」— 主按钮（accent 底） */
 .numpadKeyDone {
-  background: var(--accent, #C8FF00);
-  border-color: var(--accent, #C8FF00);
-  color: var(--ink, #0F0F0F);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -343,7 +343,7 @@
 
 .numpadKeyDone:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent, #C8FF00) 38%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 
 .numpadKeyDone:active:not(:disabled) {
@@ -355,8 +355,8 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   overflow: hidden;
   min-height: 56px;
@@ -374,14 +374,14 @@
 }
 
 .fieldCell:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .fieldLabel {
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   margin-bottom: 2px;
@@ -396,7 +396,7 @@
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   padding: 0;
   cursor: pointer;
   appearance: none;
@@ -411,7 +411,7 @@
 
 .fieldDivider {
   width: 1px;
-  background: var(--line-soft, #E7E2D1);
+  background: var(--line-soft);
   margin: 8px 0;
   flex-shrink: 0;
 }
@@ -438,13 +438,13 @@
   justify-content: center;
   gap: 4px;
   padding: 8px 4px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1.5px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1.5px solid var(--line-soft);
   border-radius: 12px;
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   cursor: pointer;
   transition: all 150ms;
   /* 高度由 grid-auto-rows 控制，避免 mobile 键盘收起后被压缩 */
@@ -452,12 +452,12 @@
 }
 
 .catGridCell:hover {
-  background: var(--paper-2, #EDE9DD);
-  border-color: var(--line, #D9D4C3);
+  background: var(--paper-2);
+  border-color: var(--line);
 }
 
 .catGridCellActive {
-  color: var(--paper, #fffdf6);
+  color: var(--paper);
   font-weight: 600;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 18%, transparent);
   border-color: transparent;
@@ -472,22 +472,22 @@
   aspect-ratio: 1 / 1;
   padding: 8px 4px;
   background: transparent;
-  border: 1.5px dashed var(--line, #D9D4C3);
+  border: 1.5px dashed var(--line);
   border-radius: 12px;
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   transition: all 150ms;
   min-height: 52px;
 }
 
 .catGridCellAdd:hover {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-style: solid;
-  border-color: var(--accent-2, #9fcc00);
-  color: var(--accent-deep, #6c8a00);
+  border-color: var(--accent-deep);
+  color: var(--accent-deep);
 }
 
 .catAddSign {
@@ -519,7 +519,7 @@
 /* ── Error ── */
 .error {
   font-size: 12px;
-  color: var(--danger, #e5484d);
+  color: var(--danger);
   text-align: center;
   padding: 4px 0;
 }
@@ -528,18 +528,18 @@
 .deleteBtn {
   width: 100%;
   height: 40px;
-  border: 1px solid var(--line-soft, #E7E2D1);
-  background: var(--paper-3, #f9f7f0);
+  border: 1px solid var(--line-soft);
+  background: var(--paper-3);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   transition: all 150ms;
 }
 
 .deleteBtn:hover {
-  border-color: var(--danger, #e5484d);
-  color: var(--danger, #e5484d);
-  background: color-mix(in srgb, var(--danger, #e5484d) 6%, transparent);
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
 }

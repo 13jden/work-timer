@@ -1,11 +1,11 @@
-/* CategoryRecordsPage — 分类记录页（v2.2 TASK-038） */
+﻿/* CategoryRecordsPage — 分类记录页（v2.2 TASK-038） */
 
 .page {
   position: fixed;
   inset: 0;
   /* 需高于 AccountingPage detailOverlay(150)，低于弹窗(200) */
   z-index: 160;
-  background: var(--paper-4, #fffdf6);
+  background: var(--paper-4);
   display: flex;
   flex-direction: column;
   padding-bottom: 72px;
@@ -22,7 +22,7 @@
   width: 30px;
   height: 30px;
   border: none;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 9px;
   font-size: 16px;
   color: var(--ink);
@@ -102,7 +102,7 @@
 }
 
 .monthGroup {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border-radius: 14px;
   padding: 4px 14px;
 }

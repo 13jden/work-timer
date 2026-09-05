@@ -30,11 +30,17 @@
 
 /* 左卡：黑色底 — 适配 QuickAddRecord 的暗色风格 */
 .quickCard {
-  background: #141610;
-  color: #F2F1EA;
+  background: var(--ink);
+  color: var(--ink-on-dark);
   border: none;
   cursor: default;
   min-width: 0;
+}
+
+/* v2.5-patch6 T-497：obsidian 主题下反转「暗底」语义，避免 --ink 变成亮色 */
+:global([data-theme='obsidian']) .quickCard {
+  background: var(--surface-dark);
+  color: var(--ink-on-dark);
 }
 
 .quickCard:hover {

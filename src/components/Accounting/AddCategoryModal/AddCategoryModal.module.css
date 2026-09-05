@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    AddCategoryModal — 新增分类弹窗
    ========================================================== */
 
@@ -21,7 +21,7 @@
 .modal {
   width: 100%;
   max-width: 480px;
-  background: var(--paper-4, #fffdf6);
+  background: var(--paper-4);
   border-radius: 20px 20px 0 0;
   padding: 16px 20px 24px;
   display: flex;
@@ -47,11 +47,11 @@
 .closeBtn {
   width: 32px;
   height: 32px;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   border: none;
   border-radius: 50%;
   font-size: 16px;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -60,14 +60,14 @@
 }
 
 .closeBtn:hover {
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
 }
 
 .title {
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 600;
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
 }
 
 .placeholder {
@@ -112,7 +112,7 @@
 /* ── Type Toggle ── */
 .typeToggle {
   display: flex;
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
   border-radius: 10px;
   padding: 3px;
 }
@@ -122,7 +122,7 @@
   padding: 8px 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   border: none;
   background: transparent;
   border-radius: 8px;
@@ -131,12 +131,12 @@
 }
 
 .typeBtn:hover {
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
 }
 
 .typeBtnActive {
-  background: var(--paper-4, #fffdf6);
-  color: var(--ink, #0F0F0F);
+  background: var(--paper-4);
+  color: var(--ink);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -157,20 +157,20 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--ink-muted, #6B6B6B);
+  color: var(--ink-muted);
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .fieldInput {
   height: 40px;
-  background: var(--paper-3, #f9f7f0);
-  border: 1px solid var(--line-soft, #E7E2D1);
+  background: var(--paper-3);
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 0 12px;
   font-size: 14px;
   font-family: var(--font-sans);
-  color: var(--ink, #0F0F0F);
+  color: var(--ink);
   outline: none;
   transition: all 150ms;
   box-sizing: border-box;
@@ -178,7 +178,7 @@
 }
 
 .fieldInput:focus {
-  border-color: var(--accent-2, #9fcc00);
+  border-color: var(--accent-deep);
 }
 
 /* ── Emoji Grid ── */
@@ -205,7 +205,7 @@
   margin-bottom: 5px;
   font-size: 10px;
   letter-spacing: 0.5px;
-  color: var(--muted, #8B8B82);
+  color: var(--muted);
 }
 
 .iconGroupRow {
@@ -216,7 +216,7 @@
 
 .emojiChip {
   aspect-ratio: 1;
-  background: var(--paper-3, #f9f7f0);
+  background: var(--paper-3);
   border: 1px solid transparent;
   border-radius: 8px;
   font-size: 18px;
@@ -228,12 +228,12 @@
 }
 
 .emojiChip:hover {
-  background: var(--paper-2, #EDE9DD);
+  background: var(--paper-2);
 }
 
 .emojiChipActive {
-  border-color: var(--ink, #0F0F0F);
-  background: var(--paper-4, #fffdf6);
+  border-color: var(--ink);
+  background: var(--paper-4);
 }
 
 /* ── Color Grid ── */
@@ -258,13 +258,13 @@
 }
 
 .colorChipActive {
-  border-color: var(--ink, #0F0F0F);
+  border-color: var(--ink);
 }
 
 /* ── Error ── */
 .error {
   font-size: 12px;
-  color: var(--danger, #e5484d);
+  color: var(--danger);
   text-align: center;
   padding: 4px 0;
 }
@@ -279,8 +279,8 @@
 .submitBtn {
   flex: 1;
   height: 48px;
-  background: var(--ink, #0F0F0F);
-  color: var(--accent, #C8FF00);
+  background: var(--ink);
+  color: var(--accent);
   border: none;
   border-radius: 12px;
   font-size: 15px;
