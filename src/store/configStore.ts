@@ -69,6 +69,8 @@ function migrateToV3(raw: Partial<Config> | undefined): Config {
     customRestSchedule: raw?.customRestSchedule ?? DEFAULT_CONFIG.customRestSchedule,
     // v1.3.5 新增字段:工作日模板列表
     workTemplates: raw?.workTemplates ?? DEFAULT_CONFIG.workTemplates,
+    // ── v2.5 TASK-046 T-501-3：老数据迁移时补联动开关默认值 ──
+    salaryLinkageEnabled: raw?.salaryLinkageEnabled ?? DEFAULT_CONFIG.salaryLinkageEnabled,
   };
 }
 

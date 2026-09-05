@@ -12,6 +12,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
+import { useAccountStore } from '../store/accountStore';
 import { HOLIDAYS } from '../lib/constants';
 import { dailySalary, daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
@@ -165,6 +166,62 @@ export function CalendarPage({
     }
     return count;
   }, [year, month, effectiveConfig, overrides]);
+
+  // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
+  // 计算「本月每个工作日的 earnedAmount」：
+  //  - 已生成的快照:读 overrides[key].earnedAmount(快照不受后续配置影响)
+  //  - 今日实时:todayEarned(每秒随 useNow 同步)
+  // 不在「打开页面」时整月同步；只在 monthlyEarnedMap 与上帧不一致时才
+  // 同步真正变化的 dateKey → upsertSalaryLinkageForDate。
+  // （「根据 record 加」语义：跟随 record / 时间 实时变化,不要打开延迟）
+  const monthlyEarnedMap = useMemo(() => {
+    const todayKey = formatDateKey(now);
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    const map: Record<string, number> = {};
+    const days = daysInMonthCalc(year, month);
+    for (let d = 1; d <= days; d++) {
+      const date = new Date(year, month, d);
+      const key = formatDateKey(date);
+      const isWork = isWorkday(date, effectiveConfig, overrides, HOLIDAYS);
+      if (!isWork) continue;
+      const ov = overrides[key];
+      if (ov?.earnedGenerated && ov.earnedAmount != null) {
+        map[key] = ov.earnedAmount;
+      } else if (isCurrentMonth && key === todayKey) {
+        const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
+        map[key] = todayEarned(now, cfg, overrides, HOLIDAYS);
+      }
+    }
+    return map;
+  }, [year, month, now, overrides, effectiveConfig, effectiveSalary]);
+
+  // 仅在 monthlyEarnedMap 真正变化的 dateKey 上调用 upsert,
+  // 首帧在「联动开启」时也要同步过去日期(仅跳过今日实时值,避免每秒回灌)。
+  // v2.5-patch2 T-506：批量取消也要联动 —— prev 里有但 monthlyEarnedMap
+  // 里消失的 key,视为 amount=0 调 upsert,触发联动 record 删除 / cycle 累减。
+  const prevMonthlyRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!config.salaryLinkageEnabled) {
+      prevMonthlyRef.current = monthlyEarnedMap;
+      return;
+    }
+    const upsert = useAccountStore.getState().upsertSalaryLinkageForDate;
+    const prev = prevMonthlyRef.current;
+    const isFirst = Object.keys(prev).length === 0;
+    const todayKey = formatDateKey(now);
+    // 新增 / 改值:首帧跳过今日(避免每秒刷新),过去日期照常同步
+    for (const [key, value] of Object.entries(monthlyEarnedMap)) {
+      if (isFirst && key === todayKey) continue;
+      if (prev[key] !== value) upsert(key, value);
+    }
+    // 取消 / 消失：把 prev 里存在但当前不在 map 中的 key 视为 0
+    if (!isFirst) {
+      for (const key of Object.keys(prev)) {
+        if (!(key in monthlyEarnedMap)) upsert(key, 0);
+      }
+    }
+    prevMonthlyRef.current = monthlyEarnedMap;
+  }, [monthlyEarnedMap, config.salaryLinkageEnabled]);
 
   // 网格
   const firstDow = new Date(year, month, 1).getDay();

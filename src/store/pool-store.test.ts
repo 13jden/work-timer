@@ -526,4 +526,308 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     const after = useAccountStore.getState().records.find((r) => r.id === record.id);
     expect(after?.amount).toBe(-100);
   });
+
+  // ── v2.5 TASK-046 T-501：time → accounting 联动 ──────
+
+  it('T-501-1：ensureSalaryPool 幂等创建工资池（income equalize）', () => {
+    const s = useAccountStore.getState();
+    const poolId1 = s.ensureSalaryPool();
+    const poolId2 = useAccountStore.getState().ensureSalaryPool();
+    expect(poolId1).toBe(poolId2);
+    const salaryPool = useAccountStore.getState().pools.find((p) => p.id === poolId1);
+    expect(salaryPool?.name).toBe('工资池');
+    expect(salaryPool?.type).toBe('equalize');
+    expect(salaryPool?.direction).toBe('income');
+    expect(salaryPool?.categoryId).toBe('cat-salary');
+  });
+
+  it('T-501-2：upsertSalaryLinkageForDate 首次写入新增 / 重复写入覆盖 amount 不变 id', () => {
+    const s = useAccountStore.getState();
+    const poolId = s.ensureSalaryPool();
+    const dateKey = '2026-08-15';
+
+    s.upsertSalaryLinkageForDate(dateKey, 100);
+    let link = useAccountStore.getState().records.find(
+      (r) => r.linkageSource === 'salary-time-mode' && r.dateKey === dateKey,
+    );
+    expect(link).toBeDefined();
+    expect(link?.amount).toBe(100);
+    expect(link?.type).toBe('income');
+    expect(link?.poolId).toBe(poolId);
+    expect(link?.poolStatus).toBe('confirmed');
+    const idFirst = link!.id;
+
+    // 覆盖更新 amount，id / createdAt 不变
+    s.upsertSalaryLinkageForDate(dateKey, 250.5);
+    link = useAccountStore.getState().records.find(
+      (r) => r.linkageSource === 'salary-time-mode' && r.dateKey === dateKey,
+    );
+    expect(link?.id).toBe(idFirst);
+    expect(link?.amount).toBe(250.5);
+
+    // amount = 0 → 删除当天联动记录；手动记账的同日期记录保留
+    const manual = useAccountStore.getState().addRecord({
+      dateKey,
+      amount: -50,
+      type: 'expense',
+      categoryId: 'cat-food',
+      accountId: useAccountStore.getState().accounts[0]!.id,
+    });
+    s.upsertSalaryLinkageForDate(dateKey, 0);
+    const after = useAccountStore.getState().records.find(
+      (r) => r.linkageSource === 'salary-time-mode' && r.dateKey === dateKey,
+    );
+    expect(after).toBeUndefined();
+    // 手动记账的同日期记录依然在
+    expect(useAccountStore.getState().records.find((r) => r.id === manual.id)).toBeDefined();
+  });
+
+  it('T-501-3：联动记录不写账户余额, 但进入工资池 transactions / cycle.totalAmount 累加', () => {
+    const s = useAccountStore.getState();
+    const account = s.addAccount({ name: '到账账户', balance: 1000, color: '#888', type: 'card', order: 0 });
+    const balanceBefore = useAccountStore.getState().getAccountBalance(account.id);
+    const poolId = s.ensureSalaryPool();
+
+    s.upsertSalaryLinkageForDate('2026-08-20', 800);
+
+    // 账户余额不变：联动走 income equalize 池，不动 account.balance
+    expect(useAccountStore.getState().getAccountBalance(account.id)).toBe(balanceBefore);
+
+    // 工资池 cycle.totalAmount 累加 = 800
+    const cyc = useAccountStore.getState().cycles.find((c) => c.poolId === poolId);
+    expect(cyc).toBeDefined();
+    expect(cyc?.totalAmount).toBe(800);
+
+    // cycle 有一笔 confirmed in
+    const confirmed = (cyc?.transactions ?? []).filter((t) => t.status === 'confirmed' && t.direction === 'in');
+    const totalIn = confirmed.reduce((sum, t) => sum + t.amount, 0);
+    expect(totalIn).toBe(800);
+
+    // 覆盖更新：cycle.totalAmount 累加差额
+    s.upsertSalaryLinkageForDate('2026-08-20', 500);
+    expect(useAccountStore.getState().cycles.find((c) => c.poolId === poolId)?.totalAmount).toBe(500);
+
+    // 删除(amount=0)：cycle.totalAmount -= 500
+    s.upsertSalaryLinkageForDate('2026-08-20', 0);
+    expect(useAccountStore.getState().cycles.find((c) => c.poolId === poolId)?.totalAmount).toBe(0);
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// v2.5-patch2 T-505：池级别「部分到账」(partialClaimToPool)
+// ────────────────────────────────────────────────────────────
+
+describe('accountStore · partialClaimToPool (T-505)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAccountStore.getState().reset();
+  });
+
+  it('income equalize 池：partial claim 创建独立 claimed record,联动 records 不动', () => {
+    const s = useAccountStore.getState();
+    const account = s.addAccount({ name: '工资卡', balance: 0, color: '#888', type: 'card', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    // 模拟 3 天联动记录(累计已赚 = 1500)
+    s.upsertSalaryLinkageForDate('2026-08-01', 500);
+    s.upsertSalaryLinkageForDate('2026-08-02', 500);
+    s.upsertSalaryLinkageForDate('2026-08-03', 500);
+
+    let state = useAccountStore.getState();
+    const linkageCount = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'confirmed' && r.amount > 0,
+    ).length;
+    expect(linkageCount).toBe(3);
+
+    // partial claim 700 元(50% 未发)
+    const written = s.partialClaimToPool(poolId, 700, { accountId: account.id });
+    expect(written).toBe(700);
+
+    state = useAccountStore.getState();
+    // 联动 records 全部保留(仍 confirmed)
+    const afterLinkage = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'confirmed' && r.amount > 0,
+    );
+    expect(afterLinkage).toHaveLength(3);
+
+    // 新增一条独立 claimed record,amount = 700
+    const claimed = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'claimed' && r.amount > 0,
+    );
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]?.amount).toBe(700);
+    expect(claimed[0]?.type).toBe('income');
+    expect(claimed[0]?.note).toBe('部分到账');
+
+    // cycle.paidAmount += 700
+    const cyc = state.cycles.find((c) => c.poolId === poolId);
+    expect(cyc?.paidAmount).toBe(700);
+    const txIn = (cyc?.transactions ?? []).filter(
+      (t) => t.direction === 'in' && t.status === 'confirmed',
+    );
+    expect(txIn.reduce((sum, t) => sum + t.amount, 0)).toBe(700 + 1500);
+
+    // 账户余额 += 700(真实到账)
+    expect(state.getAccountBalance(account.id)).toBe(700);
+  });
+
+  it('partial claim 超过未到账剩余 → 自动夹到 remaining,返回实际写入', () => {
+    const s = useAccountStore.getState();
+    s.addAccount({ name: '卡', balance: 0, color: '#888', type: 'card', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    s.upsertSalaryLinkageForDate('2026-08-01', 1000);
+
+    // 想要 claim 2000,但剩余只有 1000
+    const written = s.partialClaimToPool(poolId, 2000);
+    expect(written).toBe(1000);
+
+    const state = useAccountStore.getState();
+    const claimed = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'claimed',
+    );
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]?.amount).toBe(1000);
+  });
+
+  it('partial claim 后 calcVirtualAssets 口径:未到账 = 已赚 - 已发', () => {
+    const s = useAccountStore.getState();
+    s.addAccount({ name: '卡', balance: 0, color: '#888', type: 'card', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    // 已赚 3000,实发 1000
+    s.upsertSalaryLinkageForDate('2026-08-01', 1000);
+    s.upsertSalaryLinkageForDate('2026-08-02', 1000);
+    s.upsertSalaryLinkageForDate('2026-08-03', 1000);
+    s.partialClaimToPool(poolId, 1000);
+
+    const state = useAccountStore.getState();
+    const breakdown = calcVirtualAssets({
+      accounts: state.accounts,
+      records: state.records,
+      pools: state.pools,
+    });
+
+    // earnedUnarrived = 3000 - 1000 = 2000
+    expect(breakdown.earnedUnarrived).toBe(2000);
+
+    // virtualTotal = actualTotal(账户余额 1000)+ earnedUnarrived(2000)+ depositRefundable(0)= 3000
+    expect(breakdown.virtualTotal).toBe(3000);
+  });
+
+  it('非 income equalize 池:partial claim 不生效,返回 0', () => {
+    const s = useAccountStore.getState();
+    const { accountId, categoryId } = (() => {
+      const acc = s.addAccount({ name: '卡', balance: 10000, color: '#888', type: 'card', order: 0 });
+      const cat = s.addCategory({ name: '房租', icon: 'house', color: '#C04A3A', type: 'expense', order: 0 });
+      return { accountId: acc.id, categoryId: cat.id };
+    })();
+
+    // 支出 equalize 池
+    const pool = s.createPoolWithCycles({
+      name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
+      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+    });
+
+    const written = s.partialClaimToPool(pool.id, 500);
+    expect(written).toBe(0);
+
+    // 没有新增 claimed record
+    const state = useAccountStore.getState();
+    const claimed = state.records.filter(
+      (r) => r.poolId === pool.id && r.poolStatus === 'claimed',
+    );
+    expect(claimed).toHaveLength(0);
+  });
+
+  it('多次 partial claim 累加:cycle.paidAmount 与 claimed records 同步增长', () => {
+    const s = useAccountStore.getState();
+    s.addAccount({ name: '卡', balance: 0, color: '#888', type: 'card', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    s.upsertSalaryLinkageForDate('2026-08-01', 1000);
+    s.partialClaimToPool(poolId, 300); // 实发 300
+    s.partialClaimToPool(poolId, 200); // 实发 200
+
+    const state = useAccountStore.getState();
+    const claimed = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'claimed' && r.amount > 0,
+    );
+    expect(claimed).toHaveLength(2);
+    expect(claimed.reduce((sum, r) => sum + r.amount, 0)).toBe(500);
+
+    const cyc = state.cycles.find((c) => c.poolId === poolId);
+    expect(cyc?.paidAmount).toBe(500);
+
+    // 联动 records 仍是 1 条,amount=1000
+    const linkage = state.records.filter(
+      (r) => r.poolId === poolId && r.poolStatus === 'confirmed',
+    );
+    expect(linkage).toHaveLength(1);
+    expect(linkage[0]?.amount).toBe(1000);
+
+    // 账户余额 = 500
+    expect(state.getAccountBalance(state.accounts[0]?.id ?? '')).toBe(500);
+  });
+
+  it('没有联动记录时 partial claim 不写新 record', () => {
+    const s = useAccountStore.getState();
+    s.addAccount({ name: '卡', balance: 0, color: '#888', type: 'card', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    const written = s.partialClaimToPool(poolId, 500);
+    expect(written).toBe(0);
+
+    const state = useAccountStore.getState();
+    const all = state.records.filter((r) => r.poolId === poolId);
+    expect(all).toHaveLength(0);
+  });
+
+  // ── T-505-fixbug：删工资池不再凭空扣账户余额 ─────────────────────────
+
+  it('T-505-fixbug：删工资池(仅联动 records)账户余额不变', () => {
+    const s = useAccountStore.getState();
+    const account = s.addAccount({ name: '支付宝', balance: 0, color: '#888', type: 'alipay', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    // 3 天联动 records,累计 1500 元「已赚」(但未到账,账户余额应为 0)
+    s.upsertSalaryLinkageForDate('2026-08-01', 500);
+    s.upsertSalaryLinkageForDate('2026-08-02', 500);
+    s.upsertSalaryLinkageForDate('2026-08-03', 500);
+    expect(useAccountStore.getState().getAccountBalance(account.id)).toBe(0);
+
+    // 删工资池 —— 联动 records 从未真实加过余额,删除不能凭空扣钱
+    s.deletePool(poolId);
+
+    const state = useAccountStore.getState();
+    expect(state.pools.some((p) => p.id === poolId)).toBe(false);
+    expect(state.records.filter((r) => r.poolId === poolId)).toHaveLength(0);
+    // 核心断言：账户余额不被反向扣减
+    expect(state.getAccountBalance(account.id)).toBe(0);
+  });
+
+  it('T-505-fixbug：删工资池(联动 + partial claim)只回退 partial claim 部分', () => {
+    const s = useAccountStore.getState();
+    const account = s.addAccount({ name: '支付宝', balance: 0, color: '#888', type: 'alipay', order: 0 });
+    const poolId = s.ensureSalaryPool();
+
+    // 已赚 3000(联动 records,不写余额)
+    s.upsertSalaryLinkageForDate('2026-08-01', 1000);
+    s.upsertSalaryLinkageForDate('2026-08-02', 1000);
+    s.upsertSalaryLinkageForDate('2026-08-03', 1000);
+    // partial claim 700(走 addRecord,余额 +700)
+    s.partialClaimToPool(poolId, 700, { accountId: account.id });
+
+    expect(useAccountStore.getState().getAccountBalance(account.id)).toBe(700);
+
+    // 删工资池
+    s.deletePool(poolId);
+
+    const state = useAccountStore.getState();
+    expect(state.pools.some((p) => p.id === poolId)).toBe(false);
+    // 联动 records 和 partial claim record 全部删除
+    expect(state.records.filter((r) => r.poolId === poolId)).toHaveLength(0);
+    // 账户余额：partial claim 部分 700 被回退,联动 records 不扣
+    expect(state.getAccountBalance(account.id)).toBe(0);
+  });
 });

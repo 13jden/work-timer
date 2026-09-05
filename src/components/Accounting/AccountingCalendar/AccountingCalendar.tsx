@@ -96,12 +96,17 @@ export function AccountingCalendar() {
           {cells.map((cell, idx) => {
             if (!cell) return <span key={`blank-${idx}`} />;
             const slot = byDay.get(cell.dateKey);
-            const hasRecords = slot !== undefined;
-            const net = (slot?.income ?? 0) - (slot?.expense ?? 0);
+            const income = slot?.income ?? 0;
+            const expense = slot?.expense ?? 0;
+            const hasIncome = income > 0;
+            const hasExpense = expense > 0;
+            const hasRecords = hasIncome || hasExpense;
             const cls = [
               styles.cell,
               hasRecords ? styles.cellFilled : '',
               cell.dateKey === todayKey ? styles.cellToday : '',
+              hasIncome && !hasExpense ? styles.cellIncome : '',
+              hasExpense && !hasIncome ? styles.cellExpense : '',
             ]
               .filter(Boolean)
               .join(' ');
@@ -113,14 +118,15 @@ export function AccountingCalendar() {
                 onClick={() => setSelectedDay(cell.dateKey)}
               >
                 <span className={styles.cellDay}>{cell.day}</span>
-                {hasRecords && net !== 0 && (
-                  <span
-                    className={`${styles.cellAmt} ${
-                      net < 0 ? styles.amtExpense : styles.amtIncome
-                    }`}
-                  >
-                    {net < 0 ? '-' : '+'}
-                    {formatAmount(Math.abs(net))}
+                {/* v2.5 TASK-046 T-502：分开显示收入 / 支出两行, 不再合并成净额 */}
+                {hasIncome && (
+                  <span className={`${styles.cellAmt} ${styles.amtIncome}`}>
+                    +¥{formatAmount(income)}
+                  </span>
+                )}
+                {hasExpense && (
+                  <span className={`${styles.cellAmt} ${styles.amtExpense}`}>
+                    −¥{formatAmount(expense)}
                   </span>
                 )}
               </button>

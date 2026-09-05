@@ -10,6 +10,7 @@ import { formatAmount, calcVirtualAssets } from '../../../lib/accounting';
 import { AccountRow } from './AccountRow';
 import { GoalsSection } from './GoalsSection';
 import { PoolSection } from '../PoolPage/PoolSection';
+import { LinkageSection } from './LinkageSection';
 import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
@@ -26,6 +27,8 @@ export function MinePage() {
       />
       <TotalAssetsCard />
       <GoalsSection />
+      {/* v2.5 TASK-046 T-501-3：time → accounting 联动开关 + 工资池当前余额 */}
+      <LinkageSection />
       <PoolSection />
     </div>
   );

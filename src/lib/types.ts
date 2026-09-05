@@ -140,6 +140,12 @@ export interface Config {
    * 默认初始化 1 个模板：{ id: 'tpl-default', name: '常规班', color: '#4ADE80', workSegment: { start: '09:00', end: '18:00' } }
    */
   workTemplates?: WorkTemplate[];
+  /**
+   * v2.5 TASK-046 T-501-3:time → accounting 联动开关。
+   * 开启时,time 模式日历页「当日已赚」作为 income record 同步写入「工资池」。
+   * 关闭时,仅保留已存在的联动记录;后续新增 / 更新停止。默认 true。
+   */
+  salaryLinkageEnabled?: boolean;
 }
 
 // ── Day Overrides(手动调休 / 加班 / 请假) ───────────────────
@@ -455,6 +461,10 @@ export interface AccountRecord {
   assignedFolderId?: string;
   // 分类状态
   isUncategorized?: boolean;  // true=未分配分类
+  // ── v2.5 TASK-046：联动来源标记
+  // 'salary-time-mode' 表示「time 模式日历页当天已赚」联动过来；
+  // 编辑 / 删除会由联动 hook 重新插入。手动记账的记录留空 / undefined。
+  linkageSource?: 'salary-time-mode';
 }
 
 /**
@@ -517,6 +527,13 @@ export interface PoolConfig {
    * postpay=先用后付（未付部分红色待付，与未分类同框）。
    */
   settleMode?: 'prepay' | 'postpay';
+  /**
+   * v2.5 TASK-046 T-505：「不做均摊」特殊池。
+   * 仅对 income equalize 池有意义 —— 跳过 daily virtual record 生成,
+   * calcVirtualAssets 也跳过该池的虚拟记录,只追踪 confirmed/claimed records。
+   * 用于「工资」联动池:联动 record 本身即为"已赚",不再被日均均摊二次计数。
+   */
+  noDailyVirtual?: boolean;
   createdAt: number;
 }
 

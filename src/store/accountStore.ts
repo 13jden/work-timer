@@ -120,10 +120,61 @@ interface AccountStore {
    */
   unclaimToPool: (recordId: string) => number;
 
+  /**
+   * v2.5-patch2 T-505：池级别「部分到账」（partial claim）。
+   * 仅 income equalize 池（联动工资池）支持 —— 用户在 time 模式下随日期累加的
+   * 「已赚」联动 record 不会被改动,本 action 创建一条独立的 claimed income record
+   * 表达「实发 X 元」,并把 X 累加进 cycle.paidAmount + 一条 in 交易。
+   *
+   * 核心语义:
+   * - 已赚累计 = sum(confirmed in records with this poolId) → 不变
+   * - 已到账累计 = sum(claimed in records with this poolId) → += finalAmt
+   * - 未到账 = 已赚累计 - 已到账累计(由 calcVirtualAssets 派生)
+   * - 账户余额 += finalAmt(因为是真实到账收入记录)
+   *
+   * 入参:
+   * - claimAmount: 实际到账金额(>0);超过未到账部分会被夹到 remaining。
+   * - opts.dateKey: 到账日(默认今天)
+   * - opts.note: 备注(默认"部分到账")
+   * - opts.accountId: 接收账户(默认 pool.targetAccountId ?? accounts[0].id)
+   *
+   * 仅对 type='equalize' && direction='income' 的池生效;其他类型返回 0。
+   * @returns 实际写入金额(夹到 remaining 之后)
+   */
+  partialClaimToPool: (
+    poolId: string,
+    claimAmount: number,
+    opts?: { dateKey?: string; note?: string; accountId?: string },
+  ) => number;
+
   // ── Savings 操作 ──
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => SavingsGoal;
   updateSavingsGoal: (id: string, patch: Partial<Omit<SavingsGoal, 'id' | 'createdAt'>>) => void;
   deleteSavingsGoal: (id: string) => void;
+
+  // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
+  /**
+   * 确保存在固定「工资池」(deposit + income)。已有则返回 id,没有则创建并返回 id。
+   * 工资池用于承载 time 模式「当日已赚」联动写入的 income record;
+   * 实际到账时,用户用 claimToPool 把账户内的真实收入记录关联进此池。
+   */
+  ensureSalaryPool: () => string;
+  /**
+   * 按 dateKey 同步一条「time 模式当日已赚」联动记录。
+   * - 同一 dateKey 已存在 linkageSource='salary-time-mode' 记录 → 更新 amount;
+   * - 没有则新增一条 income record(income categoryId 默认 cat-salary,带 poolStatus='confirmed');
+   * - amount <= 0 时删除该 dateKey 的联动记录(允许 0 已赚的日期不再出现)。
+   * 不会触碰非联动记录,不动账户余额(进的是 deposit pool 而非 account)。
+   */
+  /** 联动 record 写入时确保 pool / cycle 存在（v2.5 TASK-046 T-501） */
+  upsertSalaryLinkageForDate: (dateKey: string, amount: number) => void;
+
+  /**
+   * 为指定分类补一个 folder（v2.5 TASK-046 T-504）。
+   * 已存在则跳过；分类不存在也跳过。
+   * 用于「存在记录的分类一定在首页展示」的兜底（联动 record / 老数据 / 跨设备同步）。
+   */
+  ensureFoldersForCategories: (categoryIds: string[]) => void;
 
   // ── 聚合查询 ──
   getRecordsByDate: (dateKey: string) => AccountRecord[];
@@ -215,9 +266,11 @@ function buildDefaultCategories(): Category[] {
 
 // ── 默认文件夹 ─────────────────────────────────────────────
 function buildDefaultFolders(categories: Category[]): Folder[] {
-  // 默认使用前几个支出分类创建文件夹
-  const expenseCats = categories.filter(c => c.type === 'expense').slice(0, 6);
-  return expenseCats.map((cat, i) => ({
+  // v2.5 TASK-046 T-502：默认把前 6 个支出 + 「工资」收入分类也建为 folder，
+  // 让首页分类网格同时展示支出 + 工资联动记录入口。
+  const expenseCats = categories.filter((c) => c.type === 'expense').slice(0, 6);
+  const salaryCat = categories.find((c) => c.id === 'cat-salary');
+  const folders: Folder[] = expenseCats.map((cat, i) => ({
     id: `folder-${cat.id}`,
     categoryId: cat.id,
     name: cat.name,
@@ -225,6 +278,17 @@ function buildDefaultFolders(categories: Category[]): Folder[] {
     color: cat.color,
     order: i,
   }));
+  if (salaryCat) {
+    folders.push({
+      id: `folder-${salaryCat.id}`,
+      categoryId: salaryCat.id,
+      name: salaryCat.name,
+      icon: salaryCat.icon,
+      color: salaryCat.color,
+      order: folders.length,
+    });
+  }
+  return folders;
 }
 
 // ── 默认账户 ──────────────────────────────────────────────
@@ -326,7 +390,23 @@ export const useAccountStore = create<AccountStore>()(
           ...category,
           id: genId('cat'),
         };
-        set((s) => ({ categories: [...s.categories, newCategory] }));
+        set((s) => {
+          // v2.5-patch2 T-507：新建分类时同步创建 folder，否则 CategoryFolderGrid
+          // (只渲染 folders)要等组件挂载后 ensureFoldersForCategories 兜底一次才补，
+          // 用户从新建弹窗回到首页能看到文件夹出现，但若同时新建 + 切页面会出现时序缺口。
+          const folder: Folder = {
+            id: `folder-${newCategory.id}`,
+            categoryId: newCategory.id,
+            name: newCategory.name,
+            icon: newCategory.icon,
+            color: newCategory.color,
+            order: s.folders.length,
+          };
+          return {
+            categories: [...s.categories, newCategory],
+            folders: [...s.folders, folder],
+          };
+        });
         return newCategory;
       },
 
@@ -542,8 +622,11 @@ export const useAccountStore = create<AccountStore>()(
 
       deletePool: (id) => {
         // v2.3：删池连带删除其全部记录（每日均摊 + 认领付款），并回退账户余额
+        // v2.4 T-410 + v2.5-patch2 T-505：仅 recordAffectsBalance() === true 的 record
+        // 才回退余额（池逐日虚拟 / 联动 record 从未动过余额,反向减会凭空扣钱）
         const affected = get().records.filter((r) => r.poolId === id);
         for (const r of affected) {
+          if (!recordAffectsBalance(r)) continue;
           get().updateAccount(r.accountId, {
             balance: get().getAccountBalance(r.accountId) - r.amount,
           });
@@ -702,6 +785,93 @@ export const useAccountStore = create<AccountStore>()(
         return amount;
       },
 
+      // v2.5-patch2 T-505：池级别部分到账（仅 income equalize 池）
+      // —— 工资池联动 record 是「已赚」,发工资时实际到账可能 < 已赚累计,
+      // 用 partial claim 创建独立 claimed income record 表示「实发 X 元」,
+      // 联动 records 全部保留(继续计入已赚)。
+      partialClaimToPool: (poolId, claimAmount, opts) => {
+        const state = get();
+        const pool = state.pools.find((p) => p.id === poolId);
+        // 仅 income equalize 池支持(支出均摊 / 存池暂不开放)
+        if (!pool || pool.type !== 'equalize') return 0;
+        if ((pool.direction ?? 'expense') !== 'income') return 0;
+
+        const abs = Math.round(Math.abs(claimAmount) * 100) / 100;
+        if (!(abs > 0)) return 0;
+
+        const cycle = state.cycles.find((c) => c.poolId === poolId);
+        if (!cycle) return 0;
+
+        // 计算「已赚累计」「已到账累计」,夹到 remaining
+        let earned = 0;
+        let alreadyClaimed = 0;
+        for (const r of state.records) {
+          if (r.poolId !== poolId) continue;
+          if (r.poolStatus === 'confirmed' && r.amount > 0) earned += r.amount;
+          else if (r.poolStatus === 'claimed' && r.amount > 0) alreadyClaimed += r.amount;
+        }
+        const remaining = Math.max(0, Math.round((earned - alreadyClaimed) * 100) / 100);
+        const finalAmt = Math.min(abs, remaining);
+        if (!(finalAmt > 0)) return 0;
+
+        const now = Date.now();
+        const dateKey = opts?.dateKey ?? getTodayKey();
+        const accountId =
+          opts?.accountId ?? pool.targetAccountId ?? state.accounts[0]?.id ?? '';
+        const cycleDateKeys = getCycleDateKeys(pool, cycle.monthKey);
+
+        // 独立 claimed income record —— 不动联动 record,直接表达「实发 X 元」
+        // 用 addRecord 走标准路径 → 账户余额 += finalAmt(与真实到账语义一致)
+        const claimedRecord = get().addRecord({
+          dateKey,
+          amount: finalAmt,
+          type: 'income',
+          categoryId: pool.categoryId ?? 'cat-salary',
+          accountId,
+          note: opts?.note ?? '部分到账',
+          poolId,
+          poolDirection: 'in',
+          poolStatus: 'claimed',
+          poolName: pool.name,
+          // v2.4 T-410：周期快照(池退休后仍可溯源)
+          poolCycleStart: cycleDateKeys[0],
+          poolCycleEnd: cycleDateKeys[cycleDateKeys.length - 1],
+          poolCycleTotal: cycle.totalAmount,
+        });
+
+        const tx: PoolTransaction = {
+          id: genId('ptx'),
+          cycleId: cycle.id,
+          dateKey,
+          recordId: claimedRecord.id,
+          amount: finalAmt,
+          direction: 'in',
+          status: 'confirmed',
+          confirmedAt: now,
+        };
+
+        const newPaid = Math.round((cycle.paidAmount + finalAmt) * 100) / 100;
+        const todayKey = getTodayKey();
+
+        // 注:claimedRecord 已由 addRecord 自动写入 records / 更新账户余额;
+        // 这里只更新 cycle.transactions + paidAmount + 状态
+        set((s) => ({
+          cycles: s.cycles.map((c) => {
+            if (c.id !== cycle.id) return c;
+            const updated = {
+              ...c,
+              paidAmount: newPaid,
+              transactions: [...c.transactions, tx],
+            };
+            return refreshEqualizeCycleStatus(updated, pool, todayKey);
+          }),
+        }));
+
+        // 满额且周期已过 → 池自动移除(记录保留)
+        get().retireFinishedPools();
+        return finalAmt;
+      },
+
       unclaimToPool: (recordId) => {
         const state = get();
         const record = state.records.find((r) => r.id === recordId);
@@ -786,10 +956,15 @@ export const useAccountStore = create<AccountStore>()(
 
         for (const pool of get().pools) {
           if (pool.type !== 'equalize') continue;
+          // v2.5 TASK-046 T-505：noDailyVirtual 池(联动工资)完全跳过 sync：
+          // 不生成 daily virtual record、不跨月补齐、不动 cycle 状态；
+          // cycle 仅作为「联动 record 累加容器」,由 upsertSalaryLinkageForDate 自行维护。
+          if (pool.noDailyVirtual) continue;
           const accountId = pool.targetAccountId ?? get().accounts[0]?.id ?? 'default';
 
           // 1. 按月模式跨月补齐（额度内且当月周期缺失）
-          if (pool.cycleMode !== 'daily') {
+          // v2.5 TASK-046 T-505：noDailyVirtual 池(联动工资)不做日均均摊,跳过周期补齐
+          if (pool.cycleMode !== 'daily' && !pool.noDailyVirtual) {
             const poolCycles = get().cycles.filter((c) => c.poolId === pool.id);
             const hasCurrent = poolCycles.some((c) => c.monthKey === currentMonth);
             if (!hasCurrent && poolCycles.length < Math.max(1, pool.cycleMonths)) {
@@ -989,6 +1164,190 @@ export const useAccountStore = create<AccountStore>()(
         return get().accounts.reduce((sum, a) => sum + a.balance, 0);
       },
 
+      // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
+
+      /** 固定「工资池」常量 id(整个 accountStore 生命周期共用) */
+      // —— 不导出常量,实现为 ensureSalaryPool 内 find-or-create。
+
+      ensureSalaryPool: () => {
+        const state = get();
+        const existing = state.pools.find(
+          (p) => p.type === 'equalize' && p.direction === 'income' && p.name === '工资池',
+        );
+        if (existing) return existing.id;
+        const created = get().addPool({
+          type: 'equalize',
+          name: '工资池',
+          // amount / totalAmount 在建池时为 0；后续由联动 record 写入 / 更新 / 删除
+          // 累加而得(参见 upsertSalaryLinkageForDate)。
+          amount: 0,
+          cycleMonths: 12,
+          cycleMode: 'monthly',
+          dayRange: { start: 1, end: 31 },
+          direction: 'income',
+          // v2.5 TASK-046 T-505：「工资」联动池是特殊池 —— 不做日均均摊。
+          // 联动 record 本身即为「已赚」,不再被 daily virtual record 二次计入。
+          noDailyVirtual: true,
+          // 收入型 equalize 池不会走 claimToPool,settleMode 仅用于 UI 标记；
+          // 与支出型 equalize 互斥(支出型:押金先付,这里 income 用 'prepay' 占位不影响)
+          settleMode: 'prepay',
+          categoryId: 'cat-salary',
+        });
+        // 同步建一个空 cycle 承载累计：totalAmount 初始 0,dailyVirtual = 0
+        // (noDailyVirtual 池不按日生成 record,cycle 仅用于记录 in/claimed 交易)
+        const cycle = {
+          id: genId('cycle'),
+          poolId: created.id,
+          monthKey: getCurrentMonthKey(),
+          totalAmount: 0,
+          dayCount: 31,
+          dailyVirtual: 0,
+          paidAmount: 0,
+          status: 'generating' as const,
+          transactions: [],
+        };
+        set((s) => ({ cycles: [...s.cycles, cycle] }));
+        return created.id;
+      },
+
+      upsertSalaryLinkageForDate: (dateKey, amount) => {
+        // 不合法日期直接返回
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+
+        const state = get();
+        const poolId = get().ensureSalaryPool();
+        const accountId = state.accounts[0]?.id ?? '';
+
+        // 找当天已存在的联动 record
+        const linkage = state.records.find(
+          (r) => r.linkageSource === 'salary-time-mode' && r.dateKey === dateKey,
+        );
+
+        // amount <= 0 时:删除当天联动 record + 同步从 cycle.totalAmount 减去原 amount
+        if (!(amount > 0)) {
+          if (!linkage) return;
+          const removed = linkage.amount;
+          set((s) => ({
+            records: s.records.filter((r) => r.id !== linkage.id),
+            cycles: s.cycles.map((c) =>
+              c.poolId === poolId
+                ? {
+                    ...c,
+                    totalAmount: Math.max(
+                      0,
+                      Math.round((c.totalAmount - removed) * 100) / 100,
+                    ),
+                    transactions: c.transactions.filter((t) => t.recordId !== linkage.id),
+                  }
+                : c,
+            ),
+          }));
+          return;
+        }
+
+        const abs = Math.round(amount * 100) / 100;
+        const now = Date.now();
+        const cycle = state.cycles.find((c) => c.poolId === poolId);
+
+        if (linkage) {
+          // 已有 → 仅更新 amount;cycle.totalAmount 累加差额
+          const delta = Math.round((abs - linkage.amount) * 100) / 100;
+          set((s) => ({
+            records: s.records.map((r) =>
+              r.id === linkage.id
+                ? { ...r, amount: abs, updatedAt: now, poolId }
+                : r,
+            ),
+            cycles: s.cycles.map((c) =>
+              c.id === cycle?.id
+                ? { ...c, totalAmount: Math.max(0, Math.round((c.totalAmount + delta) * 100) / 100) }
+                : c,
+            ),
+          }));
+          return;
+        }
+
+        // 新增联动 record：直接 set records；同步在 cycle 里追加 in + confirmed transaction
+        // 并把 abs 累加到 cycle.totalAmount（让池的「总额」=所有联动 record 之和）
+        const newRecord: AccountRecord = {
+          id: `rec-linkage-${dateKey}-${now}`,
+          dateKey,
+          amount: abs,
+          type: 'income',
+          categoryId: 'cat-salary',
+          note: 'time 模式联动',
+          accountId,
+          createdAt: now,
+          updatedAt: now,
+          poolId,
+          poolDirection: 'in',
+          poolStatus: 'confirmed',
+          poolName: '工资池',
+          linkageSource: 'salary-time-mode',
+        };
+
+        if (!cycle) {
+          set((s) => ({ records: [...s.records, newRecord] }));
+          return;
+        }
+        const tx = {
+          id: genId('ptx'),
+          cycleId: cycle.id,
+          dateKey,
+          recordId: newRecord.id,
+          amount: abs,
+          direction: 'in' as const,
+          status: 'confirmed' as const,
+          confirmedAt: now,
+        };
+        set((s) => ({
+          records: [...s.records, newRecord],
+          cycles: s.cycles.map((c) =>
+            c.id === cycle.id
+              ? {
+                  ...c,
+                  totalAmount: Math.round((c.totalAmount + abs) * 100) / 100,
+                  transactions: [...c.transactions, tx],
+                }
+              : c,
+          ),
+        }));
+      },
+
+      // v2.5 TASK-046 T-504：批量为指定分类补 folder（兜底 rehydrate + CategoryFolderGrid 兜底调用）。
+      // 已存在则跳过；分类本身不存在也跳过；新建 folder 排在末尾。
+      ensureFoldersForCategories: (categoryIds) => {
+        const state = get();
+        if (categoryIds.length === 0) return;
+        const existingFolderCats = new Set(state.folders.map((f) => f.categoryId));
+        const catById = new Map(state.categories.map((c) => [c.id, c]));
+        const additions: Folder[] = [];
+        for (const categoryId of categoryIds) {
+          if (existingFolderCats.has(categoryId)) continue;
+          const cat = catById.get(categoryId);
+          if (!cat) continue;
+          existingFolderCats.add(categoryId);
+          additions.push({
+            id: `folder-${cat.id}`,
+            categoryId: cat.id,
+            name: cat.name,
+            icon: cat.icon,
+            color: cat.color,
+            order: 0, // 入 store 后按当前 folders.length 重新计算，避免 order 冲突
+          });
+        }
+        if (additions.length === 0) return;
+        set((s) => {
+          const baseOrder = s.folders.length;
+          return {
+            folders: [
+              ...s.folders,
+              ...additions.map((f, i) => ({ ...f, order: baseOrder + i })),
+            ],
+          };
+        });
+      },
+
       // ── 重置 ──
       reset: () => {
         set(buildInitialState());
@@ -999,6 +1358,24 @@ export const useAccountStore = create<AccountStore>()(
       storage: createJSONStorage(() => localStorage),
       // 不做版本迁移，首次 v2.0 直接使用
       version: 0,
+      // v2.5 TASK-046 T-504：rehydrate 后兜底「存在记录的分类必有 folder」——
+      // 联动 record 写入的 cat-salary 可能老版本没建 folder，老数据 / 跨设备同步也可能
+      // 让部分有 record 的分类缺 folder。一次性扫描 records 补齐。
+      onRehydrateStorage: () => (state, error) => {
+        if (error || !state) return;
+        const { records, folders, categories } = state;
+        const folderCategoryIds = new Set(folders.map((f) => f.categoryId));
+        const existingCatIds = new Set(categories.map((c) => c.id));
+        const missing = new Set<string>();
+        for (const r of records) {
+          if (!r.categoryId) continue;
+          if (folderCategoryIds.has(r.categoryId)) continue;
+          if (!existingCatIds.has(r.categoryId)) continue;
+          missing.add(r.categoryId);
+        }
+        if (missing.size === 0) return;
+        useAccountStore.getState().ensureFoldersForCategories([...missing]);
+      },
     },
   ),
 );

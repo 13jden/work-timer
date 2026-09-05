@@ -10,20 +10,21 @@
  * v2.1 重构：
  * - 结余目标行从「顶部位置」移到「本月结余下方」(与 TimerCard 的 SHIFT 一致)
  * - 原位替换 TimerCard（同一 .timerWrap 容器，骨架尺寸不变）
+ *
+ * v2.5-patch2 T-507：结余目标值从 useMonthlyGoalStore 读取(原 props 默认 12000,
+ * 完全独立)。未设置(null)时退化为 12000 默认值，保持原有视觉。
  */
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { formatAmount, sumExpense, sumIncome, getCurrentMonthKey, visibleRecords } from '../../../lib/accounting';
+import { useMonthlyGoalStore } from '../../../store/monthlyGoalStore';
 import { Target } from '@phosphor-icons/react';
 import styles from './AccountingTopCard.module.css';
 
-interface AccountingTopCardProps {
-  /** 月度结余目标（默认 12000，可由用户在设置里改） */
-  monthlyGoal?: number;
-}
-
-export function AccountingTopCard({ monthlyGoal = 12000 }: AccountingTopCardProps) {
+export function AccountingTopCard() {
   const records = useAccountStore((s) => s.records);
+  const monthlyGoal = useMonthlyGoalStore((s) => s.monthlyGoal);
+  const effectiveGoal = monthlyGoal ?? 12000;
 
   const monthKey = getCurrentMonthKey();
   const monthRecords = useMemo(
@@ -35,7 +36,7 @@ export function AccountingTopCard({ monthlyGoal = 12000 }: AccountingTopCardProp
   const income = useMemo(() => sumIncome(monthRecords), [monthRecords]);
   const expense = useMemo(() => sumExpense(monthRecords), [monthRecords]);
   const balance = income - expense;
-  const pct = Math.max(0, Math.min(100, (balance / monthlyGoal) * 100));
+  const pct = Math.max(0, Math.min(100, (balance / effectiveGoal) * 100));
 
   return (
     <div className={styles.card}>
@@ -54,7 +55,7 @@ export function AccountingTopCard({ monthlyGoal = 12000 }: AccountingTopCardProp
       <div className={styles.shift}>
         <div className={styles.shiftLeft}>
           <Target size={11} weight="duotone" />
-          <strong>本月结余目标 ¥{monthlyGoal.toLocaleString()}</strong>
+          <strong>本月结余目标 ¥{effectiveGoal.toLocaleString()}</strong>
         </div>
         <span className={styles.pct}>{Math.floor(pct)}%</span>
       </div>

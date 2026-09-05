@@ -64,20 +64,29 @@
 }
 
 .cell {
-  min-height: 52px;
+  min-height: 62px;
   border: 1px solid transparent;
   background: transparent;
   border-radius: 10px;
-  padding: 5px 2px;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   cursor: pointer;
 }
 
 .cellFilled {
   background: var(--paper-2, #EDE9DD);
+}
+
+/* v2.5 TASK-046 T-502：当天以某一类收支为主时, 给底色带柔和类型 tint */
+.cellIncome {
+  background: color-mix(in srgb, var(--accent-deep) 10%, var(--paper-2, #EDE9DD));
+}
+
+.cellExpense {
+  background: color-mix(in srgb, var(--danger) 8%, var(--paper-2, #EDE9DD));
 }
 
 .cellToday {

@@ -683,7 +683,7 @@ export function SettingsPage() {
         保存配置
       </button>
 
-      <div className={styles.footer}>v1.3.5 · 本地存储</div>
+      <div className={styles.footer}>v2.5 · 本地存储</div>
 
       {restCalendarOpen && (
         <>

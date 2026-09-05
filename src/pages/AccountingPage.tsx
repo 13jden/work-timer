@@ -182,7 +182,9 @@ export function AccountingPage() {
           </div>
         </section>
 
-        <section className={styles.actionWrap} aria-label="快速记账"><QuickAddRow /></section>
+        <section className={styles.actionWrap} aria-label="快速记账">
+          <QuickAddRow />
+        </section>
 
         <section className={styles.extrasWrap} aria-label="未分类记录">
           <UncategorizedArea onPickRecord={handlePickRecord} />

@@ -163,6 +163,21 @@ describe('calcVirtualAssets', () => {
     expect(r.virtualTotal).toBe(2000);
   });
 
+  // v2.5 TASK-046 T-501：time 模式联动 record（confirmed in, 无 claimed）作为已赚计入总资产
+  it('收入池 confirmed in record：联动 / 手动认领的「已赚」作为未到账计入总资产', () => {
+    const acc = makeAccount({ balance: 0 });
+    const salary = makePool({ name: '工资池', amount: 0, direction: 'income' });
+    const records: AccountRecord[] = [
+      // 3 天联动 record, 共 1,428.58
+      makeRecord({ accountId: acc.id, amount: 714.29, type: 'income', poolId: salary.id, poolStatus: 'confirmed' }),
+      makeRecord({ accountId: acc.id, amount: 714.29, type: 'income', poolId: salary.id, poolStatus: 'confirmed' }),
+    ];
+    const r = calcVirtualAssets({ accounts: [acc], records, pools: [salary] });
+    expect(r.actualTotal).toBe(0);
+    expect(r.earnedUnarrived).toBeCloseTo(1428.58, 2);
+    expect(r.virtualTotal).toBeCloseTo(1428.58, 2);
+  });
+
   it('用户示例：房租 2100（1-30 号，日均 70），4 号已消耗 280 未支付', () => {
     const acc = makeAccount({ balance: 3000 });
     const rent = makePool({

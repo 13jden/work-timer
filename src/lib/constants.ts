@@ -64,7 +64,7 @@ export const DEFAULT_CONFIG: Config = {
   lunchStart:      '12:00',
   lunchMinutes:    60,
   customRestSchedule: null,
-  // ── v1.3.5 新增字段默认值 ──
+  // v1.3.5 新增字段默认值
   workTemplates:   [        // 默认初始化 1 个常规班模板
     {
       id: 'tpl-default',
@@ -73,6 +73,10 @@ export const DEFAULT_CONFIG: Config = {
       workSegment: { start: '09:00', end: '18:00' },
     },
   ],
+  // ── v2.5 TASK-046 T-501-3:time → accounting 联动开关(默认开) ──
+  // 关闭后:time 模式日历页已赚不再写入 accountStore;
+  // 已存在的联动记录依然保留,删除 / 编辑需要手动处理。
+  salaryLinkageEnabled: true,
 };
 
 // ── 静态数据 ────────────────────────────────────────────────

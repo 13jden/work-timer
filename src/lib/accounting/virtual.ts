@@ -107,13 +107,33 @@ export function calcVirtualAssets(params: {
     if (pool.type !== 'equalize') continue;
     let generated = 0;
     let claimed = 0;
+    let earnedTotal = 0; // v2.5 T-501：收入池「已赚」= 虚拟到账 record + 联动 / 认领 record
+    // v2.5 TASK-046 T-505：noDailyVirtual 池(联动工资)跳过虚拟 record 计入,
+    // 只追踪 confirmed in records(联动 / 手动认领)和 claimed records。
+    // 避免联动 record 既在虚拟里又在 confirmed 里被双重计数。
+    const skipVirtual = !!pool.noDailyVirtual;
     for (const r of records) {
       if (r.poolId !== pool.id) continue;
-      if (isPoolDailyRecord(r)) generated += Math.abs(r.amount);
-      else if (r.poolStatus === 'claimed') claimed += Math.abs(r.amount);
+      if (isPoolDailyRecord(r)) {
+        const abs = Math.abs(r.amount);
+        generated += abs;
+        if ((pool.direction ?? 'expense') === 'income' && !skipVirtual) {
+          earnedTotal += abs;
+        }
+      } else if (r.poolStatus === 'claimed') {
+        claimed += Math.abs(r.amount);
+      } else if (
+        r.poolStatus === 'confirmed' &&
+        (pool.direction ?? 'expense') === 'income' &&
+        r.amount > 0
+      ) {
+        // v2.5 TASK-046 T-501：联动 / 手动认领的「已赚」真实 record
+        earnedTotal += r.amount;
+      }
     }
     if ((pool.direction ?? 'expense') === 'income') {
-      earnedUnarrived += Math.max(0, generated - claimed);
+      // 收入池：虚拟分解 = 已赚合计 − 已认领到账
+      earnedUnarrived += Math.max(0, earnedTotal - claimed);
     } else if (claimed >= generated) {
       // 先付后用：已付超过已消耗 → 剩余价值虚拟加回
       prepaidUnconsumed += claimed - generated;

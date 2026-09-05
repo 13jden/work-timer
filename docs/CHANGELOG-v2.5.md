@@ -98,4 +98,85 @@
 
 ---
 
+## [v2.5-patch2] · 2026-09-05 · time→accounting 联动 + 多 bug 修复 (TASK-046)
+
+基线 v2.5-patch1 (TASK-043)。本轮完成 TASK-046 完整功能 + 配套 bug 修复,同步 v2.5 独立 changelog。
+
+### A · time → accounting 联动开关 (T-501-1 / T-501-3)
+
+- 新增 `Config.salaryLinkageEnabled`(默认 `true`),允许用户关闭联动而不丢旧数据
+- `MinePage` 顶部新增 `LinkageSection`:开关 + 「工资池」当前余额 + 联动 record 总数说明
+- 关闭后:time 模式日历页已赚不再写入 accountStore;已存在联动记录保留,删除/编辑需手动处理
+
+### B · 联动 record + 工资池幂等创建 (T-501)
+
+- `accountStore.upsertSalaryLinkageForDate(dateKey, amount)`:
+  - `amount > 0`:写入/更新一条 `linkageSource='salary-time-mode'`、`poolStatus='confirmed'`、`poolId=<工资池>` 的 income record
+  - `amount === 0`:删除当天联动 record;不影响同日手动记账
+  - id / createdAt 稳定,重复 upsert 只改 amount
+- `accountStore.ensureSalaryPool()`:幂等创建「工资池」(name='工资池', type='equalize', direction='income', categoryId='cat-salary', noDailyVirtual=true),`pool-store.test.ts` 锁定幂等行为
+- 新增 `AccountRecord.linkageSource: 'salary-time-mode' | undefined`,联动 record 标记
+
+### C · 日历页同步 hook (T-501-2)
+
+- `CalendarPage` 用 `useMemo` 算出「本月每日 earnedAmount」:已生成快照读 override、今日实时 `todayEarned`
+- `useEffect` 对比 `prevMonthlyRef` 只对真正变化的 `dateKey` 调 `upsertSalaryLinkageForDate`,首帧跳过今日避免每秒回灌
+
+### D · 批量取消 / 离开联动页面联动清理 (T-506)
+
+- prev 里存在但当前 `monthlyEarnedMap` 中消失的 key → 视为 `amount=0` 调 upsert,触发联动 record 删除 / `cycle.transactions` 累减 / `cycle.totalAmount` 累减
+- 用户从日历页切走、配置改回 0、假期回退都会触发同步清理
+
+### E · 联动 record 不动账户余额 (T-505)
+
+- `recordAffectsBalance` 新增守卫:`linkageSource === 'salary-time-mode'` 返回 `false`
+- 联动走 income equalize 池的 `confirmed in` 路径,不绕过账户余额计算(否则会从 0 余额账户凭空扣钱)
+- `PoolConfig.noDailyVirtual = true`(`工资池` 标志):跳过虚拟 record 计入,只追踪 `confirmed`/`claimed` records
+
+### F · 收入池 (PoolSection) 展示口径修正 (T-505)
+
+- 收入池卡片大数字:从总额 `pool.amount` 改为 `records 中 confirmed in 之和(已赚累计)`
+- 「已到账」改为 `claimed records 之和`,差额 `remaining = 已赚 − 已到账` 与总资产 chip「已赚未到账」完全一致
+- `noDailyVirtual` 池(日均联动池)不显示日均数字
+- `formatAmount(displayTotal, true)` 正负号显式
+
+### G · 总资产分解:联动 / 手动认领「已赚」作为虚拟计入 (T-501 + T-505)
+
+- `calcVirtualAssets` 收入池分支改为 `earnedTotal - claimed`:
+  - `earnedTotal` = 虚拟逐日 + 联动 / 手动 `confirmed` 收入 records
+  - `noDailyVirtual` 池仅算 `confirmed` 部分,避免双重计数
+- `virtual.test.ts` +1:联动 / 手动认领的收入 record 作为未到账计入 `earnedUnarrived` 与 `virtualTotal`
+- `PoolSection` 卡片 `displayTotal = confirmed sum`,口径与总资产卡同源
+
+### H · AccountingCalendar 收入/支出 分行 + 类型底色 (T-502)
+
+- 单元格内显示拆两行 `+¥X`(收入)/ `−¥X`(支出),不再合并成净额
+- 当天仅有收入 / 仅有支出时给底色带柔和类型 tint(`color-mix` 用 `--accent-deep` / `--danger` 调色),与「休息日粉底」「今天描边」共三档背景
+- 单元格 `min-height: 52px → 62px`,`gap` 收紧,容纳两行
+
+### I · 新分类自动建 folder (T-507)
+
+- `addCategory` 现在同步创建 folder:之前要等 `CategoryFolderGrid` 挂载时 `ensureFoldersForCategories` 兜底,且兜底只对「已有 records」分类补;新分类立即可见
+- 避免「新建分类 → 首页文件夹区不显示 → 需刷新」的同步时序问题
+
+### J · mine 页「月度目标」单值,与首页结余共享 (T-507)
+
+- `GoalsSection` 重写:由「存钱目标(多值)」改为「月度目标」单值卡片
+- 数据源 `useMonthlyGoalStore.monthlyGoal`(与 time 模式月度收入目标同 store,会计侧展示为「结余目标」)
+- 同步双向:`AccountingTopCard` 月度结余进度也读 `monthlyGoal`(原硬编码 12000,完全独立)
+- 点卡片 / 编辑按钮弹小窗设置金额;保存即写 store,首页 + mine + 设置页三处联动
+- `savingsGoals` / `addSavingsGoal` / `updateSavingsGoal` / `deleteSavingsGoal` 保留在 store 兼容 `goals-store.test.ts`,UI 不再引用
+
+### 配套调整
+
+- `AccountingCalendar.module.css` 单元格高度 +10px,内边距收紧
+- 旧 `v2.5 T-507 ...` 注释格式对齐本轮改动(`-` → `──` 等不影响)
+
+### 验证
+
+- typecheck 0 错误、394 单测全过(virtual +1、pool-store +4、T-501 相关覆盖累计 +8)
+- 用户浏览器验收通过(2026-09-05)
+
+---
+
 *创建于 2026-09-04*

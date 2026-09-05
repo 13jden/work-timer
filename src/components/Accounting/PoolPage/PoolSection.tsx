@@ -75,13 +75,50 @@ interface CardProps {
 
 /** 均摊型池卡片（v2.4 T-409：收入池显示到账进度 + 未到账标记） */
 function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
+  const records = useAccountStore((s) => s.records);
   const progress = equalizeProgress(poolCycles);
   const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
   const grandTotal = poolCycles.reduce((sum, c) => sum + c.totalAmount, 0);
   const status = poolOverallStatus(poolCycles);
   const dailyAvg = poolCycles[0]?.dailyVirtual ?? 0;
   const isIncome = pool.direction === 'income';
-  const remaining = Math.max(0, Math.round((grandTotal - paidTotal) * 100) / 100);
+
+  // v2.5 TASK-046 T-501-PATCH：income equalize 池复用 calcVirtualAssets
+  // 拆分出的 earnedUnarrived —— 与总资产卡同口径,避免「池卡片 vs 总资产卡」对不上。
+  // —— 大数字 displayTotal = records 中 confirmed in 之和(已赚累计),
+  // displayPaid = claimed 部分(已到账),二者差额 remaining 即「未到账」,
+  // 该值与总资产 chip「已赚未到账」完全一致。
+  const confirmedIncomeSum = isIncome
+    ? records.reduce(
+        (sum, r) =>
+          r.poolId === pool.id && r.poolStatus === 'confirmed' && r.amount > 0
+            ? sum + r.amount
+            : sum,
+        0,
+      )
+    : grandTotal;
+  const claimedIncomeSum = isIncome
+    ? records.reduce(
+        (sum, r) =>
+          r.poolId === pool.id && r.poolStatus === 'claimed' && r.amount > 0
+            ? sum + r.amount
+            : sum,
+        0,
+      )
+    : paidTotal;
+
+  const displayTotal = isIncome ? confirmedIncomeSum : grandTotal;
+  const displayPaid = isIncome ? claimedIncomeSum : paidTotal;
+  // v2.5 TASK-046 T-505：noDailyVirtual 池(联动工资)没有日均概念,
+  // 不显示日均数字；普通 income equalize 池仍按总额/天数推导。
+  const displayDailyAvg = isIncome
+    ? pool.noDailyVirtual
+      ? 0
+      : grandTotal > 0 && poolCycles[0]?.dayCount
+        ? grandTotal / poolCycles[0].dayCount
+        : 0
+    : dailyAvg;
+  const remaining = Math.max(0, displayTotal - displayPaid);
 
   return (
     <div className={styles.card}>
@@ -96,15 +133,17 @@ function EqualizeCard({ pool, poolCycles, onDelete }: CardProps) {
         </button>
       </div>
       <div className={styles.cardAmtRow}>
-        <span className={styles.cardAmt}>¥{formatAmount(pool.amount)}</span>
-        <span className={styles.cardAmtLabel}>/ 周期 · 日均 ¥{formatAmount(dailyAvg)}</span>
+        <span className={styles.cardAmt}>¥{formatAmount(displayTotal, true)}</span>
+        <span className={styles.cardAmtLabel}>
+          {isIncome ? '已赚累计' : '/ 周期 · 日均'} ¥{formatAmount(displayDailyAvg)}
+        </span>
       </div>
       <div className={styles.progressTrack}>
         <div className={styles.progressFill} style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
       <div className={styles.cardMeta}>
         <span>
-          {isIncome ? '已到账' : '已认领'} ¥{formatAmount(paidTotal)} / ¥{formatAmount(grandTotal)}
+          {isIncome ? '已赚' : '已认领'} ¥{formatAmount(displayPaid)} / ¥{formatAmount(displayTotal)}
         </span>
         <span className={styles.cardMetaRight}>
           {isIncome && remaining > 0 && (

@@ -1,125 +1,125 @@
 /**
- * GoalsSection — 存钱目标区（v2.4 · TASK-040 T-404）
+ * GoalsSection — 月度目标区（v2.5-patch2 T-507）
  *
- * 目标卡片：进度条 + 截止倒计时；点击编辑，✕ 删除（仅解除关联，记录保留）。
- * 进度由记账关联目标自动累计（收入+ / 支出−）。
+ * 单值目标（结余目标），与 AccountingTopCard 显示的「本月结余目标」共享同一个值。
+ * 数据源：useMonthlyGoalStore.monthlyGoal（与 time 模式月度收入目标同 store，
+ * 但语义在 accounting 侧展示为「结余目标」）。
+ *
+ * - 点卡片或 ✎ 按钮 → 输入金额，保存即同步给首页大卡
+ * - 未设置(null) → 卡片显示「点击设置结余目标」
+ * - 不再有多目标 / 进度 / 截止日期概念
  */
 import { useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import { formatAmount, getTodayKey } from '../../../lib/accounting';
-import type { SavingsGoal } from '../../../lib/types';
-import { AddGoalModal } from './AddGoalModal';
+import { useMonthlyGoalStore } from '../../../store/monthlyGoalStore';
+import { formatAmount } from '../../../lib/accounting';
 import styles from './MinePage.module.css';
 
+const DEFAULT_GOAL = 12000;
+
 export function GoalsSection() {
-  const goals = useAccountStore((s) => s.savingsGoals);
-  const deleteSavingsGoal = useAccountStore((s) => s.deleteSavingsGoal);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<SavingsGoal | null>(null);
+  const records = useAccountStore((s) => s.records);
+  const monthlyGoal = useMonthlyGoalStore((s) => s.monthlyGoal);
+  const setMonthlyGoal = useMonthlyGoalStore((s) => s.setGoal);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
 
-  const openAdd = () => {
-    setEditing(null);
-    setModalOpen(true);
+  const effectiveGoal = monthlyGoal ?? DEFAULT_GOAL;
+
+  // 当前结余 = 本月收入 - 本月支出（仅 expense/income 主线，不含虚拟池预扣）
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthRecords = records.filter((r) => r.dateKey.startsWith(monthKey));
+  const balance = monthRecords.reduce((sum, r) => sum + r.amount, 0);
+  const pct = Math.max(0, Math.min(100, (balance / effectiveGoal) * 100));
+
+  const openEdit = () => {
+    setDraft(monthlyGoal != null ? String(monthlyGoal) : String(DEFAULT_GOAL));
+    setEditing(true);
   };
 
-  const openEdit = (goal: SavingsGoal) => {
-    setEditing(goal);
-    setModalOpen(true);
-  };
-
-  const handleDelete = (goal: SavingsGoal) => {
-    if (
-      !window.confirm(
-        `删除目标「${goal.name}」？已关联的记账记录会保留，仅解除目标关系。`,
-      )
-    )
+  const handleSave = () => {
+    const n = Number(draft);
+    if (!Number.isFinite(n) || n < 0) {
+      setEditing(false);
       return;
-    deleteSavingsGoal(goal.id);
+    }
+    setMonthlyGoal(n);
+    setEditing(false);
+  };
+
+  const handleClear = () => {
+    setMonthlyGoal(null);
+    setEditing(false);
   };
 
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>存钱目标</div>
-        <button type="button" className={styles.addBtn} onClick={openAdd}>
-          + 新建
+        <div className={styles.sectionTitle}>月度目标</div>
+        <button type="button" className={styles.addBtn} onClick={openEdit}>
+          {monthlyGoal != null ? '编辑' : '设置'}
         </button>
       </div>
 
-      {goals.length === 0 ? (
-        <div className={styles.emptySmall}>定个目标吧，记账时关联它自动攒进度</div>
-      ) : (
-        goals.map((goal) => <GoalCard key={goal.id} goal={goal} onEdit={() => openEdit(goal)} onDelete={() => handleDelete(goal)} />)
-      )}
+      <button type="button" className={styles.goalCard} onClick={openEdit}>
+        <div className={styles.goalTop}>
+          <span className={styles.goalName}>本月结余目标</span>
+          {monthlyGoal == null && (
+            <span className={`${styles.badge} ${styles.badgeOverdue}`}>未设置</span>
+          )}
+        </div>
 
-      <AddGoalModal open={modalOpen} editing={editing} onClose={() => setModalOpen(false)} />
+        <div className={styles.goalAmtRow}>
+          <span className={styles.goalAmt}>¥{formatAmount(effectiveGoal, true)}</span>
+          <span className={styles.goalAmtLabel}>
+            当前 ¥{formatAmount(balance, true)} · {Math.floor(pct)}%
+          </span>
+        </div>
+
+        <div className={styles.progressTrack}>
+          <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+        </div>
+
+        <div className={styles.goalMeta}>
+          <span>{monthlyGoal == null ? '点击设置 · 默认 ¥12,000' : '点击调整'}</span>
+          <span>与首页结余同步</span>
+        </div>
+      </button>
+
+      {editing && (
+        <div className={styles.goalEditOverlay} onClick={() => setEditing(false)}>
+          <div className={styles.goalEditModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.goalEditTitle}>本月结余目标</div>
+            <div className={styles.goalEditAmt}>
+              <span className={styles.goalEditCurrency}>¥</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="100"
+                min="0"
+                className={styles.goalEditInput}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSave();
+                }}
+              />
+            </div>
+            <div className={styles.goalEditActions}>
+              <button type="button" className={styles.goalEditClear} onClick={handleClear}>
+                清除
+              </button>
+              <button type="button" className={styles.goalEditCancel} onClick={() => setEditing(false)}>
+                取消
+              </button>
+              <button type="button" className={styles.goalEditSave} onClick={handleSave}>
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
-}
-
-function GoalCard({
-  goal,
-  onEdit,
-  onDelete,
-}: {
-  goal: SavingsGoal;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const progress = goal.targetAmount > 0 ? Math.min(1, goal.currentAmount / goal.targetAmount) : 0;
-  const done = goal.currentAmount >= goal.targetAmount;
-  const deadlineInfo = describeDeadline(goal.deadline, done);
-
-  return (
-    <div className={styles.goalCard} onClick={onEdit}>
-      <div className={styles.goalTop}>
-        <span className={styles.goalName}>{goal.name}</span>
-        {done && <span className={`${styles.badge} ${styles.badgeDone}`}>已达成</span>}
-        {!done && deadlineInfo?.overdue && (
-          <span className={`${styles.badge} ${styles.badgeOverdue}`}>已超期</span>
-        )}
-        <button
-          type="button"
-          className={styles.delBtn}
-          aria-label="删除目标"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className={styles.goalAmtRow}>
-        <span className={styles.goalAmt}>¥{formatAmount(goal.currentAmount, true)}</span>
-        <span className={styles.goalAmtLabel}>/ ¥{formatAmount(goal.targetAmount)}</span>
-      </div>
-
-      <div className={styles.progressTrack}>
-        <div className={styles.progressFill} style={{ width: `${Math.round(progress * 100)}%` }} />
-      </div>
-
-      <div className={styles.goalMeta}>
-        <span>{Math.round(progress * 100)}%</span>
-        <span>{deadlineInfo?.text ?? '无截止日期'}</span>
-      </div>
-    </div>
-  );
-}
-
-/** 截止日期描述：剩余天数 / 超期天数 */
-function describeDeadline(
-  deadline: string | undefined,
-  done: boolean,
-): { text: string; overdue: boolean } | null {
-  if (!deadline) return null;
-  const today = getTodayKey();
-  if (deadline === today) return { text: '今天截止', overdue: false };
-  const diffDays = Math.round(
-    (new Date(`${deadline}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime()) / 86400000,
-  );
-  if (diffDays > 0) return { text: `剩 ${diffDays} 天`, overdue: false };
-  if (done) return { text: '已达成', overdue: false };
-  return { text: `超期 ${-diffDays} 天`, overdue: true };
 }

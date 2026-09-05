@@ -1,6 +1,4 @@
-/**
- * CategoryFolderGrid — sortable category folders and record drop targets.
- */
+/** @fileoverview CategoryFolderGrid — sortable category folders and record drop targets. */
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -8,7 +6,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
@@ -41,6 +39,26 @@ export function CategoryFolderGrid({
       .sort((left, right) => left.order - right.order),
     [folders, categories],
   );
+
+  // v2.5 TASK-046 T-504：兜底「存在记录的分类一定有 folder」——
+  // 联动 record 写入的 cat-salary、跨设备同步等场景下老数据可能没 folder；
+  // 这里在组件挂载时主动补一次即可(ensureFoldersForCategories 内部去重)。
+  const ensureOnceRef = useRef(false);
+  useEffect(() => {
+    if (ensureOnceRef.current) return;
+    ensureOnceRef.current = true;
+    const state = useAccountStore.getState();
+    const folderCategoryIds = new Set(state.folders.map((f) => f.categoryId));
+    const catIds = new Set(state.categories.map((c) => c.id));
+    const missing: string[] = [];
+    for (const r of records) {
+      if (!r.categoryId) continue;
+      if (folderCategoryIds.has(r.categoryId)) continue;
+      if (!catIds.has(r.categoryId)) continue;
+      if (!missing.includes(r.categoryId)) missing.push(r.categoryId);
+    }
+    if (missing.length > 0) state.ensureFoldersForCategories(missing);
+  }, [records]);
 
   const statsByFolderId = useMemo(() => {
     const todayKey = getTodayKey();

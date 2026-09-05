@@ -76,10 +76,15 @@ export function listableRecords(records: AccountRecord[]): AccountRecord[] {
  * 池逐日均摊记录（有 poolId、无 poolStatus）与存量虚拟预扣不动余额；
  * 手动记录、认领付款（claimed）、存池存取（confirmed）才动余额。
  * 编辑/删除时的余额回退必须以此为据，否则会凭空增减。
+ *
+ * v2.5-patch2 T-505：联动 record（linkageSource='salary-time-mode'）由 time 模式写入,
+ * 从未走过 addRecord、未真实影响余额,删除 / 解绑时也不能反向扣减,
+ * 否则会从 0 余额账户里凭空扣钱。
  */
 export function recordAffectsBalance(record: AccountRecord): boolean {
   if (record.poolStatus === 'virtual') return false;
   if (record.poolId && !record.poolStatus) return false;
+  if (record.linkageSource === 'salary-time-mode') return false;
   return true;
 }
 
