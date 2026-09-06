@@ -138,6 +138,15 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
     }
 
     const total = hasDaily ? Math.round(dailyVal * days * 100) / 100 : amountVal;
+
+    // v2.5 TASK-046 T-504：若已认领金额 > 新总额，阻止修改
+    const poolCycles = useAccountStore.getState().cycles.filter((c) => c.poolId === pool.id);
+    const claimedTotal = poolCycles.reduce((sum, c) => sum + (c.paidAmount ?? 0), 0);
+    if (claimedTotal > total + 1e-9) {
+      setError(`已认领 ¥${claimedTotal.toFixed(2)}，超过新总额 ¥${total.toFixed(2)}，无法缩小`);
+      return;
+    }
+
     const patch: Partial<PoolConfig> = {
       name: name.trim(),
       direction,
@@ -175,57 +184,10 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
         </div>
 
         {/* v2.5-patch5 N-485：方向 ± 大按钮（与 AddPoolModal 同规格） */}
-        {pool.type === 'equalize' && (
-          <div className={styles.amountWrapNew}>
-            <button
-              type="button"
-              className={`${styles.amtSignBtn} ${direction === 'expense' ? styles.amtSignActive : ''} ${styles.amtSignMinus}`}
-              onClick={() => setDirection('expense')}
-              aria-label="支出方向"
-            >
-              −
-            </button>
-            <div className={styles.amtField}>
-              <span className={styles.amtFieldText}>
-                {direction === 'expense' ? '支出方向 · 逐日记支出' : '收入方向 · 逐日记收入'}
-              </span>
-            </div>
-            <button
-              type="button"
-              className={`${styles.amtSignBtn} ${direction === 'income' ? styles.amtSignActive : ''} ${styles.amtSignPlus}`}
-              onClick={() => setDirection('income')}
-              aria-label="收入方向"
-            >
-              +
-            </button>
-          </div>
-        )}
+        {/* v2.5 TASK-046 T-504：编辑池方向锁定，不展示 ± 按钮行与方向文字
+           catHeader 已显示当前方向 chip；此处直接进入表单 */}
 
         {/* v2.5-patch5 N-485：顶部分类（仅均摊型按当前 direction 过滤；存池型无分类） */}
-        {pool.type === 'equalize' && (
-          <div className={styles.catHeader}>
-            <div className={styles.catHeaderLabel}>挂载分类（每日均摊记录归入）</div>
-            <div className={styles.typeToggleInline}>
-              <button
-                type="button"
-                className={`${styles.typeChip} ${direction === 'expense' ? styles.typeChipActive : ''}`}
-                onClick={() => setDirection('expense')}
-                aria-label="支出"
-              >
-                支出
-              </button>
-              <button
-                type="button"
-                className={`${styles.typeChip} ${direction === 'income' ? styles.typeChipActive : ''}`}
-                onClick={() => setDirection('income')}
-                aria-label="收入"
-              >
-                收入
-              </button>
-            </div>
-          </div>
-        )}
-
         {pool.type === 'equalize' && (
           <div className={styles.catGrid}>
             {directionCategories.map((cat) => (

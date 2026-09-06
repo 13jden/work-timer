@@ -740,7 +740,7 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     expect(breakdown.virtualTotal).toBe(3000);
   });
 
-  it('非 income equalize 池:partial claim 不生效,返回 0', () => {
+  it('v2.5-patch8:支出 equalize 池付款 → 创建 claimed expense record', () => {
     const s = useAccountStore.getState();
     const { accountId, categoryId } = (() => {
       const acc = s.addAccount({ name: '卡', balance: 10000, color: '#888', type: 'card', order: 0 });
@@ -748,21 +748,44 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
       return { accountId: acc.id, categoryId: cat.id };
     })();
 
-    // 支出 equalize 池
+    // 支出 equalize 池(daily cycle,30 天均摊)
     const pool = s.createPoolWithCycles({
       name: '房租', type: 'equalize', amount: 3000, cycleMonths: 1,
-      cycleMode: 'monthly', categoryId, targetAccountId: accountId,
+      cycleMode: 'daily', dailyAmount: 100, categoryId, targetAccountId: accountId,
+      dateRange: { start: '2026-08-01', end: '2026-08-30' },
     });
 
-    const written = s.partialClaimToPool(pool.id, 500);
-    expect(written).toBe(0);
+    // 触发 daily virtual 记录生成
+    s.syncPoolCycles();
 
-    // 没有新增 claimed record
+    // partial claim 500（付款 500）
+    const written = s.partialClaimToPool(pool.id, 500);
+    expect(written).toBe(500);
+
+    // 新增 1 条 claimed expense record
     const state = useAccountStore.getState();
     const claimed = state.records.filter(
       (r) => r.poolId === pool.id && r.poolStatus === 'claimed',
     );
-    expect(claimed).toHaveLength(0);
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]!.amount).toBe(-500);
+    expect(claimed[0]!.type).toBe('expense');
+
+    // cycle.paidAmount = 500
+    const cycle = state.cycles.find((c) => c.poolId === pool.id);
+    expect(cycle?.paidAmount).toBe(500);
+  });
+
+  it('deposit 池:partial claim 不生效(deposit 走 depositToPool/withdrawFromPool)', () => {
+    const s = useAccountStore.getState();
+    s.addAccount({ name: '卡', balance: 5000, color: '#888', type: 'card', order: 0 });
+    const pool = s.createPoolWithCycles({
+      name: '租房押金', type: 'deposit', amount: 2000, cycleMonths: 1,
+      settleMode: 'prepay',
+    });
+
+    const written = s.partialClaimToPool(pool.id, 500);
+    expect(written).toBe(0);
   });
 
   it('多次 partial claim 累加:cycle.paidAmount 与 claimed records 同步增长', () => {
@@ -860,6 +883,85 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
 // ────────────────────────────────────────────────────────────
 // v2.5-patch4 N-483：池可编辑（rebuildPoolCycles）
 // ────────────────────────────────────────────────────────────
+
+describe('accountStore · deleteRecordCascade (v2.5-patch8)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAccountStore.getState().reset();
+  });
+
+  it('v2.5-patch8：deleteRecordCascade 删除 claimed record → 同时删除同池全部记录', () => {
+    const s = useAccountStore.getState();
+    const acc = s.addAccount({ name: '卡', balance: 10000, color: '#888', type: 'card', order: 0 });
+    const cat = s.addCategory({ name: '公积金', icon: 'house', color: '#C04A3A', type: 'income', order: 0 });
+
+    // 收入 equalize 池（5000 / 30 天）
+    const pool = s.createPoolWithCycles({
+      name: '公积金', type: 'equalize', amount: 5000, cycleMonths: 1,
+      cycleMode: 'daily', dailyAmount: 5000 / 30,
+      direction: 'income',
+      categoryId: cat.id, targetAccountId: acc.id,
+      dateRange: { start: '2026-08-01', end: '2026-08-30' },
+    });
+    s.syncPoolCycles();
+
+    // 第一次入账 2500
+    const written1 = s.partialClaimToPool(pool.id, 2500);
+    expect(written1).toBe(2500);
+    // 第二次入账 2500
+    const written2 = s.partialClaimToPool(pool.id, 2500);
+    expect(written2).toBe(2500);
+
+    // 当前应该有 30 条 daily virtual + 2 条 claimed = 32 条
+    const before = useAccountStore.getState().records.filter((r) => r.poolId === pool.id);
+    expect(before.length).toBeGreaterThanOrEqual(32);
+
+    // 取任一 claimed record 进行级联删除
+    const claimed = useAccountStore.getState().records.find(
+      (r) => r.poolId === pool.id && r.poolStatus === 'claimed',
+    );
+    expect(claimed).toBeDefined();
+
+    const result = useAccountStore.getState().deleteRecordCascade(claimed!.id);
+    expect(result.deletedCount).toBe(before.length);
+
+    // 同池全部 record 应已删除
+    const remaining = useAccountStore.getState().records.filter((r) => r.poolId === pool.id);
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('v2.5-patch8：池已退休 + 删 claimed → 同池 orphan records 一起清掉', () => {
+    const s = useAccountStore.getState();
+    const acc = s.addAccount({ name: '卡', balance: 10000, color: '#888', type: 'card', order: 0 });
+    const cat = s.addCategory({ name: '工资', icon: 'wallet', color: '#C04A3A', type: 'income', order: 0 });
+
+    const pool = s.createPoolWithCycles({
+      name: '工资', type: 'equalize', amount: 1000, cycleMonths: 1,
+      cycleMode: 'daily', dailyAmount: 1000 / 30,
+      direction: 'income',
+      categoryId: cat.id, targetAccountId: acc.id,
+      dateRange: { start: '2026-07-01', end: '2026-07-30' },
+    });
+    s.syncPoolCycles();
+    s.partialClaimToPool(pool.id, 1000);
+
+    // 模拟池已退休：删掉 pool 配置
+    useAccountStore.setState((state) => ({
+      pools: state.pools.filter((p) => p.id !== pool.id),
+      cycles: state.cycles.filter((c) => c.poolId !== pool.id),
+    }));
+
+    // 现在 records 里仍有 daily virtual + claimed
+    const orphanRecords = useAccountStore.getState().records.filter((r) => r.poolId === pool.id);
+    expect(orphanRecords.length).toBeGreaterThan(0);
+
+    // 级联删
+    const claimed = orphanRecords.find((r) => r.poolStatus === 'claimed')!;
+    const result = useAccountStore.getState().deleteRecordCascade(claimed.id);
+    expect(result.deletedCount).toBe(orphanRecords.length);
+    expect(useAccountStore.getState().records.filter((r) => r.poolId === pool.id)).toHaveLength(0);
+  });
+});
 
 describe('accountStore · 池可编辑 (N-483)', () => {
   beforeEach(() => {

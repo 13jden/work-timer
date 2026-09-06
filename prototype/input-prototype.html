@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary Timer · 记账输入原型</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --paper:   #F5F2EA;
+    --paper-2: #EFEBE0;
+    --paper-3: #F9F7F0;
+    --paper-4: #FFFDF6;
+    --ink:     #0F0F0F;
+    --ink-2:   rgba(15,15,15,0.60);
+    --ink-3:   rgba(15,15,15,0.35);
+    --accent:  #C8FF00;
+    --accent-deep: #9FCC00;
+    --accent-tint: rgba(200,255,0,0.12);
+    --card:    #FFFFFF;
+    --line:    rgba(0,0,0,0.06);
+    --line-soft: rgba(0,0,0,0.03);
+    --danger:  #E5484D;
+    --danger-tint: rgba(229,72,77,0.08);
+    --muted:   #8B8F84;
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 22px;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'Figtree', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-num: 'SF Pro Display', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-body);
+    background: #1a1a1a;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 50px;
+  }
+
+  .page-title { color: #fff; text-align: center; }
+  .page-title h1 {
+    font-family: var(--font-display);
+    font-size: 36px; font-weight: 700;
+    letter-spacing: -0.5px; margin-bottom: 8px;
+  }
+  .page-title p {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 1.5px; color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+  }
+
+  .proto-section { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .proto-label {
+    color: rgba(255,255,255,0.6);
+    font-family: var(--font-mono); font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .proto-label span { color: var(--accent); margin-right: 8px; }
+
+  .phone-frame {
+    width: 375px; height: 760px;
+    background: var(--paper);
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+
+  /* ─── Status Bar ─── */
+  .status-bar {
+    height: 44px; display: flex;
+    align-items: center; justify-content: space-between;
+    padding: 0 24px; font-family: var(--font-body);
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    flex-shrink: 0;
+  }
+  .status-bar .right-icons { display: flex; gap: 6px; align-items: center; }
+  .status-bar .battery {
+    width: 22px; height: 11px;
+    border: 1px solid var(--ink);
+    border-radius: 3px; position: relative; padding: 1px;
+  }
+  .status-bar .battery::after {
+    content: ''; position: absolute; right: -3px; top: 3px;
+    width: 2px; height: 5px; background: var(--ink);
+    border-radius: 0 2px 2px 0;
+  }
+  .status-bar .battery-fill { width: 80%; height: 100%; background: var(--ink); border-radius: 1px; }
+
+  /* ═══════════════════════════════════════════ */
+  /* SHARED LAYOUT ELEMENTS                     */
+  /* ═══════════════════════════════════════════ */
+
+  /* Top nav */
+  .top-nav {
+    display: flex; align-items: center;
+    padding: 6px 16px 10px; gap: 16px;
+  }
+  .back-btn {
+    background: none; border: none;
+    font-size: 22px; color: var(--ink);
+    cursor: pointer; padding: 4px; line-height: 1;
+  }
+  .type-tabs { display: flex; gap: 24px; }
+  .type-tab {
+    background: none; border: none;
+    font-family: var(--font-body); font-size: 16px;
+    font-weight: 500; color: var(--ink-3);
+    cursor: pointer; padding-bottom: 6px;
+    position: relative; transition: color .2s;
+  }
+  .type-tab.active { color: var(--ink); font-weight: 700; }
+  .type-tab.active::after {
+    content: ''; position: absolute; bottom: 0;
+    left: 0; right: 0; height: 2px;
+    background: var(--ink); border-radius: 1px;
+  }
+
+  /* Category grid */
+  .cat-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 2px 0; padding: 14px 12px 10px;
+  }
+  .cat-item {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 5px;
+    padding: 6px 4px; cursor: pointer; transition: all .2s;
+  }
+  .cat-icon {
+    width: 50px; height: 50px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--paper-3);
+    border: 1.5px solid var(--line);
+    transition: all .2s;
+  }
+  .cat-icon svg {
+    width: 24px; height: 24px;
+    stroke: var(--ink-2); stroke-width: 1.5;
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    transition: all .2s;
+  }
+  .cat-label {
+    font-size: 11px; color: var(--ink-2);
+    font-weight: 500; transition: all .2s;
+  }
+  .cat-item.active .cat-icon {
+    background: var(--ink); border-color: var(--ink);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+  .cat-item.active .cat-icon svg { stroke: var(--accent); }
+  .cat-item.active .cat-label { color: var(--ink); font-weight: 700; }
+
+  /* Input area — 保留输入框 */
+  .input-area {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--line);
+  }
+  .note-field {
+    flex: 1; border: none; background: none; outline: none;
+    font-family: var(--font-body); font-size: 15px;
+    color: var(--ink); padding: 6px 0;
+  }
+  .note-field::placeholder { color: var(--ink-3); }
+  .amount-display {
+    font-family: var(--font-num); font-size: 32px;
+    font-weight: 700; color: var(--danger);
+    letter-spacing: -0.5px; line-height: 1;
+    white-space: nowrap;
+  }
+  .amount-display .currency { font-size: 20px; opacity: 0.5; margin-right: 2px; }
+
+  /* Meta row */
+  .meta-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px; border-top: 1px solid var(--line);
+  }
+  .meta-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--ink-2); cursor: pointer;
+  }
+  .meta-item svg {
+    width: 18px; height: 18px;
+    stroke: var(--ink-2); stroke-width: 1.5;
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .meta-tag-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all .2s;
+    border: 1px solid;
+  }
+  .meta-tag-btn.pool { border-color: var(--accent-deep); color: #5a7000; background: var(--accent-tint); }
+  .meta-tag-btn.account { border-color: var(--ink-3); color: var(--ink-2); }
+  .meta-tag-btn svg { width: 14px; height: 14px; stroke-width: 1.5; }
+
+  /* ═══════════════════════════════════════════ */
+  /* DESIGN A: 米白键盘 (Light)                  */
+  /* ═══════════════════════════════════════════ */
+
+  .design-a .keypad { margin-top: auto; border-top: 1px solid var(--line); }
+  .design-a .keypad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 64px;
+  }
+  .design-a .key {
+    height: 60px; border: none;
+    background: var(--paper);
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    font-family: var(--font-num); font-size: 24px;
+    font-weight: 600; color: var(--ink);
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background .1s;
+  }
+  .design-a .key:active { background: var(--paper-2); }
+  .design-a .key.op-col {
+    background: var(--paper-3);
+    color: var(--ink-2);
+    font-size: 22px;
+  }
+  .design-a .key.op-col:active { background: var(--paper-2); }
+  .design-a .key.confirm {
+    background: var(--ink); color: var(--accent);
+    font-family: var(--font-body); font-size: 16px;
+    font-weight: 700; border-right: none;
+  }
+  .design-a .key.confirm:active { background: #222; }
+
+  /* ═══════════════════════════════════════════ */
+  /* DESIGN B: 暗色键盘 (Dark)                   */
+  /* ═══════════════════════════════════════════ */
+
+  .design-b .keypad { margin-top: auto; }
+  .design-b .keypad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 64px;
+  }
+  .design-b .key {
+    height: 60px; border: none;
+    background: var(--ink); color: #fff;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-family: var(--font-num); font-size: 24px;
+    font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .1s;
+  }
+  .design-b .key:active { background: #1a1a1a; }
+  .design-b .key.op-col {
+    background: #181818;
+    color: var(--accent);
+    font-size: 22px;
+  }
+  .design-b .key.op-col:active { background: #222; }
+  .design-b .key.confirm {
+    background: var(--accent); color: var(--ink);
+    font-family: var(--font-body); font-size: 16px;
+    font-weight: 700; border-right: none;
+  }
+  .design-b .key.confirm:active { background: var(--accent-deep); }
+
+  /* ═══════════════════════════════════════════ */
+  /* DESIGN C: 分区键盘 (Split with gap)         */
+  /* ═══════════════════════════════════════════ */
+
+  .design-c .keypad { margin-top: auto; padding: 8px 16px 20px; }
+  .design-c .keypad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 60px;
+    gap: 6px;
+  }
+  .design-c .key {
+    height: 56px; border-radius: var(--r-sm);
+    border: none; background: var(--card);
+    font-family: var(--font-num); font-size: 23px;
+    font-weight: 600; color: var(--ink);
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: all .1s;
+  }
+  .design-c .key:active { background: var(--paper-2); transform: scale(0.95); }
+  .design-c .key.op-col {
+    background: var(--paper-3);
+    color: var(--ink-2); font-size: 21px;
+  }
+  .design-c .key.confirm {
+    background: var(--ink); color: var(--accent);
+    font-family: var(--font-body); font-size: 15px;
+    font-weight: 700; border-radius: var(--r-sm);
+  }
+  .design-c .key.confirm:active { background: #222; }
+
+  /* ─── Palette ─── */
+  .palette-ref {
+    width: 375px; background: rgba(255,255,255,0.05);
+    border-radius: var(--r-md); padding: 20px;
+  }
+  .palette-ref h3 {
+    color: rgba(255,255,255,0.6);
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .palette-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .swatch-color { width: 44px; height: 44px; border-radius: 10px; }
+  .swatch-label { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.5); }
+
+  /* ─── Annotation badge ─── */
+  .keep-badge {
+    position: absolute;
+    top: -10px; right: 10px;
+    background: var(--danger); color: #fff;
+    font-family: var(--font-mono); font-size: 9px;
+    padding: 3px 8px; border-radius: 4px;
+    letter-spacing: 1px; z-index: 10;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Page Title -->
+<div class="page-title">
+  <h1>记账输入原型</h1>
+  <p>3 Variants · 3+1 Keypad Layout</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DESIGN A: 米白键盘                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="proto-label"><span>A</span>米白键盘 · Light</div>
+  <div class="phone-frame design-a">
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="right-icons">
+        <span style="font-size:11px">●●●●</span>
+        <span style="font-size:11px">5G</span>
+        <div class="battery"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Top nav -->
+    <div class="top-nav">
+      <button class="back-btn">←</button>
+      <div class="type-tabs">
+        <button class="type-tab active">支出</button>
+        <button class="type-tab">收入</button>
+      </div>
+    </div>
+
+    <!-- Category grid -->
+    <div class="cat-grid">
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18l-2 13H5L3 7zM3 7l1-3h16l1 3"/></svg></div><span class="cat-label">购物</span></div>
+      <div class="cat-item active"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 11h16v2a6 6 0 01-12 0v-2zM4 11l1-5h14l1 5M9 11V8M15 11V8"/></svg></div><span class="cat-label">餐饮</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div><span class="cat-label">水果</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM10 4v16M14 4v16"/></svg></div><span class="cat-label">零食</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 17h14M5 17l3-6h8l3 6M8 11l1-4h6l1 4"/></svg></div><span class="cat-label">交通</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4zM4 8l2-4h12l2 4"/></svg></div><span class="cat-label">买菜</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div><span class="cat-label">通讯</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7l-8-5z"/></svg></div><span class="cat-label">日用</span></div>
+    </div>
+
+    <!-- 保留输入框 -->
+    <div class="input-area">
+      <input type="text" class="note-field" placeholder="添加备注...">
+      <div class="amount-display"><span class="currency">¥</span>34</div>
+    </div>
+
+    <!-- Meta row -->
+    <div class="meta-row">
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>9月5日</span>
+      </div>
+      <div class="meta-tag-btn pool">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7"/></svg>
+        池 · 房租
+      </div>
+      <div class="meta-tag-btn account">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        支付宝
+      </div>
+    </div>
+
+    <!-- Keypad: 3 col numbers + 1 col ops -->
+    <div class="keypad">
+      <div class="keypad-grid">
+        <!-- Row 1 -->
+        <button class="key">7</button>
+        <button class="key">8</button>
+        <button class="key">9</button>
+        <button class="key op-col">⌫</button>
+        <!-- Row 2 -->
+        <button class="key">4</button>
+        <button class="key">5</button>
+        <button class="key">6</button>
+        <button class="key op-col">+</button>
+        <!-- Row 3 -->
+        <button class="key">1</button>
+        <button class="key">2</button>
+        <button class="key">3</button>
+        <button class="key op-col">−</button>
+        <!-- Row 4 -->
+        <button class="key">0</button>
+        <button class="key">.</button>
+        <button class="key op-col">再记</button>
+        <button class="key confirm">完成</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DESIGN B: 暗色键盘                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="proto-label"><span>B</span>暗色键盘 · Dark</div>
+  <div class="phone-frame design-b">
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="right-icons">
+        <span style="font-size:11px">●●●●</span>
+        <span style="font-size:11px">5G</span>
+        <div class="battery"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="top-nav">
+      <button class="back-btn">←</button>
+      <div class="type-tabs">
+        <button class="type-tab active">支出</button>
+        <button class="type-tab">收入</button>
+      </div>
+    </div>
+
+    <div class="cat-grid">
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18l-2 13H5L3 7zM3 7l1-3h16l1 3"/></svg></div><span class="cat-label">购物</span></div>
+      <div class="cat-item active"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 11h16v2a6 6 0 01-12 0v-2zM4 11l1-5h14l1 5"/></svg></div><span class="cat-label">餐饮</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div><span class="cat-label">水果</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/></svg></div><span class="cat-label">零食</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 17h14M5 17l3-6h8l3 6"/></svg></div><span class="cat-label">交通</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4z"/></svg></div><span class="cat-label">买菜</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div><span class="cat-label">通讯</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7z"/></svg></div><span class="cat-label">日用</span></div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" class="note-field" placeholder="添加备注...">
+      <div class="amount-display"><span class="currency">¥</span>34</div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>9月5日</span>
+      </div>
+      <div class="meta-tag-btn pool">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7"/></svg>
+        池 · 房租
+      </div>
+      <div class="meta-tag-btn account">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        支付宝
+      </div>
+    </div>
+
+    <!-- Dark keypad -->
+    <div class="keypad">
+      <div class="keypad-grid">
+        <button class="key">7</button>
+        <button class="key">8</button>
+        <button class="key">9</button>
+        <button class="key op-col">⌫</button>
+
+        <button class="key">4</button>
+        <button class="key">5</button>
+        <button class="key">6</button>
+        <button class="key op-col">+</button>
+
+        <button class="key">1</button>
+        <button class="key">2</button>
+        <button class="key">3</button>
+        <button class="key op-col">−</button>
+
+        <button class="key">0</button>
+        <button class="key">.</button>
+        <button class="key op-col">再记</button>
+        <button class="key confirm">完成</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DESIGN C: 分区键盘 (圆角间隙)                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="proto-label"><span>C</span>分区键盘 · Rounded</div>
+  <div class="phone-frame design-c">
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="right-icons">
+        <span style="font-size:11px">●●●●</span>
+        <span style="font-size:11px">5G</span>
+        <div class="battery"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="top-nav">
+      <button class="back-btn">←</button>
+      <div class="type-tabs">
+        <button class="type-tab active">支出</button>
+        <button class="type-tab">收入</button>
+      </div>
+    </div>
+
+    <div class="cat-grid">
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18l-2 13H5L3 7zM3 7l1-3h16l1 3"/></svg></div><span class="cat-label">购物</span></div>
+      <div class="cat-item active"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 11h16v2a6 6 0 01-12 0v-2zM4 11l1-5h14l1 5"/></svg></div><span class="cat-label">餐饮</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div><span class="cat-label">水果</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/></svg></div><span class="cat-label">零食</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 17h14M5 17l3-6h8l3 6"/></svg></div><span class="cat-label">交通</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4z"/></svg></div><span class="cat-label">买菜</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div><span class="cat-label">通讯</span></div>
+      <div class="cat-item"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7z"/></svg></div><span class="cat-label">日用</span></div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" class="note-field" placeholder="添加备注...">
+      <div class="amount-display"><span class="currency">¥</span>34</div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>9月5日</span>
+      </div>
+      <div class="meta-tag-btn pool">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7"/></svg>
+        池 · 房租
+      </div>
+      <div class="meta-tag-btn account">
+        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        支付宝
+      </div>
+    </div>
+
+    <!-- Rounded keypad with gaps -->
+    <div class="keypad">
+      <div class="keypad-grid">
+        <button class="key">7</button>
+        <button class="key">8</button>
+        <button class="key">9</button>
+        <button class="key op-col">⌫</button>
+
+        <button class="key">4</button>
+        <button class="key">5</button>
+        <button class="key">6</button>
+        <button class="key op-col">+</button>
+
+        <button class="key">1</button>
+        <button class="key">2</button>
+        <button class="key">3</button>
+        <button class="key op-col">−</button>
+
+        <button class="key">0</button>
+        <button class="key">.</button>
+        <button class="key op-col">再记</button>
+        <button class="key confirm">完成</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Palette -->
+<div class="palette-ref">
+  <h3>Color Palette · Paper Theme</h3>
+  <div class="palette-swatches">
+    <div class="swatch"><div class="swatch-color" style="background:#F5F2EA;border:1px solid rgba(255,255,255,0.1)"></div><span class="swatch-label">paper</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:#FFFDF6;border:1px solid rgba(255,255,255,0.1)"></div><span class="swatch-label">card</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0F0F0F"></div><span class="swatch-label">ink</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:#C8FF00"></div><span class="swatch-label">accent</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:#E5484D"></div><span class="swatch-label">danger</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:rgba(200,255,0,0.12)"></div><span class="swatch-label">accent-tint</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:rgba(229,72,77,0.08)"></div><span class="swatch-label">danger-tint</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:#8B8F84"></div><span class="swatch-label">muted</span></div>
+  </div>
+</div>
+
+<script>
+  // Type tabs
+  document.querySelectorAll('.type-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      tab.parentElement.querySelectorAll('.type-tab').forEach(s => s.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+
+  // Category selection
+  document.querySelectorAll('.cat-item').forEach(item => {
+    item.addEventListener('click', () => {
+      item.closest('.cat-grid').querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Keypad simulation
+  document.querySelectorAll('.phone-frame').forEach(frame => {
+    const amountEl = frame.querySelector('.amount-display');
+    let current = '34';
+
+    frame.querySelectorAll('.key').forEach(key => {
+      key.addEventListener('click', () => {
+        const val = key.textContent.trim();
+        if (val === '⌫') {
+          current = current.slice(0, -1) || '0';
+        } else if (val === '完成' || val === '再记') {
+          current = '0';
+        } else if (/^\d$/.test(val)) {
+          current = current === '0' ? val : current + val;
+        } else if (val === '.') {
+          if (!current.includes('.')) current += '.';
+        }
+        amountEl.innerHTML = `<span class="currency">¥</span>${current}`;
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

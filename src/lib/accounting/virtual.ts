@@ -151,6 +151,11 @@ export function calcVirtualAssets(params: {
     earnedUnarrived: round2(earnedUnarrived),
     depositRefundable: round2(depositRefundable),
     depositPending: round2(depositPending),
-    virtualTotal: round2(actualTotal + prepaidUnconsumed + earnedUnarrived + depositRefundable),
+    // v2.5-patch7 T-512：postpay「待付」是从账户余额里将来要划走的金额，
+    // 视为负债在 virtualTotal 里扣除；prepay「待退」是已扣但概念仍存在的金额,
+    // 视为资产加回。
+    virtualTotal: round2(
+      actualTotal + prepaidUnconsumed + earnedUnarrived + depositRefundable - depositPending,
+    ),
   };
 }

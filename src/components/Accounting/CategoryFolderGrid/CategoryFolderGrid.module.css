@@ -2,10 +2,35 @@
    CategoryFolderGrid — 分类文件夹
    ========================================================== */
 
+/* v2.5-patch8：根容器，承载支出/收入两组 */
+.folderRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.folderSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionLabel {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  padding-left: 2px;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  /* v2.5-patch8：4 列网格（更紧凑） */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .folderWrap {
@@ -25,7 +50,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px 10px 12px;
+  padding: 10px 6px 8px;
   overflow: visible;
   color: inherit;
   font-family: inherit;
@@ -33,7 +58,8 @@
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   cursor: grab;
-  touch-action: none;
+  /* v2.5 TASK-046 T-504 fix: 允许垂直滚动，拖拽由 dnd-kit 接管 */
+  touch-action: pan-y;
   transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 180ms, border-color 180ms, opacity 180ms;
 }
 
@@ -47,6 +73,15 @@
   opacity: 0.35;
   cursor: grabbing;
   transform: scale(0.96);
+}
+
+/* v2.5 TASK-046 T-504：排序模式下文件夹不可点击进入详情，仅展示拖动手柄 */
+.folderReorderMode {
+  cursor: grab;
+}
+
+.folderReorderMode:active {
+  cursor: grabbing;
 }
 
 .icon {
@@ -100,42 +135,58 @@
 }
 
 .folderAdd {
+  /* v2.5-patch8：与 .folder 同尺寸（4 列紧凑），网格中并排展示 */
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 14px 10px 12px;
+  padding: 10px 6px 8px;
   color: var(--ink-muted);
   font-family: inherit;
   background: transparent;
-  border: 1.5px dashed var(--line);
+  border: 1px dashed var(--line);
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 180ms, border-color 180ms, color 180ms;
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), border-color 180ms, color 180ms, box-shadow 180ms;
+  touch-action: manipulation;
+  min-height: 100%;
 }
 
 .folderAdd:hover {
   color: var(--accent-deep);
   border-color: var(--accent-deep);
+  border-style: solid;
   transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .addIcon {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
-  font-size: 22px;
+  margin-bottom: 4px;
+  font-size: 20px;
   font-weight: 300;
-  background: var(--paper-2);
-  border-radius: 7px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--accent-deep) 12%, transparent);
+  border-radius: 6px;
 }
 
-.addName { font-size: 11px; font-weight: 500; }
+.addName {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+/* v2.5-patch8：空状态下的双按钮（支出/收入 各自一个） */
+.emptyAddGroup {
+  display: flex;
+  gap: 8px;
+}
 
 .hint {
   margin: 10px 0 0;

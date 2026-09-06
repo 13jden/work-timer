@@ -1,7 +1,7 @@
 /**
  * AccountingPage — standalone accounting workspace.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -12,6 +12,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -50,19 +51,44 @@ export function AccountingPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AccountRecord | null>(null);
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addCategoryDefaultType, setAddCategoryDefaultType] = useState<'expense' | 'income'>('expense');
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // v2.5 TASK-046 T-504：文件夹排序按钮启动后使用 0 延迟传感器（点击即拖）
+  const [folderReorderMode, setFolderReorderMode] = useState(false);
+  // v2.5-patch8：「归类」模式 —— 默认关闭，开启后未分类记录直接拖（0 延迟）,
+  // 文件夹区域才挂 droppable 监听（避免拦截页面滚动）
+  const [recordDragMode, setRecordDragMode] = useState(false);
   // v2.2 TASK-038:分类记录页(全部记录)入口
   const [allRecordsCategoryId, setAllRecordsCategoryId] = useState<string | null>(null);
 
+  // 排序模式时退出详情编辑（避免与文件夹点击冲突）
+  useEffect(() => {
+    if (folderReorderMode) setDetailCategoryId(null);
+  }, [folderReorderMode]);
+
+  // v2.5-patch8：开启 recordDragMode 时自动退出 reorder / detail / 弹窗，互斥
+  useEffect(() => {
+    if (!recordDragMode) return;
+    setFolderReorderMode(false);
+    setDetailCategoryId(null);
+  }, [recordDragMode]);
+
   // v2.5 T-414：触摸拖拽需长按 1 秒才激活（避免滚动/主题下滑手势误触发）
-  // v2.5-patch6 N-489：桌面 pointer 也走 1 秒长按才激活（防点击误拖）；
-  // 兼容未分类记录 → 文件夹的 drop（仍由 useDroppable 提供，sensor 改动只影响 drag start 阈值）
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 6 } }),
+  // v2.5-patch6 N-489：桌面 pointer 也走 1 秒长按才激活（防点击误拖）
+  // v2.5-patch7 T-511：tolerance 6 → 12
+  // v2.5 TASK-046 T-504：排序/归类模式都用 0 延迟传感器（点击即拖）
+  const normalSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 12 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 12 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const reorderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const sensors = (folderReorderMode || recordDragMode) ? reorderSensors : normalSensors;
 
   const monthKey = getCurrentMonthKey();
   const todayKey = getTodayKey();
@@ -112,6 +138,31 @@ export function AccountingPage() {
     setActiveId(String(event.active.id));
   };
 
+  // v2.5-patch9：未分类记录只能拖入同类型（收入/支出）分类文件夹，
+  // 拖到不同类型上时屏蔽 drop target，避免用户误操作。
+  const handleDragOver = (event: DragOverEvent) => {
+    const activeIdValue = String(event.active.id);
+    const overIdValue = event.over ? String(event.over.id) : null;
+    if (!overIdValue) return;
+
+    // 仅对未分类记录的拖动做类型过滤
+    if (!activeIdValue.startsWith(RECORD_DRAG_PREFIX)) return;
+    if (!overIdValue.startsWith(FOLDER_DRAG_PREFIX)) return;
+
+    const state = useAccountStore.getState();
+    const recordId = activeIdValue.slice(RECORD_DRAG_PREFIX.length);
+    const folderId = overIdValue.slice(FOLDER_DRAG_PREFIX.length);
+    const folder = state.folders.find((item) => item.id === folderId);
+    const record = state.records.find((item) => item.id === recordId);
+    const folderCategory = folder ? state.categories.find((c) => c.id === folder.categoryId) : undefined;
+
+    if (folder && record && folderCategory && folderCategory.type !== record.type) {
+      // 类型不匹配 → 屏蔽该 folder 作为 drop target
+      // eslint-disable-next-line @dnd-kit/no-dnd-kit-internals
+      (event as unknown as { over: unknown }).over = null;
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
     const activeIdValue = String(event.active.id);
@@ -131,6 +182,7 @@ export function AccountingPage() {
       if (folder && record && folderCategory && folderCategory.type === record.type) {
         state.updateRecord(recordId, { categoryId: folder.categoryId, isUncategorized: false });
       }
+      // v2.5-patch9：归类成功不自动退出归类模式，由用户手动点「完成归类」关闭
       return;
     }
 
@@ -160,6 +212,7 @@ export function AccountingPage() {
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragCancel={() => setActiveId(null)}
       onDragEnd={handleDragEnd}
     >
@@ -189,23 +242,55 @@ export function AccountingPage() {
         </section>
 
         <section className={styles.extrasWrap} aria-label="未分类记录">
-          <UncategorizedArea onPickRecord={handlePickRecord} />
+          <UncategorizedArea
+            onPickRecord={handlePickRecord}
+            dragMode={recordDragMode}
+          />
         </section>
 
         <section className={styles.extrasWrap} aria-label="分类文件夹">
-          <div className={styles.sectionHeader}><span>分类文件夹</span><span>{monthKey}</span></div>
+          <div className={styles.sectionHeader}>
+            <span>分类文件夹</span>
+            <span className={styles.sectionHeaderRight}>
+              <span className={styles.sectionHeaderMonth}>{monthKey}</span>
+              {/* v2.5-patch8：归类开关（未分类记录拖到下方文件夹） */}
+              <button
+                type="button"
+                className={`${styles.reorderBtn} ${recordDragMode ? styles.reorderBtnActive : ''}`}
+                onClick={() => setRecordDragMode((v) => !v)}
+                aria-label={recordDragMode ? '退出归类模式' : '归类'}
+                title={recordDragMode ? '点击退出归类模式' : '点击启用拖动归类'}
+              >
+                {recordDragMode ? '完成归类' : '归类'}
+              </button>
+              <button
+                type="button"
+                className={`${styles.reorderBtn} ${folderReorderMode ? styles.reorderBtnActive : ''}`}
+                onClick={() => setFolderReorderMode((v) => !v)}
+                aria-label={folderReorderMode ? '退出排序模式' : '调整顺序'}
+                title={folderReorderMode ? '点击退出排序模式' : '点击启动拖动排序'}
+              >
+                {folderReorderMode ? '完成排序' : '调整顺序'}
+              </button>
+            </span>
+          </div>
           <CategoryFolderGrid
             monthKey={monthKey}
             activeId={activeId}
+            folderReorderMode={folderReorderMode}
+            recordDragMode={recordDragMode}
             onClickCategory={handleOpenCategory}
-            onAddCategory={() => setAddCategoryOpen(true)}
+            onAddCategory={(type) => {
+              setAddCategoryDefaultType(type);
+              setAddCategoryOpen(true);
+            }}
           />
         </section>
 
         <AddRecordModal open={modalOpen} editingRecord={editingRecord} onClose={closeEditor} />
         <AddCategoryModal
           open={addCategoryOpen}
-          defaultType="expense"
+          defaultType={addCategoryDefaultType}
           onCreated={(categoryId) => {
             setAddCategoryOpen(false);
             requestAnimationFrame(() => {

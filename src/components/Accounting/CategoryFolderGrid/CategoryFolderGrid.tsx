@@ -1,4 +1,16 @@
-/** @fileoverview CategoryFolderGrid — sortable category folders and record drop targets. */
+/** @fileoverview CategoryFolderGrid — sortable category folders and record drop targets.
+ *
+ * v2.5 TASK-046 T-504 改进：
+ * - 排序模式：渲染 SortableContext + useSortable，点击即拖（0 延迟）
+ * - 正常模式：渲染纯按钮 + useDroppable（仅承接未分类记录拖入），
+ *   没有任何 sortable 监听器，不影响触屏页面上下滑动
+ *
+ * v2.5-patch8 改进：
+ * - 4 列网格（更紧凑）
+ * - 按支出/收入分组渲染，"添加分类"按钮在每组末尾（支出 / 收入 各自一个）
+ * - 默认不挂 useDroppable（避免拦截页面滚动），
+ *   只有归类模式 (recordDragMode) 时才挂 droppable
+ */
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -17,14 +29,20 @@ export const FOLDER_DRAG_PREFIX = 'folder:';
 interface CategoryFolderGridProps {
   monthKey: string;
   activeId?: string | null;
+  /** v2.5 TASK-046 T-504：排序模式时文件夹点击不进入详情页 */
+  folderReorderMode?: boolean;
+  /** v2.5-patch8：归类模式时文件夹挂 droppable,默认不挂 */
+  recordDragMode?: boolean;
   onClickCategory?: (categoryId: string) => void;
-  onAddCategory?: () => void;
+  onAddCategory?: (type: 'expense' | 'income') => void;
 }
 
 /** Renders expense categories as sortable folders and record drop targets. */
 export function CategoryFolderGrid({
   monthKey,
   activeId,
+  folderReorderMode = false,
+  recordDragMode = false,
   onClickCategory,
   onAddCategory,
 }: CategoryFolderGridProps) {
@@ -32,7 +50,7 @@ export function CategoryFolderGrid({
   const categories = useAccountStore((state) => state.categories);
   const records = useAccountStore((state) => state.records);
 
-  // v2.5 T-417：支出 + 收入文件夹都展示（此前仅支出，收入分类建了不显示）
+  // v2.5 T-417：支出 + 收入文件夹都展示
   const visibleFolders = useMemo(
     () => folders
       .filter((folder) => categories.some((category) => category.id === folder.categoryId))
@@ -40,9 +58,7 @@ export function CategoryFolderGrid({
     [folders, categories],
   );
 
-  // v2.5 TASK-046 T-504：兜底「存在记录的分类一定有 folder」——
-  // 联动 record 写入的 cat-salary、跨设备同步等场景下老数据可能没 folder；
-  // 这里在组件挂载时主动补一次即可(ensureFoldersForCategories 内部去重)。
+  // 兜底「存在记录的分类一定有 folder」
   const ensureOnceRef = useRef(false);
   useEffect(() => {
     if (ensureOnceRef.current) return;
@@ -64,7 +80,6 @@ export function CategoryFolderGrid({
     const todayKey = getTodayKey();
     return new Map(visibleFolders.map((folder) => {
       const categoryType = categories.find((category) => category.id === folder.categoryId)?.type ?? 'expense';
-      // v2.3：虚拟池预扣不计入分类文件夹月度统计
       const monthRecords = visibleRecords(records).filter(
         (record) => record.categoryId === folder.categoryId
           && record.type === categoryType
@@ -77,51 +92,174 @@ export function CategoryFolderGrid({
     }));
   }, [visibleFolders, categories, monthKey, records]);
 
-  if (visibleFolders.length === 0) {
+  // v2.5-patch8：按 type 分组 — 支出在上，收入在下
+  const expenseFolders = useMemo(
+    () => visibleFolders.filter((f) =>
+      categories.find((c) => c.id === f.categoryId)?.type === 'expense',
+    ),
+    [visibleFolders, categories],
+  );
+  const incomeFolders = useMemo(
+    () => visibleFolders.filter((f) =>
+      categories.find((c) => c.id === f.categoryId)?.type === 'income',
+    ),
+    [visibleFolders, categories],
+  );
+
+  const isRecordDragging = activeId?.startsWith('record:') ?? false;
+
+  /**
+   * v2.5-patch9：folderReorderMode 时用单 SortableContext 渲染全部 folders,
+   * 支持跨"支出/收入"组拖动排序；
+   * folderReorderMode=false 时双组渲染（视觉分组 + 各组末尾"添加分类"按钮）。
+   */
+  const renderAllFoldersGrid = () => {
+    const folderItems = visibleFolders.map((folder) => (
+      <FolderItem
+        key={folder.id}
+        folder={folder}
+        stat={statsByFolderId.get(folder.id)}
+        isRecordDragging={isRecordDragging}
+        sortable={folderReorderMode}
+        recordDragMode={recordDragMode}
+        onClickCategory={onClickCategory}
+      />
+    ));
+
+    return (
+      <SortableContext
+        items={visibleFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)}
+        strategy={rectSortingStrategy}
+      >
+        <div className={styles.grid}>
+          {folderItems}
+        </div>
+      </SortableContext>
+    );
+  };
+
+  const renderSplitGroup = (
+    folderList: typeof visibleFolders,
+    typeLabel: 'expense' | 'income',
+  ) => {
+    const folderItems = folderList.map((folder) => (
+      <FolderItem
+        key={folder.id}
+        folder={folder}
+        stat={statsByFolderId.get(folder.id)}
+        isRecordDragging={isRecordDragging}
+        sortable={folderReorderMode}
+        recordDragMode={recordDragMode}
+        onClickCategory={onClickCategory}
+      />
+    ));
+
+    const addBtn = onAddCategory ? (
+      <button
+        key={`add-${typeLabel}`}
+        type="button"
+        className={styles.folderAdd}
+        onClick={() => onAddCategory(typeLabel)}
+        aria-label={`添加${typeLabel === 'expense' ? '支出' : '收入'}分类`}
+        title={`添加${typeLabel === 'expense' ? '支出' : '收入'}分类`}
+      >
+        <span className={styles.addIcon}>+</span>
+        <span className={styles.addName}>添加分类</span>
+      </button>
+    ) : null;
+
+    return (
+      <div className={styles.grid}>
+        {folderItems}
+        {addBtn}
+      </div>
+    );
+  };
+
+  const hasAnyFolder = expenseFolders.length > 0 || incomeFolders.length > 0;
+
+  if (!hasAnyFolder) {
     return (
       <div className={styles.empty}>
         <span>暂无分类文件夹</span>
-        {onAddCategory && <button className={styles.emptyAdd} onClick={onAddCategory}>+ 新建分类</button>}
+        {onAddCategory && (
+          <div className={styles.emptyAddGroup}>
+            <button className={styles.emptyAdd} onClick={() => onAddCategory('expense')}>+ 新建支出分类</button>
+            <button className={styles.emptyAdd} onClick={() => onAddCategory('income')}>+ 新建收入分类</button>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <>
-      <SortableContext items={visibleFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)} strategy={rectSortingStrategy}>
-        <div className={styles.grid}>
-          {visibleFolders.map((folder) => (
-            <SortableFolder
-              key={folder.id}
-              folder={folder}
-              stat={statsByFolderId.get(folder.id)}
-              isRecordDragging={activeId?.startsWith('record:') ?? false}
-              onClickCategory={onClickCategory}
-            />
-          ))}
-          {onAddCategory && (
-            <div className={styles.folderWrap}>
-              <button type="button" className={styles.folderAdd} onClick={onAddCategory}>
-                <span className={styles.addIcon}>+</span>
-                <span className={styles.addName}>新建分类</span>
-              </button>
-            </div>
-          )}
+    <div className={styles.folderRoot}>
+      {folderReorderMode ? (
+        // v2.5-patch9：排序模式 → 单网格跨组排序
+        <div className={styles.folderSection}>
+          {renderAllFoldersGrid()}
         </div>
-      </SortableContext>
-      <p className={styles.hint}>按住文件夹可排序 · 未分类记录拖到文件夹即可归类</p>
-    </>
+      ) : (
+        // 正常模式 → 双组（支出/收入）渲染，sectionLabel + 各组末尾"添加分类"
+        <>
+          <div className={styles.folderSection}>
+            <div className={styles.sectionLabel}>支出</div>
+            {renderSplitGroup(expenseFolders, 'expense')}
+          </div>
+          <div className={styles.folderSection}>
+            <div className={styles.sectionLabel}>收入</div>
+            {renderSplitGroup(incomeFolders, 'income')}
+          </div>
+        </>
+      )}
+
+      <p className={styles.hint}>
+        {folderReorderMode
+          ? '拖动文件夹即可排序，跨支出/收入组也可以拖 · 完成后点「完成排序」退出'
+          : recordDragMode
+            ? '未分类记录直接拖到下方文件夹即可归类 · 完成后点「完成归类」退出'
+            : '点击「归类」启用拖动 · 点击「调整顺序」可拖动排序'}
+      </p>
+    </div>
   );
 }
 
-interface SortableFolderProps {
+interface FolderItemProps {
   folder: { id: string; categoryId: string; name: string; icon: string; color: string };
   stat?: { total: number; todayCount: number };
   isRecordDragging: boolean;
+  /** true → 用 useSortable（0 延迟拖动）；false → 纯按钮 */
+  sortable: boolean;
+  /** v2.5-patch8：归类模式才挂 useDroppable,默认不挂（避免拦截页面滚动） */
+  recordDragMode: boolean;
   onClickCategory?: (categoryId: string) => void;
 }
 
-function SortableFolder({ folder, stat, isRecordDragging, onClickCategory }: SortableFolderProps) {
+function FolderItem({ folder, stat, isRecordDragging, sortable, recordDragMode, onClickCategory }: FolderItemProps) {
+  if (sortable) {
+    return (
+      <SortableFolder
+        folder={folder}
+        stat={stat}
+        isRecordDragging={isRecordDragging}
+        recordDragMode={recordDragMode}
+        onClickCategory={onClickCategory}
+      />
+    );
+  }
+  return (
+    <PlainFolder
+      folder={folder}
+      stat={stat}
+      isRecordDragging={isRecordDragging}
+      recordDragMode={recordDragMode}
+      onClickCategory={onClickCategory}
+    />
+  );
+}
+
+/** 排序模式下的文件夹：useSortable 提供拖动手柄（点击不进入详情） */
+function SortableFolder({ folder, stat, isRecordDragging, recordDragMode }: Omit<FolderItemProps, 'sortable'>) {
   const sortableId = `${FOLDER_DRAG_PREFIX}${folder.id}`;
   const {
     attributes,
@@ -134,10 +272,13 @@ function SortableFolder({ folder, stat, isRecordDragging, onClickCategory }: Sor
     id: sortableId,
     data: { type: 'folder', folderId: folder.id },
   });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({
+  // v2.5-patch8：归类模式才挂 droppable
+  const droppable = useDroppable({
     id: sortableId,
     data: { type: 'folder', folderId: folder.id, categoryId: folder.categoryId },
+    disabled: !recordDragMode,
   });
+  const { setNodeRef: setDropRef, isOver } = droppable;
 
   const setNodeRef = (node: HTMLElement | null) => {
     setSortableRef(node);
@@ -153,21 +294,64 @@ function SortableFolder({ folder, stat, isRecordDragging, onClickCategory }: Sor
     >
       <button
         type="button"
-        className={`${styles.folder} ${isDragging ? styles.folderDragging : ''}`}
-        onClick={() => !isDragging && onClickCategory?.(folder.categoryId)}
+        className={`${styles.folder} ${isDragging ? styles.folderDragging : ''} ${styles.folderReorderMode}`}
         style={{ ['--folder-color' as string]: folder.color }}
         aria-label={`${folder.name} 分类文件夹`}
         {...attributes}
         {...listeners}
       >
-        <span className={styles.icon}>
-          <IconByKey icon={folder.icon} size={20} weight="regular" color="var(--folder-color, #9CA3AF)" />
-        </span>
-        <span className={styles.name}>{folder.name}</span>
-        <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>
-        {stat && stat.todayCount > 0 && <span className={styles.count}>{stat.todayCount}</span>}
+        <FolderInner folder={folder} stat={stat} />
       </button>
     </div>
+  );
+}
+
+/** 正常模式下的文件夹：归类模式才挂 droppable */
+function PlainFolder({ folder, stat, isRecordDragging, recordDragMode, onClickCategory }: Omit<FolderItemProps, 'sortable'>) {
+  const sortableId = `${FOLDER_DRAG_PREFIX}${folder.id}`;
+  // v2.5-patch8：归类模式才挂 droppable —— 避免默认拦截页面滚动/点击
+  const droppable = useDroppable({
+    id: sortableId,
+    data: { type: 'folder', folderId: folder.id, categoryId: folder.categoryId },
+    disabled: !recordDragMode,
+  });
+  const { setNodeRef, isOver } = droppable;
+
+  return (
+    <div
+      ref={setNodeRef}
+      id={`accounting-folder-${folder.categoryId}`}
+      className={`${styles.folderWrap} ${isOver && isRecordDragging ? styles.folderWrapOver : ''}`}
+    >
+      <button
+        type="button"
+        className={styles.folder}
+        onClick={() => onClickCategory?.(folder.categoryId)}
+        style={{ ['--folder-color' as string]: folder.color }}
+        aria-label={`${folder.name} 分类文件夹`}
+      >
+        <FolderInner folder={folder} stat={stat} />
+      </button>
+    </div>
+  );
+}
+
+function FolderInner({
+  folder,
+  stat,
+}: {
+  folder: { name: string; icon: string; color: string };
+  stat?: { total: number; todayCount: number };
+}) {
+  return (
+    <>
+      <span className={styles.icon}>
+        <IconByKey icon={folder.icon} size={18} weight="regular" color="var(--folder-color, #9CA3AF)" />
+      </span>
+      <span className={styles.name}>{folder.name}</span>
+      <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>
+      {stat && stat.todayCount > 0 && <span className={styles.count}>{stat.todayCount}</span>}
+    </>
   );
 }
 

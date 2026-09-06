@@ -104,7 +104,7 @@ export function StatsPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [rankCategoryId, setRankCategoryId] = useState<string | null>(null);
   /** v2.3 T-307：虚拟/实际筛选开关 */
-  const [includeVirtual, setIncludeVirtual] = useState(false);
+  const [includeVirtual] = useState(false);
   const statsOptions = useMemo(() => ({ includeVirtualPool: includeVirtual }), [includeVirtual]);
   const baseRecords = useMemo(
     () => (includeVirtual ? records : visibleRecords(records)),
@@ -199,14 +199,7 @@ export function StatsPage() {
       <div className={styles.controls}>
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} />
         <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
-        <label className={styles.virtualToggle}>
-          <input
-            type="checkbox"
-            checked={includeVirtual}
-            onChange={(e) => setIncludeVirtual(e.target.checked)}
-          />
-          <span>含虚拟池预扣</span>
-        </label>
+
       </div>
 
       <div className={styles.summary}>
@@ -398,15 +391,22 @@ interface DayRecordRowProps {
   onOpen: () => void;
 }
 
-/** 日视图记录行：分类图标 + 分类名 + 备注 + 账户标签 + 金额（v2.4：整行可拖拽归入账户，点击编辑） */
+/** 日视图记录行：分类图标 + 分类名/池名 + 备注 + 账户标签 + 金额（v2.4：整行可拖拽归入账户，点击编辑）
+ * v2.5 TASK-046 T-504：关联池记录显示池名而非分类名（图标保持分类图标）
+ */
 function DayRecordRow({ record, isDragging, onOpen }: DayRecordRowProps) {
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
   const { attributes, listeners, setNodeRef } = useDraggable({ id: record.id });
   const category = categories.find((c) => c.id === record.categoryId);
   const account = accounts.find((a) => a.id === record.accountId);
-  const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
-  const icon = record.isUncategorized ? 'package' : (category?.icon ?? '❓');
+  // v2.5 TASK-046 T-504：关联池的记录显示池名（保留分类图标），未关联显示分类名
+  const name = record.isUncategorized
+    ? '未分类'
+    : record.poolId
+      ? (record.poolName ?? '关联池')
+      : (category?.name ?? '未知分类');
+  const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
   const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
   const isExpense = record.type === 'expense';
   // v2.4 T-409：池逐日生成的均摊记录（收入=虚拟到账 / 支出=虚拟均摊）
@@ -472,7 +472,7 @@ function DragRecordCard({ record }: { record: AccountRecord }) {
   const categories = useAccountStore((s) => s.categories);
   const category = categories.find((c) => c.id === record.categoryId);
   const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
-  const icon = record.isUncategorized ? 'package' : (category?.icon ?? '❓');
+  const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
   const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
   const isExpense = record.type === 'expense';
   return (

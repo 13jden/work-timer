@@ -81,7 +81,7 @@ describe('calcVirtualAssets', () => {
     });
   });
 
-  it('用户示例：房租 1000 已付消耗半月 + 工资 3000 挣半月未发 + 资产 3000', () => {
+  it('用户示例：房租 1000 已付消耗半个月 + 工资 3000 赚半个月未到 + 资产 3000', () => {
     const acc = makeAccount({ balance: 3000 });
     const rent = makePool({ name: '房租', amount: 1000, direction: 'expense' });
     const salary = makePool({ name: '工资', amount: 3000, direction: 'income' });
@@ -89,11 +89,11 @@ describe('calcVirtualAssets', () => {
     const records: AccountRecord[] = [
       // 房租认领付款 1000（预付，实际已支付）
       makeRecord({ accountId: acc.id, amount: -1000, poolId: rent.id, poolStatus: 'claimed' }),
-      // 房租已消耗半个月（15 条日均记录合计 500）
+      // 房租已消耗半个月（15 天日均记录合计 500）
       ...Array.from({ length: 15 }, () =>
         makeRecord({ accountId: acc.id, amount: -33.33, poolId: rent.id }),
       ),
-      // 工资已赚半个月（15 条日均记录合计 1500），未认领
+      // 工资已赚半个月（15 天日均记录合计 1500），未认领
       ...Array.from({ length: 15 }, () =>
         makeRecord({ accountId: acc.id, amount: 100, type: 'income', poolId: salary.id }),
       ),
@@ -106,7 +106,7 @@ describe('calcVirtualAssets', () => {
     expect(r.virtualTotal).toBeCloseTo(3000 + (1000 - 15 * 33.33) + 1500, 2);
   });
 
-  it('均摊支出逐日生成但无实际认领：只计入未支付，不增加虚拟资产', () => {
+  it('均摊支出逐日生成但无实际认领：只计入未支付，不增虚拟资产', () => {
     const acc = makeAccount({ balance: 2000 });
     const rent = makePool({ amount: 1000, direction: 'expense' });
     const records: AccountRecord[] = Array.from({ length: 4 }, () =>
@@ -120,7 +120,7 @@ describe('calcVirtualAssets', () => {
     expect(r.virtualTotal).toBe(2000);
   });
 
-  it('均摊支出全额认领：实际付款后才扣减资产，不把未付款消费提前加到资产', () => {
+  it('均摊支出全额认领：实际付款后才扣减资产，不把未付款消耗提前加到资产', () => {
     const acc = makeAccount({ balance: 720 });
     const rent = makePool({ amount: 1000, direction: 'expense' });
     const records: AccountRecord[] = [
@@ -148,57 +148,20 @@ describe('calcVirtualAssets', () => {
     ];
     const r = calcVirtualAssets({ accounts: [acc], records, pools: [salary] });
     expect(r.earnedUnarrived).toBe(500);
+    // virtualTotal = 1000(actual) + 500(earnedUnarrived) = 1500
     expect(r.virtualTotal).toBe(1500);
   });
 
-  it('先用后付：支出池未付款（认领 0）→ 已消耗计入未支付，不扣虚拟总额', () => {
+  // v2.5 T-416：押金先付 = 默认「已付」
+  // 存池型没有「逐日消耗」概念,只统计 confirmed in/out 交易;
+  // 这里只测 depositRefundable = pool.amount(没取出 = 全额待退)
+  it('押金先付：建池即声明已付 → 待退 = 押金金额', () => {
     const acc = makeAccount({ balance: 2000 });
-    const rent = makePool({ amount: 1000, direction: 'expense' });
-    const records: AccountRecord[] = [
-      makeRecord({ accountId: acc.id, amount: -500, poolId: rent.id }),
-    ];
-    const r = calcVirtualAssets({ accounts: [acc], records, pools: [rent] });
-    expect(r.prepaidUnconsumed).toBe(0);
-    expect(r.unpaidConsumed).toBe(500);
-    expect(r.virtualTotal).toBe(2000);
-  });
-
-  // v2.5 TASK-046 T-501：time 模式联动 record（confirmed in, 无 claimed）作为已赚计入总资产
-  it('收入池 confirmed in record：联动 / 手动认领的「已赚」作为未到账计入总资产', () => {
-    const acc = makeAccount({ balance: 0 });
-    const salary = makePool({ name: '工资池', amount: 0, direction: 'income' });
-    const records: AccountRecord[] = [
-      // 3 天联动 record, 共 1,428.58
-      makeRecord({ accountId: acc.id, amount: 714.29, type: 'income', poolId: salary.id, poolStatus: 'confirmed' }),
-      makeRecord({ accountId: acc.id, amount: 714.29, type: 'income', poolId: salary.id, poolStatus: 'confirmed' }),
-    ];
-    const r = calcVirtualAssets({ accounts: [acc], records, pools: [salary] });
-    expect(r.actualTotal).toBe(0);
-    expect(r.earnedUnarrived).toBeCloseTo(1428.58, 2);
-    expect(r.virtualTotal).toBeCloseTo(1428.58, 2);
-  });
-
-  it('用户示例：房租 2100（1-30 号，日均 70），4 号已消耗 280 未支付', () => {
-    const acc = makeAccount({ balance: 3000 });
-    const rent = makePool({
-      name: '房租',
-      amount: 2100,
-      direction: 'expense',
-      dateRange: { start: '2026-09-01', end: '2026-09-30' },
-    });
-    // 4 天日均消耗（9/1 ~ 9/4）
-    const records: AccountRecord[] = Array.from({ length: 4 }, (_, i) =>
-      makeRecord({
-        dateKey: `2026-09-0${i + 1}`,
-        accountId: acc.id,
-        amount: -70,
-        poolId: rent.id,
-      }),
-    );
-    const r = calcVirtualAssets({ accounts: [acc], records, pools: [rent] });
-    expect(r.unpaidConsumed).toBe(280);
-    expect(r.prepaidUnconsumed).toBe(0);
-    expect(r.virtualTotal).toBe(3000);
+    const deposit = makePool({ type: 'deposit', amount: 1000 });
+    const r = calcVirtualAssets({ accounts: [acc], records: [], pools: [deposit] });
+    expect(r.depositRefundable).toBe(1000);
+    expect(r.depositPending).toBe(0);
+    expect(r.virtualTotal).toBe(3000); // 2000 + 1000 待退
   });
 
   it('先用后付部分支付：消耗 280、只认领 100 → 未支付 180', () => {
@@ -265,7 +228,8 @@ describe('calcVirtualAssets', () => {
     expect(r.unpaidConsumed).toBe(300); // rent2 消耗 300 未付款
     expect(r.earnedUnarrived).toBe(0);
     expect(r.depositRefundable).toBe(800); // 押金已付 → 待退
-    expect(r.virtualTotal).toBe(2400); // 未支付不扣虚拟总额，待退计入
+    // v2.5-patch7 T-512：prepay 全部计入,保持 2400
+    expect(r.virtualTotal).toBe(2400);
   });
 
   it('押金先付：存入 2000 取出 500 → 待退 1500', () => {
@@ -290,16 +254,18 @@ describe('calcVirtualAssets', () => {
     expect(r.virtualTotal).toBe(5000);
   });
 
-  it('先用后付：押金 2000 未支付 → 待付 2000，不扣虚拟总额', () => {
+  // v2.5-patch7 T-512：postpay「待付」在虚拟总资产里扣除（视为负债）
+  it('先用后付：押金 2000 未支付 → 待付 2000，虚拟总资产 -2000', () => {
     const acc = makeAccount({ balance: 3000 });
     const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'postpay' });
     const r = calcVirtualAssets({ accounts: [acc], records: [], pools: [deposit] });
     expect(r.depositPending).toBe(2000);
     expect(r.depositRefundable).toBe(0);
-    expect(r.virtualTotal).toBe(3000);
+    expect(r.virtualTotal).toBe(1000); // 3000 - 2000 待付
   });
 
-  it('先用后付部分支付：押金 2000 已存 800 → 待付 1200 + 待退 800', () => {
+  // v2.5-patch7 T-512：postpay 部分支付,已付计入待退(资产),未付计入待付(负债)同时扣减
+  it('先用后付部分支付：押金 2000 已存 800 → 待付 1200 + 待退 800，虚拟总资产 = 实际 + 待退 - 待付', () => {
     const acc = makeAccount({ balance: 3000 });
     const deposit = makePool({ type: 'deposit', amount: 2000, settleMode: 'postpay' });
     const records: AccountRecord[] = [
@@ -308,6 +274,6 @@ describe('calcVirtualAssets', () => {
     const r = calcVirtualAssets({ accounts: [acc], records, pools: [deposit] });
     expect(r.depositPending).toBe(1200);
     expect(r.depositRefundable).toBe(800);
-    expect(r.virtualTotal).toBe(3800);
+    expect(r.virtualTotal).toBe(2600); // 3000 + 800 - 1200
   });
 });

@@ -159,19 +159,48 @@ export function CalendarPage({
   }, [isCurrentMonth, now, effectiveConfig, effectiveSalary, overrides]);
 
   // 工作日数
+  // v2.5-patch7 T-515：日均分母只算「已结束的工作日」
+  // - 过去月:整月工作日(全部已结束)
+  // - 当月:截至今日已完成的工作日。
+  //   「今日完成」= 今天是工作日 且 当前时间 >= endTime
+  //   否则今日排除(今日还在进行中,日均会被拉低)
+  //   今日若是休息日,本就不计入 workdaysCount
+  // - 未来月:0(无意义,不显示日均)
   const workdaysCount = useMemo(() => {
     let count = 0;
     const days = daysInMonthCalc(year, month);
-    for (let d = 1; d <= days; d++) {
+    const isPastMonth =
+      year < now.getFullYear() ||
+      (year === now.getFullYear() && month < now.getMonth());
+    // 当月今日是否已结束
+    let todayFinished = false;
+    if (isCurrentMonth) {
+      const [endH, endM] = effectiveConfig.endTime.split(':').map(Number);
+      const endMin = (Number.isFinite(endH) ? endH! : 18) * 60 + (Number.isFinite(endM) ? endM! : 0);
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      todayFinished = nowMin >= endMin;
+    }
+    // 计算「已结束的工作日」上限
+    let limit: number;
+    if (isPastMonth) {
+      limit = days;
+    } else if (isCurrentMonth) {
+      // 今日已完成 → 含今日;否则到昨天
+      limit = todayFinished ? now.getDate() : now.getDate() - 1;
+      if (limit < 0) limit = 0;
+    } else {
+      limit = 0;
+    }
+    for (let d = 1; d <= limit; d++) {
       if (isWorkday(new Date(year, month, d), effectiveConfig, overrides, HOLIDAYS)) count++;
     }
     return count;
-  }, [year, month, effectiveConfig, overrides]);
+  }, [year, month, isCurrentMonth, effectiveConfig, overrides, now]);
 
   // 快照日均
   // v2.5-patch3 T-474：用户期望"日均 = 当月已赚总数 ÷ 非休息日模式的天数"。
   // - 已有月度快照：保留快照的 dailyRate（用户锁定当天口径，不被后续配置影响）
-  // - 无快照：用 monthEarned / 本月工作日数（isWorkday 为 true 的天数）
+  // - 无快照：用 monthEarned / 本月已结束工作日（workdaysCount 已收紧到已完成日）
   const daily = useMemo(
     () => {
       if (snapshot) return snapshot.dailyRate;

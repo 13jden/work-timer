@@ -211,30 +211,11 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
           <div className={styles.catGridEmpty} />
         )}
 
-        {/* v2.5-patch5 N-485：方向 ± 大按钮（呼应记账模态） */}
-        <div className={styles.amountWrapNew}>
-          <button
-            type="button"
-            className={`${styles.amtSignBtn} ${direction === 'expense' ? styles.amtSignActive : ''} ${styles.amtSignMinus}`}
-            onClick={() => setDirection('expense')}
-            aria-label="支出方向"
-          >
-            −
-          </button>
-          <div className={styles.amtField}>
-            <span className={styles.amtFieldText}>
-              {direction === 'expense' ? '支出方向 · 逐日记支出' : '收入方向 · 逐日记收入'}
-            </span>
-          </div>
-          <button
-            type="button"
-            className={`${styles.amtSignBtn} ${direction === 'income' ? styles.amtSignActive : ''} ${styles.amtSignPlus}`}
-            onClick={() => setDirection('income')}
-            aria-label="收入方向"
-          >
-            +
-          </button>
-        </div>
+        {/* v2.5 TASK-046 T-504：移除「支出方向 · 逐日记支出」整行文字
+           方向仅通过顶部分类标题旁的小型 toggle 切换即可 */}
+        {type === 'equalize' && (
+          <div className={styles.catGridEmpty} />
+        )}
 
         <div className={styles.field}>
           <label className={styles.fieldLabel}>名称</label>

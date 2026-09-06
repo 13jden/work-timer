@@ -15,7 +15,7 @@
  */
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import type { AccountRecord, PoolConfig, RecordType } from '../../../lib/types';
+import type { AccountRecord, RecordType } from '../../../lib/types';
 import { IconByKey } from '../../IconByKey';
 import { AddCategoryModal } from '../AddCategoryModal';
 import styles from './AddRecordModal.module.css';
@@ -44,11 +44,11 @@ export function AddRecordModal({
   const accounts = useAccountStore((s) => s.accounts);
   const categories = useAccountStore((s) => s.categories);
   const pools = useAccountStore((s) => s.pools);
+  const records = useAccountStore((s) => s.records);
   const addRecord = useAccountStore((s) => s.addRecord);
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const deleteRecord = useAccountStore((s) => s.deleteRecord);
-  const claimToPool = useAccountStore((s) => s.claimToPool);
-  const unclaimToPool = useAccountStore((s) => s.unclaimToPool);
+  const deleteRecordCascade = useAccountStore((s) => s.deleteRecordCascade);
 
   // 表单状态
   const [amountStr, setAmountStr] = useState('');
@@ -57,9 +57,7 @@ export function AddRecordModal({
   const [note, setNote] = useState('');
   const [dateKey, setDateKey] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
-  /** v2.3：关联池（认领入口）；''=不关联 */
-  const [poolId, setPoolId] = useState<string>('');
-  /** v2.5-patch5 N-485：移除存钱目标关联 UI（goalId 不再写入） */
+  /** v2.5-patch8：池关联从 AddRecordModal 中移除,迁移到 Mine 页的池卡片直接编辑 */
   const [error, setError] = useState<string | null>(null);
   /** v2.5-patch6：内嵌打开「添加分类」 */
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -75,7 +73,6 @@ export function AddRecordModal({
       setNote(editingRecord.note ?? '');
       setDateKey(editingRecord.dateKey);
       setAccountId(editingRecord.accountId);
-      setPoolId(editingRecord.poolId ?? '');
     } else {
       setAmountStr('');
       setType(defaultType ?? 'expense');
@@ -83,7 +80,6 @@ export function AddRecordModal({
       setNote('');
       setDateKey(defaultDate ?? getTodayKey());
       setAccountId(accounts[0]?.id ?? '');
-      setPoolId('');
     }
     setError(null);
     const id = setTimeout(() => amountRef.current?.focus(), 350);
@@ -120,40 +116,12 @@ export function AddRecordModal({
     [categories, type],
   );
 
-  // v2.3+v2.4：可认领的池（同方向均摊池 + 任意存池型）
-  const claimablePools = useMemo(
-    () => pools.filter((p) => p.type === 'deposit' || (p.direction ?? 'expense') === type),
-    [pools, type],
-  );
-
-  // v2.5-fixbug (T-043)：编辑模式下若当前关联池已退休（不在 pools 里），
-  // 在下拉里追加一项「{poolName}（已退休）」，让用户能保留现状或解绑。
-  const editablePoolOptions = useMemo<PoolConfig[]>(() => {
-    if (!editingRecord?.poolId) return claimablePools;
-    if (claimablePools.find((p) => p.id === editingRecord.poolId)) return claimablePools;
-    const retiredName = editingRecord.poolName ?? '未知池';
-    return [
-        {
-          id: editingRecord.poolId,
-          name: `${retiredName}（已退休）`,
-          type: 'equalize',
-          amount: 0,
-          cycleMonths: 0,
-          createdAt: 0,
-        } as PoolConfig,
-        ...claimablePools,
-      ];
-  }, [claimablePools, editingRecord]);
-
-  // 类型切换时重置分类选择（及不再可认领的池）
+  // 类型切换时重置分类选择
   useEffect(() => {
     if (!categoryId || !filteredCategories.find((c) => c.id === categoryId)) {
       setCategoryId(filteredCategories[0]?.id ?? '');
     }
-    if (poolId && !editablePoolOptions.find((p) => p.id === poolId)) {
-      setPoolId('');
-    }
-  }, [type, filteredCategories, categoryId, editablePoolOptions, poolId]);
+  }, [type, filteredCategories, categoryId]);
 
   const handleSave = () => {
     const amount = parseAmountToNumber(amountStr);
@@ -171,8 +139,6 @@ export function AddRecordModal({
     const signedAmount = type === 'expense' ? -amount : amount;
 
     if (editingRecord) {
-      const oldPoolId = editingRecord.poolId;
-      const newPoolId = poolId || undefined; // '' → undefined 表示解绑
       updateRecord(editingRecord.id, {
         amount: signedAmount,
         type,
@@ -180,18 +146,10 @@ export function AddRecordModal({
         note: note.trim() || undefined,
         dateKey,
         accountId,
-        // v2.5-patch5 N-485：移除存钱目标字段，不再写入 goalId
+        // v2.5-patch8：池关联不在弹窗里改,保留原 poolId 不动
         // v2.4 T-410：弹窗内必然选中了真实分类，清除未分类状态
         isUncategorized: false,
       });
-      // v2.5-fixbug (T-043)：编辑模式下处理池关联变化
-      // 先解绑旧池（含 cycles[].paidAmount / transactions 回退），再认领到新池
-      if (oldPoolId && oldPoolId !== newPoolId) {
-        unclaimToPool(editingRecord.id);
-      }
-      if (newPoolId && newPoolId !== oldPoolId) {
-        claimToPool(editingRecord.id, newPoolId);
-      }
       onSaved?.(editingRecord.id);
     } else {
       const record = addRecord({
@@ -202,10 +160,6 @@ export function AddRecordModal({
         note: note.trim() || undefined,
         accountId,
       });
-      // v2.3：关联池认领（未匹配部分正常记账不挂池）
-      if (poolId) {
-        claimToPool(record.id, poolId);
-      }
       onSaved?.(record.id);
     }
     onClose();
@@ -213,6 +167,23 @@ export function AddRecordModal({
 
   const handleDelete = () => {
     if (!editingRecord) return;
+    // v2.5-patch8：claimed record 且所属池可能已退休(pools 中找不到) →
+    // 提示级联删除（同池所有 record 一起删）。
+    // 已退休的池 records 是孤儿数据,留下 daily virtual 会导致"账户已扣但均摊进度永远凑不齐"。
+    if (editingRecord.poolStatus === 'claimed' && editingRecord.poolId) {
+      const poolExists = pools.some((p) => p.id === editingRecord.poolId);
+      const poolRecords = records.filter((r) => r.poolId === editingRecord.poolId);
+      if (!poolExists || poolRecords.length > 1) {
+        const msg = !poolExists
+          ? `该记录所属池已退休。删除此入账记录会同时删除该池关联的全部 ${poolRecords.length} 条记录（含每日均摊记录和其他入账记录），是否继续？`
+          : `该池还有 ${poolRecords.length} 条关联记录。删除此入账记录会同时删除全部 ${poolRecords.length} 条记录，是否继续？`;
+        if (!window.confirm(msg)) return;
+        deleteRecordCascade(editingRecord.id);
+        onSaved?.(editingRecord.id);
+        onClose();
+        return;
+      }
+    }
     if (!window.confirm('确定删除这条记录？')) return;
     deleteRecord(editingRecord.id);
     onSaved?.(editingRecord.id);
@@ -358,7 +329,7 @@ export function AddRecordModal({
           </div>
         </div>
 
-        {/* ── 字段行：日期 / 池关联 / 账户（三列并排） ── */}
+        {/* ── 字段行：日期 / 账户（两列并排,池关联移到 Mine 页） ── */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldCell}>
             <div className={styles.fieldLabel}>日期</div>
@@ -369,23 +340,6 @@ export function AddRecordModal({
               onChange={(e) => setDateKey(e.target.value)}
               aria-label="日期"
             />
-          </div>
-          <span className={styles.fieldDivider} aria-hidden />
-          <div className={styles.fieldCell}>
-            <div className={styles.fieldLabel}>池</div>
-            <select
-              className={styles.fieldInput}
-              value={poolId}
-              onChange={(e) => setPoolId(e.target.value)}
-              aria-label="池关联"
-            >
-              <option value="">无</option>
-              {editablePoolOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}（{p.type === 'equalize' ? '均摊' : '存池'}）
-                </option>
-              ))}
-            </select>
           </div>
           <span className={styles.fieldDivider} aria-hidden />
           <div className={styles.fieldCell}>

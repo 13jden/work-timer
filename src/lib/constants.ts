@@ -73,12 +73,14 @@ export const DEFAULT_CONFIG: Config = {
       workSegment: { start: '09:00', end: '18:00' },
     },
   ],
-  // ── v2.5-patch4 N-481：time → accounting 联动默认关 ──
-  // 用户反馈「首页记账关联存款记录」功能取消。开关保留(store action / 类型不变)，
-  // 默认关闭；用户未来想恢复可在设置页手动开启。
+  // ── v2.5-patch7 T-514：time → accounting 联动默认开 ──
+  // 用户要求「工资池默认开启 time 联动」,新增 UI 开关在设置页「工资池联动」分组。
   // 关闭后:time 模式日历页已赚不再写入 accountStore;
   // 已存在的联动记录依然保留,删除 / 编辑需要手动处理。
-  salaryLinkageEnabled: false,
+  // 注意:该字段持久化在 configStore 里,旧数据迁移时该字段可能为 undefined,
+  // migrateToV3 已用 ?? DEFAULT_CONFIG.salaryLinkageEnabled 兜底;
+  // 真要关掉,用户走设置页 toggle(改动后才写到 localStorage)。
+  salaryLinkageEnabled: true,
 };
 
 // ── 静态数据 ────────────────────────────────────────────────
@@ -251,6 +253,7 @@ export const DEFAULT_INCOME_CATEGORIES = [
   { id: 'cat-bonus', name: '奖金', icon: 'gift', color: '#FBBF24' },
   { id: 'cat-investment', name: '投资', icon: 'trend', color: '#60A5FA' },
   { id: 'cat-parttime', name: '兼职', icon: 'handcoins', color: '#A78BFA' },
+  { id: 'cat-housing-fund', name: '公积金', icon: 'home', color: '#14B8A6' },
   { id: 'cat-gift', name: '红包', icon: 'envelope', color: '#F472B6' },
   { id: 'cat-refund', name: '退款', icon: 'coins', color: '#9CA3AF' },
   { id: 'cat-other-income', name: '其他', icon: 'sparkle', color: '#6B7280' },

@@ -33,7 +33,7 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
   const isUncat = categoryId === UNCATEGORIZED_ID;
   const category = categories.find((c) => c.id === categoryId);
   const name = isUncat ? '未分类' : (category?.name ?? '未知分类');
-  const icon = isUncat ? 'package' : (category?.icon ?? '❓');
+  const icon = isUncat ? 'no' : (category?.icon ?? '❓');
   const color = isUncat ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
 
   const allRecords = useMemo(() => {

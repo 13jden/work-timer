@@ -69,7 +69,7 @@
   }
 }
 
-/* 桌面端：拉伸占满 .slackingWrap 的高度 */
+/* v2.5 TASK-046 T-504：住房公积金快捷按钮已移除（用户改为固定默认文件夹） */
 @media (min-width: 1024px) {
   .card {
     min-height: 120px;

@@ -84,6 +84,8 @@ interface AccountStore {
   addRecord: (record: Omit<AccountRecord, 'id' | 'createdAt' | 'updatedAt'>) => AccountRecord;
   updateRecord: (id: string, patch: Partial<Omit<AccountRecord, 'id' | 'createdAt'>>) => void;
   deleteRecord: (id: string) => void;
+  /** v2.5-patch8：删除 claimed record 时级联删除同 pool 的所有 record */
+  deleteRecordCascade: (id: string) => { deletedCount: number };
 
   // ── Pool 操作 ──
   addPool: (pool: Omit<PoolConfig, 'id' | 'createdAt'>) => PoolConfig;
@@ -147,6 +149,23 @@ interface AccountStore {
     claimAmount: number,
     opts?: { dateKey?: string; note?: string; accountId?: string },
   ) => number;
+
+  /**
+   * v2.5 TASK-046 T-504：押金池「付款」/「取出」操作。
+   * - depositToPool：向池内存入一笔金额（in 交易），创建收入记录
+   * - withdrawFromPool：从池内取出一笔金额（out 交易），创建支出记录
+   *
+   * 入参:
+   * - poolId: 目标池 id
+   * - amount: 操作金额 (>0)
+   * - opts.accountId: 关联账户 id（默认 pool.targetAccountId ?? accounts[0].id）
+   * - opts.note: 备注（默认"押金存入"/"押金取出"）
+   *
+   * 仅对 type='deposit' 的池生效；其他类型返回 0。
+   * @returns 实际写入金额
+   */
+  depositToPool: (poolId: string, amount: number, opts?: { accountId?: string; note?: string }) => number;
+  withdrawFromPool: (poolId: string, amount: number, opts?: { accountId?: string; note?: string }) => number;
 
   // ── Savings 操作 ──
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => SavingsGoal;
@@ -281,10 +300,11 @@ function buildDefaultCategories(): Category[] {
 
 // ── 默认文件夹 ─────────────────────────────────────────────
 function buildDefaultFolders(categories: Category[]): Folder[] {
-  // v2.5 TASK-046 T-502：默认把前 6 个支出 + 「工资」收入分类也建为 folder，
-  // 让首页分类网格同时展示支出 + 工资联动记录入口。
+  // v2.5 TASK-046 T-502：默认把前 6 个支出 + 「工资 / 公积金」收入分类也建为 folder，
+  // 让首页分类网格同时展示支出 + 工资联动 + 公积金固定入口。
   const expenseCats = categories.filter((c) => c.type === 'expense').slice(0, 6);
   const salaryCat = categories.find((c) => c.id === 'cat-salary');
+  const housingFundCat = categories.find((c) => c.id === 'cat-housing-fund');
   const folders: Folder[] = expenseCats.map((cat, i) => ({
     id: `folder-${cat.id}`,
     categoryId: cat.id,
@@ -300,6 +320,17 @@ function buildDefaultFolders(categories: Category[]): Folder[] {
       name: salaryCat.name,
       icon: salaryCat.icon,
       color: salaryCat.color,
+      order: folders.length,
+    });
+  }
+  // v2.5 TASK-046 T-504：公积金作为固定默认收入文件夹（独立查看）
+  if (housingFundCat) {
+    folders.push({
+      id: `folder-${housingFundCat.id}`,
+      categoryId: housingFundCat.id,
+      name: housingFundCat.name,
+      icon: housingFundCat.icon,
+      color: housingFundCat.color,
       order: folders.length,
     });
   }
@@ -618,6 +649,34 @@ export const useAccountStore = create<AccountStore>()(
         }));
       },
 
+      // v2.5-patch8：级联删除 — 用于"池已退休"的入账记录
+      // 删一条 claimed record 时，连同池关联的所有 record 一起删（按 balance 影响回退账户）。
+      // 不动 cycles（池已退休时，cycles 可能已被 retireFinishedPools 清掉）。
+      deleteRecordCascade: (id) => {
+        const record = get().records.find((r) => r.id === id);
+        if (!record || !record.poolId) return { deletedCount: 0 };
+
+        const poolId = record.poolId;
+        const poolRecords = get().records.filter((r) => r.poolId === poolId);
+        if (poolRecords.length === 0) return { deletedCount: 0 };
+
+        let deletedCount = 0;
+        for (const r of poolRecords) {
+          if (!recordAffectsBalance(r)) continue;
+          get().updateAccount(r.accountId, {
+            balance: get().getAccountBalance(r.accountId) - r.amount,
+          });
+          if (r.goalId) {
+            applyGoalDelta(set, r.goalId, -r.amount);
+          }
+        }
+        deletedCount = poolRecords.length;
+        set((s) => ({
+          records: s.records.filter((r) => r.poolId !== poolId),
+        }));
+        return { deletedCount };
+      },
+
       // ── Pool ──
       addPool: (pool) => {
         const newPool: PoolConfig = {
@@ -879,91 +938,282 @@ export const useAccountStore = create<AccountStore>()(
         return amount;
       },
 
-      // v2.5-patch2 T-505：池级别部分到账（仅 income equalize 池）
-      // —— 工资池联动 record 是「已赚」,发工资时实际到账可能 < 已赚累计,
-      // 用 partial claim 创建独立 claimed income record 表示「实发 X 元」,
-      // 联动 records 全部保留(继续计入已赚)。
+      // v2.5 TASK-046 T-504：池级别部分到账/付款
+      // - income equalize 池：到账 → 创建 claimed income record
+      // - expense equalize 池：付款 → 创建 claimed expense record
+      // - 联动 income records 全部保留(继续计入已赚累计)
+      //
+      // 跨周期分摊：多 cycle 池(如 8.1-9.30)按各 cycle 剩余金额升序分配,
+      // 让「完成剩余付款/到账」一次性把整个池打到 100%,触发自动删除。
       partialClaimToPool: (poolId, claimAmount, opts) => {
         const state = get();
         const pool = state.pools.find((p) => p.id === poolId);
-        // 仅 income equalize 池支持(支出均摊 / 存池暂不开放)
+        // 仅 equalize 池支持(deposit 池暂不开放)
         if (!pool || pool.type !== 'equalize') return 0;
-        if ((pool.direction ?? 'expense') !== 'income') return 0;
+        const direction = pool.direction ?? 'expense';
+        // v2.5-patch8：放宽到 income + expense 两个方向（之前仅 income）
 
         const abs = Math.round(Math.abs(claimAmount) * 100) / 100;
         if (!(abs > 0)) return 0;
 
-        const cycle = state.cycles.find((c) => c.poolId === poolId);
-        if (!cycle) return 0;
+        const poolCycles = state.cycles.filter((c) => c.poolId === poolId);
+        if (poolCycles.length === 0) return 0;
 
-        // 计算「已赚累计」「已到账累计」,夹到 remaining
-        let earned = 0;
+        // v2.5-patch8：按方向分别计算「已赚/已消费」「已认领」
+        // income: earned = daily virtual income + confirmed income
+        //         alreadyClaimed = claimed income records
+        // expense: consumed = daily virtual expense + confirmed expense
+        //          alreadyClaimed = claimed expense records
+        let target = 0;
         let alreadyClaimed = 0;
+        const skipVirtual = !!pool.noDailyVirtual;
         for (const r of state.records) {
           if (r.poolId !== poolId) continue;
-          if (r.poolStatus === 'confirmed' && r.amount > 0) earned += r.amount;
-          else if (r.poolStatus === 'claimed' && r.amount > 0) alreadyClaimed += r.amount;
+          if (!r.poolStatus) {
+            if (!skipVirtual) target += Math.abs(r.amount);
+          } else if (r.poolStatus === 'confirmed') {
+            if (direction === 'income' && r.amount > 0) target += r.amount;
+            else if (direction === 'expense' && r.amount < 0) target += Math.abs(r.amount);
+          } else if (r.poolStatus === 'claimed') {
+            if (direction === 'income' && r.amount > 0) alreadyClaimed += r.amount;
+            else if (direction === 'expense' && r.amount < 0) alreadyClaimed += Math.abs(r.amount);
+          }
         }
-        const remaining = Math.max(0, Math.round((earned - alreadyClaimed) * 100) / 100);
-        const finalAmt = Math.min(abs, remaining);
+        // v2.5-patch9：用 cycle 维度计算总剩余（而非 daily records target）
+        // —— 这样「完成剩余付款」允许提前把整个周期剩余结清,不卡在已生成的 daily 范围。
+        const sortedCycles = [...poolCycles].sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+        const cyclesWithRemaining = sortedCycles
+          .map((c) => ({
+            cycle: c,
+            cycleRemaining: Math.max(0, Math.round((c.totalAmount - (c.paidAmount ?? 0)) * 100) / 100),
+          }))
+          .filter((it) => it.cycleRemaining > 1e-9);
+        const totalRemaining = Math.round(
+          cyclesWithRemaining.reduce((sum, it) => sum + it.cycleRemaining, 0) * 100,
+        ) / 100;
+        const finalAmt = Math.min(abs, totalRemaining);
         if (!(finalAmt > 0)) return 0;
 
         const now = Date.now();
         const dateKey = opts?.dateKey ?? getTodayKey();
         const accountId =
           opts?.accountId ?? pool.targetAccountId ?? state.accounts[0]?.id ?? '';
-        const cycleDateKeys = getCycleDateKeys(pool, cycle.monthKey);
+        const allDateKeys = sortedCycles.flatMap((c) => getCycleDateKeys(pool, c.monthKey));
+        const cycleStart = allDateKeys[0] ?? '';
+        const cycleEnd = allDateKeys[allDateKeys.length - 1] ?? '';
+        const poolTotalAmount = sortedCycles.reduce((sum, c) => sum + c.totalAmount, 0);
 
-        // 独立 claimed income record —— 不动联动 record,直接表达「实发 X 元」
-        // 用 addRecord 走标准路径 → 账户余额 += finalAmt(与真实到账语义一致)
+        let remain = finalAmt;
+        const updatedCycles: Array<{ id: string; delta: number; tx: PoolTransaction }> = [];
+        for (const it of cyclesWithRemaining) {
+          if (remain <= 1e-9) break;
+          const consume = Math.min(it.cycleRemaining, remain);
+          const consumeRounded = Math.round(consume * 100) / 100;
+          remain = Math.round((remain - consumeRounded) * 100) / 100;
+          updatedCycles.push({
+            id: it.cycle.id,
+            delta: consumeRounded,
+            tx: {
+              id: genId('ptx'),
+              cycleId: it.cycle.id,
+              dateKey,
+              amount: consumeRounded,
+              direction: 'in',
+              status: 'confirmed',
+              confirmedAt: now,
+            },
+          });
+        }
+
+        // v2.5-patch8：按方向创建对应类型的 claimed record
+        const isIncome = direction === 'income';
+        const recordAmount = isIncome ? finalAmt : -finalAmt;
+        const recordType = isIncome ? 'income' : 'expense';
         const claimedRecord = get().addRecord({
           dateKey,
-          amount: finalAmt,
-          type: 'income',
+          amount: recordAmount,
+          type: recordType,
           categoryId: pool.categoryId ?? 'cat-salary',
           accountId,
-          note: opts?.note ?? '部分到账',
+          note: opts?.note ?? (isIncome ? '部分到账' : '部分付款'),
           poolId,
           poolDirection: 'in',
           poolStatus: 'claimed',
           poolName: pool.name,
-          // v2.4 T-410：周期快照(池退休后仍可溯源)
-          poolCycleStart: cycleDateKeys[0],
-          poolCycleEnd: cycleDateKeys[cycleDateKeys.length - 1],
-          poolCycleTotal: cycle.totalAmount,
+          poolCycleStart: cycleStart,
+          poolCycleEnd: cycleEnd,
+          poolCycleTotal: poolTotalAmount,
         });
 
-        const tx: PoolTransaction = {
-          id: genId('ptx'),
-          cycleId: cycle.id,
-          dateKey,
-          recordId: claimedRecord.id,
-          amount: finalAmt,
-          direction: 'in',
-          status: 'confirmed',
-          confirmedAt: now,
-        };
+        // 回填 recordId 到每条 transaction
+        updatedCycles.forEach((u) => {
+          u.tx.recordId = claimedRecord.id;
+        });
 
-        const newPaid = Math.round((cycle.paidAmount + finalAmt) * 100) / 100;
         const todayKey = getTodayKey();
-
-        // 注:claimedRecord 已由 addRecord 自动写入 records / 更新账户余额;
-        // 这里只更新 cycle.transactions + paidAmount + 状态
+        const updatedCycleIds = new Set(updatedCycles.map((u) => u.id));
         set((s) => ({
           cycles: s.cycles.map((c) => {
-            if (c.id !== cycle.id) return c;
+            if (!updatedCycleIds.has(c.id)) return c;
+            const update = updatedCycles.find((u) => u.id === c.id)!;
+            const newPaid = Math.round(((c.paidAmount ?? 0) + update.delta) * 100) / 100;
             const updated = {
               ...c,
               paidAmount: newPaid,
-              transactions: [...c.transactions, tx],
+              transactions: [...c.transactions, update.tx],
             };
             return refreshEqualizeCycleStatus(updated, pool, todayKey);
           }),
         }));
 
-        // 满额且周期已过 → 池自动移除(记录保留)
+        // v2.5 TASK-046 T-504：触发自动删除检测
         get().retireFinishedPools();
         return finalAmt;
+      },
+
+      /**
+       * v2.5 TASK-046 T-504：押金池「存款」—— 向池内存入一笔金额。
+       * 创建一条 income record（+amount），并追加一条 in transaction 到池的 cycle。
+       * 与 partialClaimToPool 的区别：这是独立存款，不是关联已存在的记录。
+       */
+      depositToPool: (poolId, amount, opts) => {
+        const state = get();
+        const pool = state.pools.find((p) => p.id === poolId);
+        if (!pool || pool.type !== 'deposit') return 0;
+
+        const abs = Math.round(Math.abs(amount) * 100) / 100;
+        if (!(abs > 0)) return 0;
+
+        const now = Date.now();
+        const todayKey = getTodayKey();
+        const accountId = opts?.accountId ?? pool.targetAccountId ?? state.accounts[0]?.id ?? '';
+        const note = opts?.note ?? '押金存入';
+        const categoryId = state.categories.find((c) => c.type === 'income')?.id ?? '';
+
+        // 获取或创建 cycle
+        let cycle = state.cycles.find((c) => c.poolId === poolId);
+        if (!cycle) {
+          const draft = buildDepositCycleDraft(pool, getCurrentMonthKey());
+          cycle = materializeCycle(poolId, draft);
+          set((s) => ({ cycles: [...s.cycles, cycle!] }));
+        }
+        const targetCycle = cycle;
+
+        // 创建收入记录
+        const recordId = genId('rec');
+        const newRecord: AccountRecord = {
+          id: recordId,
+          dateKey: todayKey,
+          amount: abs,
+          type: 'income',
+          categoryId,
+          accountId,
+          note,
+          poolId,
+          poolDirection: 'in' as const,
+          poolStatus: 'confirmed' as const,
+          poolName: pool.name,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        // 创建 in transaction
+        const tx: PoolTransaction = {
+          id: genId('ptx'),
+          cycleId: targetCycle.id,
+          dateKey: todayKey,
+          recordId,
+          amount: abs,
+          direction: 'in',
+          status: 'confirmed',
+          confirmedAt: now,
+        };
+
+        set((s) => ({
+          cycles: s.cycles.map((c) =>
+            c.id === targetCycle.id ? { ...c, transactions: [...c.transactions, tx] } : c,
+          ),
+          records: [...s.records, newRecord],
+          accounts: accountId
+            ? s.accounts.map((a) =>
+                a.id === accountId ? { ...a, balance: Math.round((a.balance + abs) * 100) / 100 } : a,
+              )
+            : s.accounts,
+        }));
+
+        return abs;
+      },
+
+      /**
+       * v2.5 TASK-046 T-504：押金池「取出」—— 从池内取出一笔金额。
+       * 创建一条 expense record（-amount），并追加一条 out transaction 到池的 cycle。
+       */
+      withdrawFromPool: (poolId, amount, opts) => {
+        const state = get();
+        const pool = state.pools.find((p) => p.id === poolId);
+        if (!pool || pool.type !== 'deposit') return 0;
+
+        const abs = Math.round(Math.abs(amount) * 100) / 100;
+        if (!(abs > 0)) return 0;
+
+        const now = Date.now();
+        const todayKey = getTodayKey();
+        const accountId = opts?.accountId ?? pool.targetAccountId ?? state.accounts[0]?.id ?? '';
+        const note = opts?.note ?? '押金取出';
+        const categoryId = state.categories.find((c) => c.type === 'expense')?.id ?? '';
+
+        // 获取或创建 cycle
+        let cycle = state.cycles.find((c) => c.poolId === poolId);
+        if (!cycle) {
+          const draft = buildDepositCycleDraft(pool, getCurrentMonthKey());
+          cycle = materializeCycle(poolId, draft);
+          set((s) => ({ cycles: [...s.cycles, cycle!] }));
+        }
+        const targetCycle = cycle;
+
+        // 创建支出记录
+        const recordId = genId('rec');
+        const newRecord: AccountRecord = {
+          id: recordId,
+          dateKey: todayKey,
+          amount: -abs,
+          type: 'expense',
+          categoryId,
+          accountId,
+          note,
+          poolId,
+          poolDirection: 'out' as const,
+          poolStatus: 'confirmed' as const,
+          poolName: pool.name,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        // 创建 out transaction
+        const tx: PoolTransaction = {
+          id: genId('ptx'),
+          cycleId: targetCycle.id,
+          dateKey: todayKey,
+          recordId,
+          amount: abs,
+          direction: 'out',
+          status: 'confirmed',
+          confirmedAt: now,
+        };
+
+        set((s) => ({
+          cycles: s.cycles.map((c) =>
+            c.id === targetCycle.id ? { ...c, transactions: [...c.transactions, tx] } : c,
+          ),
+          records: [...s.records, newRecord],
+          accounts: accountId
+            ? s.accounts.map((a) =>
+                a.id === accountId ? { ...a, balance: Math.round((a.balance - abs) * 100) / 100 } : a,
+              )
+            : s.accounts,
+        }));
+
+        return abs;
       },
 
       unclaimToPool: (recordId) => {
@@ -1470,6 +1720,14 @@ export const useAccountStore = create<AccountStore>()(
         const folderCategoryIds = new Set(folders.map((f) => f.categoryId));
         const existingCatIds = new Set(categories.map((c) => c.id));
         const missing = new Set<string>();
+        // v2.5 TASK-046 T-504：固定默认收入分类（公积金）必须存在 folder，
+        // 即使没有 record 也补建（用户首次使用「公积金」分类文件夹时可见）
+        const defaultFolderCats = ['cat-housing-fund'];
+        for (const catId of defaultFolderCats) {
+          if (existingCatIds.has(catId) && !folderCategoryIds.has(catId)) {
+            missing.add(catId);
+          }
+        }
         for (const r of records) {
           if (!r.categoryId) continue;
           if (folderCategoryIds.has(r.categoryId)) continue;

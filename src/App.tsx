@@ -108,6 +108,11 @@ export function App() {
   // v2.5 T-412：两侧统一「向下滑」切换主题（toggle）
   // flick 判定(快 + 纵向位移大),避免与列表滚动冲突
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  // v2.5-patch10：只在页面滚到顶部时才允许下滑切换（防止页面中间误触）
+  const atTopRef = useRef(true);
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    atTopRef.current = e.currentTarget.scrollTop === 0;
+  }
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     if (t) touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
@@ -122,7 +127,8 @@ export function App() {
     const dt = Date.now() - s.t;
     // 只认向下滑（dy>0）；上滑不再切换，避免与滚动回弹混淆
     // v2.5 T-415：触发距离 70 → 120，手势更长更不易误触
-    if (dt > 350 || dy < 120 || Math.abs(dy) < 2 * Math.abs(dx)) return;
+    // v2.5-patch10：必须先滑到顶部才能触发（atTopRef.current）
+    if (dt > 350 || dy < 120 || Math.abs(dy) < 2 * Math.abs(dx) || !atTopRef.current) return;
     setMode(mode === 'timer' ? 'accounting' : 'timer');
   }
 
@@ -212,6 +218,7 @@ export function App() {
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onScroll={handleScroll}
     >
       {mobileOverlay === 'convert' ? (
         <ConvertPage onBack={() => setMobileOverlay(null)} />

@@ -1,4 +1,4 @@
-﻿/* PoolPage — 池管理页（v2.3 TASK-039 · 记账主题 MINE tab） */
+/* PoolPage — 池管理页（v2.3 TASK-039 · 记账主题 MINE tab） */
 
 /* v2.4：作为 MinePage 分区（原 .page 外壳移至 MinePage） */
 .section {
@@ -155,6 +155,184 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
+}
+
+/* v2.5 TASK-046 T-504：收入池「一键到账」入口按钮 */
+.quickClaimBtn {
+  margin-left: 8px;
+  border: 1px solid var(--accent-deep);
+  background: color-mix(in srgb, var(--accent-deep) 12%, transparent);
+  color: var(--accent-deep);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.quickClaimBtn:hover {
+  background: color-mix(in srgb, var(--accent-deep) 22%, transparent);
+}
+
+/* v2.5 TASK-046 T-504：收入池「一键到账」内嵌表单 */
+.quickClaimForm {
+  margin-top: -4px;
+  padding: 8px;
+  background: var(--paper-2);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickClaimRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quickClaimField {
+  display: flex;
+  align-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.quickClaimCurrency {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.quickClaimInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--ink);
+  font-family: inherit;
+  min-width: 0;
+  padding: 2px 4px;
+}
+
+.quickClaimInput:focus {
+  outline: none;
+}
+
+.quickClaimAccount {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--ink);
+  font-family: inherit;
+  max-width: 80px;
+}
+
+.quickClaimSubmit {
+  flex-shrink: 0;
+  border: none;
+  background: var(--accent-deep);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+/* v2.5 TASK-046 T-504：「完成剩余到账」一键认领全部剩余金额按钮 */
+.quickClaimAll {
+  border: 1px solid var(--accent-deep);
+  background: color-mix(in srgb, var(--accent-deep) 14%, transparent);
+  color: var(--accent-deep);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: background 150ms;
+}
+
+.quickClaimAll:hover {
+  background: color-mix(in srgb, var(--accent-deep) 24%, transparent);
+}
+
+/* v2.5 TASK-046 T-504：剩余到账提示 */
+.quickClaimHint {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+.quickClaimCancel {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+/* v2.5 TASK-046 T-504：存池操作按钮行 */
+.depositActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.depositPayBtn {
+  flex: 1;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-deep);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: background 150ms;
+}
+
+.depositPayBtn:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.depositWithdrawBtn {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 150ms;
+}
+
+.depositWithdrawBtn:hover {
+  background: var(--paper-2);
+  color: var(--ink);
 }
 
 .delBtn {

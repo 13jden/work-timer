@@ -48,9 +48,7 @@ export function AddCategoryModal({
   onCreated,
 }: AddCategoryModalProps) {
   const addCategory = useAccountStore((s) => s.addCategory);
-  const addFolder = useAccountStore((s) => s.addFolder);
   const categories = useAccountStore((s) => s.categories);
-  const folders = useAccountStore((s) => s.folders);
 
   const [name, setName] = useState('');
   const [type, setType] = useState<RecordType>(defaultType);
@@ -84,28 +82,26 @@ export function AddCategoryModal({
       setError('名称最多 8 个字');
       return;
     }
+    // v2.5 TASK-046 T-504：同名分类不允许（跨类型、与现有分类同名）
+    const duplicate = categories.find((c) => c.name === trimmed);
+    if (duplicate) {
+      setError('该分类名称已存在，请换一个名字');
+      return;
+    }
 
     // 计算新分类的 order（同类末尾）
     const maxOrder = categories
       .filter((c) => c.type === type)
       .reduce((m, c) => Math.max(m, c.order), -1);
 
+    // v2.5 TASK-046 T-504：addCategory 内部已同步创建 Folder，
+    // 不能再调 addFolder —— 否则会重复建出两个 folder。
     const newCategory = addCategory({
       name: trimmed,
       icon: iconKey,
       color,
       type,
       order: maxOrder + 1,
-    });
-
-    // 同时创建对应 Folder（仅支出/收入均创建）
-    const maxFolderOrder = folders.reduce((m, f) => Math.max(m, f.order), -1);
-    addFolder({
-      categoryId: newCategory.id,
-      name: trimmed,
-      icon: iconKey,
-      color,
-      order: maxFolderOrder + 1,
     });
 
     onCreated?.(newCategory.id);

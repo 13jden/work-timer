@@ -111,7 +111,7 @@
 }
 
 .amtIncome {
-  color: var(--accent-deep);
+  color: var(--income);
 }
 
 /* ── 本月小结 ─────────────────────────────── */
@@ -143,5 +143,5 @@
 }
 
 .footerIncome {
-  color: var(--accent-deep);
+  color: var(--income);
 }

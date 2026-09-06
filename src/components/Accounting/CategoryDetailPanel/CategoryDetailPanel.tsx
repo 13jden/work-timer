@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import { formatAmount, sumExpense, visibleRecords } from '../../../lib/accounting';
+import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
 import type { AccountRecord } from '../../../lib/types';
 import { X } from '@phosphor-icons/react';
 import { IconByKey } from '../../IconByKey';
@@ -65,29 +65,35 @@ export function CategoryDetailPanel({
     return Array.from(map, ([dateKey, items]) => ({
       dateKey,
       items,
-      total: sumExpense(items),
+      // v2.5-patch9：按分类类型选用求和函数 —— 收入分类按 sumIncome，支出按 sumExpense
+      total: category?.type === 'income' ? sumIncome(items) : sumExpense(items),
     }));
-  }, [monthRecords]);
+  }, [monthRecords, category?.type]);
 
   const stats = useMemo(() => {
-    const total = sumExpense(monthRecords);
+    // v2.5-patch9：根据分类类型挑选求和函数，避免收入分类在详情里看到 0
+    const total = category?.type === 'income' ? sumIncome(monthRecords) : sumExpense(monthRecords);
     const largest = [...monthRecords].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
     const uniqueDays = new Set(monthRecords.map((record) => record.dateKey)).size;
-    const allExpenses = visibleRecords(records).filter(
-      (record) => record.type === 'expense' && record.dateKey.startsWith(monthKey),
+    const allInRange = visibleRecords(records).filter(
+      (record) => record.type === category?.type && record.dateKey.startsWith(monthKey),
     );
-    const allExpenseTotal = sumExpense(allExpenses);
+    const allRangeTotal = category?.type === 'income' ? sumIncome(allInRange) : sumExpense(allInRange);
     return {
       total,
       count: monthRecords.length,
       maxSingle: largest ? Math.abs(largest.amount) : 0,
       maxSingleNote: largest?.note ?? '',
       dailyAvg: uniqueDays ? total / uniqueDays : 0,
-      percent: allExpenseTotal ? Math.round((total / allExpenseTotal) * 100) : 0,
+      percent: allRangeTotal ? Math.round((total / allRangeTotal) * 100) : 0,
     };
-  }, [monthRecords, records, monthKey]);
+  }, [monthRecords, records, monthKey, category?.type]);
 
   if (!categoryId || !category || !folder) return null;
+
+  // v2.5-patch9：根据分类 type 决定金额符号 —— 收入为「+」，支出为「-」
+  const isExpense = category.type === 'expense';
+  const sign = isExpense ? '-' : '+';
 
   const hasAnyRecord = records.some((record) => record.categoryId === category.id);
 
@@ -206,7 +212,7 @@ export function CategoryDetailPanel({
             >
               <div className={styles.dayHead}>
                 <span className={styles.dayDate}>{formatDayLabel(day.dateKey)}</span>
-                <span className={styles.dayTotal}>-¥{formatAmount(day.total)}</span>
+                <span className={styles.dayTotal}>{sign}¥{formatAmount(day.total)}</span>
               </div>
               <div className={styles.dayCards}>
                 {day.items.map((record) => {
@@ -230,7 +236,7 @@ export function CategoryDetailPanel({
                         <div className={styles.cardName}>{record.note?.trim() || category.name}</div>
                         <div className={styles.cardSub}>{formatTime(record.createdAt)} · {account?.name ?? '未知账户'}</div>
                       </div>
-                      <div className={styles.cardAmt}>-¥{formatAmount(Math.abs(record.amount))}</div>
+                      <div className={styles.cardAmt}>{sign}¥{formatAmount(Math.abs(record.amount))}</div>
                     </button>
                   );
                 })}

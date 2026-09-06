@@ -6,6 +6,59 @@
 
 ---
 
+## [v2.0-patch] · 2026-09-06 · 记账交互优化（TASK-046 T-504）
+
+### Fixed · 模式切换防误触
+
+- **下滑切换主题仅在页面顶部触发**：
+  - `src/App.tsx` — 新增 `atTopRef` 状态，跟踪页面是否已滑到顶部。下滑手势触发切换前增加 `!atTopRef.current` 判断，只有页面在顶部时向下滑动才会切换模式。
+  - 防止用户浏览列表中途误触切换，体验更可靠。
+
+### Fixed · 分类文件夹排序交互
+
+- **「调整顺序」按钮替换长按触发**：
+  - `src/pages/AccountingPage.tsx` — 分类文件夹行新增「调整顺序」按钮；点击后激活文件夹拖动排序（0 延迟，点击即拖），再次点击「完成排序」退出。
+  - 排序模式下文件夹点击不进入详情页，避免与拖动冲突；退出排序模式后恢复正常交互。
+  - `src/components/Accounting/CategoryFolderGrid/` — 接收 `folderReorderMode` prop，排序模式下显示专属提示文字。
+
+### Fixed · 池编辑去除方向切换行
+
+- **`src/components/Accounting/PoolPage/EditPoolModal.tsx`** — 编辑池弹窗移除「支出方向 / 收入方向 ±」大按钮行；编辑时方向不可切换，仅展示当前方向文字标签。
+
+### Fixed · 分类名称去重
+
+- **`src/components/Accounting/AddCategoryModal/AddCategoryModal.tsx`** — 新建分类时校验同名分类（区分大小写），同名则阻止保存并报错「该分类名称已存在，请换一个名字」。
+
+### Changed · 均摊池移除「已逾期」概念
+
+- **`src/components/Accounting/PoolPage/PoolSection.tsx`** — 均摊池状态仅保留「进行中 / 已确认」两档；移除 `STATUS_LABEL` / `STATUS_CLASS` 中的 `overdue` 条目及对应样式。
+- **自动删除逻辑保持不变**：满额且周期已过的均摊池由 `retireFinishedPools()` 自动移除（已认领金额 > 总金额 的场景通过池编辑校验拦截）。
+
+### Changed · 池编辑覆盖逻辑 + 认领超额拦截
+
+- **`src/components/Accounting/PoolPage/EditPoolModal.tsx`** — 保存时计算该池当前已认领总额，若超过新设定的总额则阻止保存并报错「已认领 ¥X，超过新总额 ¥Y，无法缩小」。
+- 结构性字段变化（金额 / 日期范围）由 `accountStore.updatePool` 自动触发 `rebuildPoolCycles`，已生成的均摊记录保留 `poolCycleStart/End` 快照可溯源。
+
+### Added · 首页池快速到账 + 公积金快捷按钮
+
+- **收入池「一键到账」**：
+  - `src/components/Accounting/PoolPage/PoolSection.tsx` — 收入型均摊池（direction=income）卡片增加「到账」按钮，点击展开内嵌表单：输入到账金额 + 选择归入账户 → 调用 `partialClaimToPool` 直接生成到账记录（不经过完整记账弹窗）。
+- **公积金快速记账**：
+  - `src/components/Accounting/QuickAddRow/QuickAddRow.tsx` — 快速记录区新增固定「🏦 公积金」快捷按钮，点击 prompt 填写金额后直接创建一笔支出分类记录（自动创建「公积金」分类，分类创建时填过 icon/color/type）。
+  - `src/components/Accounting/QuickAddRow/QuickAddRow.module.css` — 新增 `.housingFundBtn` / `.quickRowWrap` 样式。
+
+### 验证
+
+- `npm run typecheck` 通过
+- `npm run test` 通过：11 个测试文件，406 个测试
+- `npm run build` 通过
+
+---
+
+*最后更新：2026-09-05 · TASK-046 T-504 记账交互优化*
+
+---
+
 ## [v2.0] · 2026-09-02 · 独立记账页（Accounting MVP）
 
 > 配套文档：

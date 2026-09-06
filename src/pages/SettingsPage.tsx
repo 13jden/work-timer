@@ -71,6 +71,7 @@ export function SettingsPage() {
     monthlyGoal: number | null;
     customRestSchedule: Config['customRestSchedule'];
     workTemplates: WorkTemplate[];
+    salaryLinkageEnabled: boolean;
   };
 
   const [draft, setDraft] = useState<Draft>(() => ({
@@ -89,6 +90,9 @@ export function SettingsPage() {
     monthlyGoal,
     customRestSchedule: config.customRestSchedule ?? null,
     workTemplates: config.workTemplates ?? [],
+    // v2.5-patch7 T-514：time → accounting 联动开关草稿。
+    // 默认 true(用户希望默认开启,工资池会接收 time 模式每日已赚联动)。
+    salaryLinkageEnabled: config.salaryLinkageEnabled ?? true,
   }));
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -119,7 +123,9 @@ export function SettingsPage() {
     draft.lunchEnabled !== config.lunchEnabled ||
     draft.lunchStart !== config.lunchStart ||
     draft.lunchMinutes !== config.lunchMinutes ||
-    draft.monthlyGoal !== monthlyGoal
+    draft.monthlyGoal !== monthlyGoal ||
+    // v2.5-patch7 T-514：联动开关也纳入脏态判断
+    draft.salaryLinkageEnabled !== (config.salaryLinkageEnabled ?? true)
     || JSON.stringify(draft.customRestSchedule) !== JSON.stringify(config.customRestSchedule ?? null)
     || JSON.stringify(draft.workTemplates) !== JSON.stringify(config.workTemplates ?? [])
   ), [draft, config, currentTheme, monthlyGoal]);
@@ -249,6 +255,8 @@ export function SettingsPage() {
       lunchMinutes: draft.lunchMinutes,
       customRestSchedule: draft.customRestSchedule,
       workTemplates: draft.workTemplates,
+      // v2.5-patch7 T-514：time → accounting 联动开关
+      salaryLinkageEnabled: draft.salaryLinkageEnabled,
     });
     if (draft.theme !== currentTheme) {
       setTheme(draft.theme);
@@ -456,6 +464,33 @@ export function SettingsPage() {
 
         <div className={`${styles.advancedPanel} ${advancedOpen ? styles.advancedPanelOpen : ''}`}>
           <div className={styles.advancedPanelInner}>
+
+            {/* ── v2.5-patch7 T-514：time → accounting 联动开关 ──
+                工资池(time 模式每日已赚 → accounting 工资池)总开关;
+                默认开启,关闭后 time 模式日历页不再写入联动 record,
+                已存在的联动 record 保留。 */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <ClockCounterClockwise size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
+                工资池联动 · Salary Linkage
+              </div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>开启 time 联动</span>
+                  <button
+                    type="button"
+                    className={`${styles.toggle} ${draft.salaryLinkageEnabled ? styles.toggleOn : ''}`}
+                    onClick={() => setDraft((d) => ({ ...d, salaryLinkageEnabled: !d.salaryLinkageEnabled }))}
+                    aria-label="开启 time 联动"
+                    title="开启后,time 模式每日的「已赚」会作为 income record 同步到会计侧工资池"
+                  />
+                </div>
+                <div className={styles.historyEmpty} style={{ padding: '10px 16px' }}>
+                  time 模式每日已赚 → 自动写入会计侧「工资池」联动 record
+                  <span>关闭后,已存在的联动 record 保留,新记录不再写入</span>
+                </div>
+              </div>
+            </div>
 
             {/* ── 月度目标 · Monthly Goal(v1.3.4-patch2:桌面端侧栏底部进度条的目标编辑入口) ── */}
             <div className={styles.subGroup}>

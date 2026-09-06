@@ -125,6 +125,47 @@
   padding: 0 4px;
 }
 
+.sectionHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionHeaderMonth {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.reorderBtn {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 11px);
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 150ms;
+  white-space: nowrap;
+}
+
+.reorderBtn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.reorderBtnActive {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 
 .detailOverlay {
   position: fixed;

@@ -60,7 +60,7 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
             {dayRecords.map((record) => {
               const category = categories.find((c) => c.id === record.categoryId);
               const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
-              const icon = record.isUncategorized ? 'package' : (category?.icon ?? '❓');
+              const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
               const color = record.isUncategorized
                 ? 'var(--muted)'
                 : (category?.color ?? 'var(--muted)');
