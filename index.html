@@ -3,9 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0F0F0F">
+
+    <!-- PWA · theme-color 默认 paper 主题,运行时由 src/store/themeStore.ts 按 data-theme 动态改 content -->
+    <meta name="theme-color" content="#F5F2EA">
+    <meta name="color-scheme" content="light dark">
+
+    <!-- iOS PWA meta(必须保留,vite-plugin-pwa 不管 iOS) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="秒薪">
+
+    <!-- Android Chrome PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- PWA Manifest(由 vite-plugin-pwa 在 build 时自动注入,这里显式写兜底 dev 模式) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+
+    <!-- Favicon(浏览器 tab) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+
+    <!-- iOS 主屏图标(必须 180x180,放主屏时 iOS 自动圆角裁剪) -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
     <title>今日出售时间 · Salary Timer</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
