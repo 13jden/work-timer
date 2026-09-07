@@ -1088,7 +1088,11 @@ export const useAccountStore = create<AccountStore>()(
         const todayKey = getTodayKey();
         const accountId = opts?.accountId ?? pool.targetAccountId ?? state.accounts[0]?.id ?? '';
         const note = opts?.note ?? '押金存入';
-        const categoryId = state.categories.find((c) => c.type === 'income')?.id ?? '';
+        // v2.5-patch12:优先用池挂载分类;否则回退到该方向第一个分类
+        const categoryId =
+          pool.categoryId && state.categories.some((c) => c.id === pool.categoryId)
+            ? pool.categoryId
+            : state.categories.find((c) => c.type === 'income')?.id ?? '';
 
         // 获取或创建 cycle
         let cycle = state.cycles.find((c) => c.poolId === poolId);
