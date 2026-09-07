@@ -12,7 +12,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { PoolConfig, PoolCycle } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
-import { equalizeProgress } from '../../../lib/accounting/pool';
+import { equalizeProgress, eachMonthInRange, buildDateRangeKeys, getCycleDateKeys } from '../../../lib/accounting/pool';
 import { AddPoolModal } from './AddPoolModal';
 import { EditPoolModal } from './EditPoolModal';
 import { PencilSimple } from '@phosphor-icons/react';
@@ -99,8 +99,47 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
   const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
   const grandTotal = poolCycles.reduce((sum, c) => sum + c.totalAmount, 0);
   const status = poolOverallStatus(poolCycles);
-  const dailyAvg = poolCycles[0]?.dailyVirtual ?? 0;
   const isIncome = pool.direction === 'income';
+
+  // ── 按自然天数计算已过/未消耗 ─────────────────────────
+  // v2.5-patch13：支出/收入池统一按自然天数算，不按周期已付款
+  // totalDays = 池总天数（从 dateRange 或 各周期 dateKeys 推导）
+  // poolDaily = 总额 / 总天数（统一日均）
+  // elapsed = 从池开始日期到今天的天数（不跨过总天数）
+  // consumed = poolDaily × elapsed（已按时间流逝消耗/赚取的部分）
+  // remaining = grandTotal − consumed
+  const totalDays = (() => {
+    if (pool.cycleMode === 'daily' && pool.dateRange) {
+      const months = eachMonthInRange(pool.dateRange);
+      return months.reduce(
+        (sum, mk) => sum + buildDateRangeKeys(pool.dateRange!, mk).length,
+        0,
+      );
+    }
+    // 月模式：用 getCycleDateKeys 重建各周期的实际天数（考虑 dayRange 跨月）
+    return poolCycles.reduce((sum, c) => {
+      const keys = getCycleDateKeys(pool, c.monthKey);
+      return sum + keys.length;
+    }, 0);
+  })();
+  const poolDaily = totalDays > 0 ? Math.round((grandTotal / totalDays) * 100) / 100 : 0;
+  // firstDateKey = 池内第一天的 dateKey（用于计算 elapsed）
+  const firstDateKey = (() => {
+    if (pool.cycleMode === 'daily' && pool.dateRange) return pool.dateRange.start;
+    // 月模式：从第一个周期的实际 dateKeys 取第一天（正确处理 dayRange 跨月情况）
+    const firstKeys = poolCycles[0] ? getCycleDateKeys(pool, poolCycles[0].monthKey) : [];
+    return firstKeys[0] ?? '';
+  })();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const elapsed = (() => {
+    if (!firstDateKey || firstDateKey > todayKey) return 0;
+    const start = new Date(firstDateKey);
+    const end = new Date(todayKey);
+    return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  })();
+  const elapsedClamped = Math.min(Math.max(0, elapsed), totalDays);
+  const consumedByTime = Math.round(poolDaily * elapsedClamped * 100) / 100;
+  const remainingByTime = Math.round((grandTotal - consumedByTime) * 100) / 100;
 
   // v2.5 TASK-046 T-501：income equalize 池复用 calcVirtualAssets
   // 拆分出的 earnedUnarrived —— 与总资产卡同口径,避免「池卡片 vs 总资产卡」对不上。
@@ -135,15 +174,6 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
 
   const displayTotal = isIncomeEqualize ? incomeEarnedSum : grandTotal;
   const displayPaid = isIncomeEqualize ? claimedIncomeSum : paidTotal;
-  // v2.5 TASK-046 T-505：noDailyVirtual 池(联动工资)没有日均概念,
-  // 不显示日均数字；普通 income equalize 池仍按总额/天数推导。
-  const displayDailyAvg = isIncome
-    ? pool.noDailyVirtual
-      ? 0
-      : grandTotal > 0 && poolCycles[0]?.dayCount
-        ? grandTotal / poolCycles[0].dayCount
-        : 0
-    : dailyAvg;
   // v2.5 TASK-046 T-504：剩余到账金额（用于「完成剩余到账」按钮）
   const remaining = Math.max(0, displayTotal - displayPaid);
   // v2.5 TASK-046 T-504：是否已 100% 完成（用于提示「该池已经完成确认」）
@@ -221,9 +251,11 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
         </button>
       </div>
       <div className={styles.cardAmtRow}>
-        <span className={styles.cardAmt}>¥{formatAmount(displayTotal, true)}</span>
+        <span className={styles.cardAmt}>¥{formatAmount(grandTotal, true)}</span>
         <span className={styles.cardAmtLabel}>
-          {isIncome ? '已赚累计' : '/ 周期 · 日均'} ¥{formatAmount(displayDailyAvg)}
+          {isIncome
+            ? `日均 ¥${formatAmount(poolDaily)} · 已赚 ¥${formatAmount(consumedByTime)}`
+            : `日均 ¥${formatAmount(poolDaily)} · 已消耗 ¥${formatAmount(consumedByTime)} · 未消耗 ¥${formatAmount(Math.max(0, remainingByTime))}`}
         </span>
       </div>
       <div className={styles.progressTrack}>

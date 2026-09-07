@@ -107,6 +107,8 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
 .cardAmt {
@@ -119,6 +121,7 @@
 .cardAmtLabel {
   font-size: 11px;
   color: var(--muted);
+  flex-basis: 100%;
 }
 
 /* ── 进度条（均摊型） ─────────────────────── */
