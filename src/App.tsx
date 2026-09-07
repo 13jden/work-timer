@@ -29,6 +29,7 @@ import { FishPage } from './pages/FishPage';
 import { DesktopSidebar, type DesktopTabId } from './components/DesktopSidebar';
 import { DesktopRightPanel } from './components/DesktopRightPanel';
 import { SettingsDrawer } from './components/SettingsDrawer';
+import { SalaryLinkageSync } from './hooks/useSalaryLinkageSync';
 import './styles/tokens.css';
 import styles from './App.module.css';
 
@@ -105,6 +106,10 @@ export function App() {
     useAccountStore.getState().syncPoolCycles();
   }, []);
 
+  // v2.5-patch12：time → accounting 联动 全局同步。任何页面打开都跟
+  // CalendarPage 一样实时更新(使用真实当月,不受 calendarStore 浏览月份影响)。
+  // 用无 UI 组件挂载,避免每秒带动 App 整体重建。
+
   // v2.5 T-412：两侧统一「向下滑」切换主题（toggle）
   // flick 判定(快 + 纵向位移大),避免与列表滚动冲突
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -126,9 +131,9 @@ export function App() {
     const dx = t.clientX - s.x;
     const dt = Date.now() - s.t;
     // 只认向下滑（dy>0）；上滑不再切换，避免与滚动回弹混淆
-    // v2.5 T-415：触发距离 70 → 120，手势更长更不易误触
+    // v2.5 T-415：触发距离 70 → 150，手势更长更不易误触
     // v2.5-patch10：必须先滑到顶部才能触发（atTopRef.current）
-    if (dt > 350 || dy < 120 || Math.abs(dy) < 2 * Math.abs(dx) || !atTopRef.current) return;
+    if (dt > 350 || dy < 150 || Math.abs(dy) < 2 * Math.abs(dx) || !atTopRef.current) return;
     setMode(mode === 'timer' ? 'accounting' : 'timer');
   }
 
@@ -144,6 +149,7 @@ export function App() {
   if (isDesktop) {
     return (
       <div data-theme={theme} className={styles.scaleWrap}>
+        <SalaryLinkageSync />
         <div
           className={styles.scaleSpacer}
           style={{
@@ -220,6 +226,7 @@ export function App() {
       onTouchEnd={handleTouchEnd}
       onScroll={handleScroll}
     >
+      <SalaryLinkageSync />
       {mobileOverlay === 'convert' ? (
         <ConvertPage onBack={() => setMobileOverlay(null)} />
       ) : mobileOverlay === 'fish' ? (
