@@ -13,6 +13,7 @@ import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { useAccountStore } from '../store/accountStore';
+import { useSlackingStore } from '../store/slackingStore';
 import { HOLIDAYS } from '../lib/constants';
 import { daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
@@ -73,6 +74,7 @@ export function CalendarPage({
   const snapshots = useMonthlyStore((s) => s.snapshots);
   const monthlyRestModes = useCalendarStore((s) => s.monthlyRestModes);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
+  const slackingSessions = useSlackingStore((s) => s.sessions);
 
   // 页面可见时刷新 now(秒级)
   const [now, setNow] = useState(() => new Date());
@@ -619,6 +621,7 @@ export function CalendarPage({
         defaultSalary={snapshot?.salary ?? config.monthlySalary}
         overrides={overrides}
         holidays={HOLIDAYS}
+        sessions={slackingSessions}
         onClose={() => setGenOpen(false)}
         onConfirm={handleGenerate}
       />

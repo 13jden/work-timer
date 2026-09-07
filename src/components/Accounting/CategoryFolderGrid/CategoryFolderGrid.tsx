@@ -1,15 +1,17 @@
-/** @fileoverview CategoryFolderGrid — sortable category folders and record drop targets.
+/**
+ * CategoryFolderGrid — sortable category folders and record drop targets (v2.5-patch11)
  *
- * v2.5 TASK-046 T-504 改进：
- * - 排序模式：渲染 SortableContext + useSortable，点击即拖（0 延迟）
- * - 正常模式：渲染纯按钮 + useDroppable（仅承接未分类记录拖入），
- *   没有任何 sortable 监听器，不影响触屏页面上下滑动
+ * v2.5-patch11 重构：
+ * - 文件夹排序模式开关：默认 folders 用 PlainFolder（点击进入详情，不可拖动排序）
+ * - 启用 folderReorderMode 后用 SortableFolder（可拖动排序）
+ * - 文件夹始终作为未分类记录的 drop target（useDroppable 不再 disabled）
+ * - 未分类记录直接拖动归类（无需先点击「归类」启用模式） —— 由父级 AccountingPage 处理
+ * - 按支出/收入分组渲染（视觉分组），各组末尾"添加分类"按钮
  *
- * v2.5-patch8 改进：
- * - 4 列网格（更紧凑）
- * - 按支出/收入分组渲染，"添加分类"按钮在每组末尾（支出 / 收入 各自一个）
- * - 默认不挂 useDroppable（避免拦截页面滚动），
- *   只有归类模式 (recordDragMode) 时才挂 droppable
+ * 历史：
+ * - v2.5-patch8：引入 folderReorderMode / recordDragMode 模式切换
+ * - v2.5-patch9/patch10：多次重构未清理干净
+ * - v2.5-patch11：明确「只有排序需要按钮，归类直接拖」的边界
  */
 import { useDroppable } from '@dnd-kit/core';
 import {
@@ -29,10 +31,8 @@ export const FOLDER_DRAG_PREFIX = 'folder:';
 interface CategoryFolderGridProps {
   monthKey: string;
   activeId?: string | null;
-  /** v2.5 TASK-046 T-504：排序模式时文件夹点击不进入详情页 */
+  /** v2.5-patch11：排序模式开关 —— 启用后文件夹可拖动排序 */
   folderReorderMode?: boolean;
-  /** v2.5-patch8：归类模式时文件夹挂 droppable,默认不挂 */
-  recordDragMode?: boolean;
   onClickCategory?: (categoryId: string) => void;
   onAddCategory?: (type: 'expense' | 'income') => void;
 }
@@ -42,7 +42,6 @@ export function CategoryFolderGrid({
   monthKey,
   activeId,
   folderReorderMode = false,
-  recordDragMode = false,
   onClickCategory,
   onAddCategory,
 }: CategoryFolderGridProps) {
@@ -109,35 +108,11 @@ export function CategoryFolderGrid({
   const isRecordDragging = activeId?.startsWith('record:') ?? false;
 
   /**
-   * v2.5-patch9：folderReorderMode 时用单 SortableContext 渲染全部 folders,
-   * 支持跨"支出/收入"组拖动排序；
-   * folderReorderMode=false 时双组渲染（视觉分组 + 各组末尾"添加分类"按钮）。
+   * v2.5-patch11：分组渲染（支出/收入），各组末尾"添加分类"按钮。
+   * folderReorderMode=true 时所有 folders 用 SortableFolder（共享根级 SortableContext 跨组排序）；
+   * folderReorderMode=false 时用 PlainFolder（点击进入详情，不可拖动）。
+   * 两态下 useDroppable 都始终启用（始终可接收未分类记录拖入归类）。
    */
-  const renderAllFoldersGrid = () => {
-    const folderItems = visibleFolders.map((folder) => (
-      <FolderItem
-        key={folder.id}
-        folder={folder}
-        stat={statsByFolderId.get(folder.id)}
-        isRecordDragging={isRecordDragging}
-        sortable={folderReorderMode}
-        recordDragMode={recordDragMode}
-        onClickCategory={onClickCategory}
-      />
-    ));
-
-    return (
-      <SortableContext
-        items={visibleFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)}
-        strategy={rectSortingStrategy}
-      >
-        <div className={styles.grid}>
-          {folderItems}
-        </div>
-      </SortableContext>
-    );
-  };
-
   const renderSplitGroup = (
     folderList: typeof visibleFolders,
     typeLabel: 'expense' | 'income',
@@ -149,7 +124,6 @@ export function CategoryFolderGrid({
         stat={statsByFolderId.get(folder.id)}
         isRecordDragging={isRecordDragging}
         sortable={folderReorderMode}
-        recordDragMode={recordDragMode}
         onClickCategory={onClickCategory}
       />
     ));
@@ -192,57 +166,66 @@ export function CategoryFolderGrid({
     );
   }
 
-  return (
+  // 排序模式下才包 SortableContext；非排序模式 PlainFolder 不挂 useSortable，SortableContext 也没意义
+  // v2.5-patch12:支出/收入两个独立 SortableContext —— 只能在各自区域内排序,不能跨组交换
+  const folderContent = (
     <div className={styles.folderRoot}>
-      {folderReorderMode ? (
-        // v2.5-patch9：排序模式 → 单网格跨组排序
-        <div className={styles.folderSection}>
-          {renderAllFoldersGrid()}
-        </div>
-      ) : (
-        // 正常模式 → 双组（支出/收入）渲染，sectionLabel + 各组末尾"添加分类"
-        <>
-          <div className={styles.folderSection}>
-            <div className={styles.sectionLabel}>支出</div>
+      <div className={styles.folderSection}>
+        <div className={styles.sectionLabel}>支出</div>
+        {folderReorderMode ? (
+          <SortableContext
+            items={expenseFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)}
+            strategy={rectSortingStrategy}
+          >
             {renderSplitGroup(expenseFolders, 'expense')}
-          </div>
-          <div className={styles.folderSection}>
-            <div className={styles.sectionLabel}>收入</div>
+          </SortableContext>
+        ) : (
+          renderSplitGroup(expenseFolders, 'expense')
+        )}
+      </div>
+      <div className={styles.folderSection}>
+        <div className={styles.sectionLabel}>收入</div>
+        {folderReorderMode ? (
+          <SortableContext
+            items={incomeFolders.map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`)}
+            strategy={rectSortingStrategy}
+          >
             {renderSplitGroup(incomeFolders, 'income')}
-          </div>
-        </>
-      )}
-
+          </SortableContext>
+        ) : (
+          renderSplitGroup(incomeFolders, 'income')
+        )}
+      </div>
       <p className={styles.hint}>
         {folderReorderMode
-          ? '拖动文件夹即可排序，跨支出/收入组也可以拖 · 完成后点「完成排序」退出'
-          : recordDragMode
-            ? '未分类记录直接拖到下方文件夹即可归类 · 完成后点「完成归类」退出'
-            : '点击「归类」启用拖动 · 点击「调整顺序」可拖动排序'}
+          ? '拖动文件夹即可在各自区域内排序 · 完成后点「完成排序」退出'
+          : '点击文件夹查看详情 · 未分类记录直接拖到下方文件夹归类'}
       </p>
     </div>
   );
+
+  if (folderReorderMode) {
+    return folderContent;
+  }
+  return folderContent;
 }
 
 interface FolderItemProps {
   folder: { id: string; categoryId: string; name: string; icon: string; color: string };
   stat?: { total: number; todayCount: number };
   isRecordDragging: boolean;
-  /** true → 用 useSortable（0 延迟拖动）；false → 纯按钮 */
+  /** v2.5-patch11：true → SortableFolder（可拖动排序）；false → PlainFolder（点击进入详情） */
   sortable: boolean;
-  /** v2.5-patch8：归类模式才挂 useDroppable,默认不挂（避免拦截页面滚动） */
-  recordDragMode: boolean;
   onClickCategory?: (categoryId: string) => void;
 }
 
-function FolderItem({ folder, stat, isRecordDragging, sortable, recordDragMode, onClickCategory }: FolderItemProps) {
+function FolderItem({ folder, stat, isRecordDragging, sortable, onClickCategory }: FolderItemProps) {
   if (sortable) {
     return (
       <SortableFolder
         folder={folder}
         stat={stat}
         isRecordDragging={isRecordDragging}
-        recordDragMode={recordDragMode}
         onClickCategory={onClickCategory}
       />
     );
@@ -252,14 +235,13 @@ function FolderItem({ folder, stat, isRecordDragging, sortable, recordDragMode, 
       folder={folder}
       stat={stat}
       isRecordDragging={isRecordDragging}
-      recordDragMode={recordDragMode}
       onClickCategory={onClickCategory}
     />
   );
 }
 
 /** 排序模式下的文件夹：useSortable 提供拖动手柄（点击不进入详情） */
-function SortableFolder({ folder, stat, isRecordDragging, recordDragMode }: Omit<FolderItemProps, 'sortable'>) {
+function SortableFolder({ folder, stat, isRecordDragging }: Omit<FolderItemProps, 'sortable'>) {
   const sortableId = `${FOLDER_DRAG_PREFIX}${folder.id}`;
   const {
     attributes,
@@ -272,11 +254,10 @@ function SortableFolder({ folder, stat, isRecordDragging, recordDragMode }: Omit
     id: sortableId,
     data: { type: 'folder', folderId: folder.id },
   });
-  // v2.5-patch8：归类模式才挂 droppable
+  // v2.5-patch11:droppable 始终启用（始终接收未分类记录）
   const droppable = useDroppable({
     id: sortableId,
     data: { type: 'folder', folderId: folder.id, categoryId: folder.categoryId },
-    disabled: !recordDragMode,
   });
   const { setNodeRef: setDropRef, isOver } = droppable;
 
@@ -306,14 +287,13 @@ function SortableFolder({ folder, stat, isRecordDragging, recordDragMode }: Omit
   );
 }
 
-/** 正常模式下的文件夹：归类模式才挂 droppable */
-function PlainFolder({ folder, stat, isRecordDragging, recordDragMode, onClickCategory }: Omit<FolderItemProps, 'sortable'>) {
+/** 正常模式下的文件夹：点击进入详情，droppable 仍启用（接收未分类记录） */
+function PlainFolder({ folder, stat, isRecordDragging, onClickCategory }: Omit<FolderItemProps, 'sortable'>) {
   const sortableId = `${FOLDER_DRAG_PREFIX}${folder.id}`;
-  // v2.5-patch8：归类模式才挂 droppable —— 避免默认拦截页面滚动/点击
+  // v2.5-patch11:droppable 始终启用（始终接收未分类记录）
   const droppable = useDroppable({
     id: sortableId,
     data: { type: 'folder', folderId: folder.id, categoryId: folder.categoryId },
-    disabled: !recordDragMode,
   });
   const { setNodeRef, isOver } = droppable;
 

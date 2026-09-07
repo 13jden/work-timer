@@ -12,7 +12,6 @@ import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useThemeStore, THEME_LIST } from '../store/themeStore';
 import { useMonthlyStore } from '../store/monthlyStore';
-import { useMonthlyGoalStore } from '../store/monthlyGoalStore';
 import { HOLIDAYS, TEMPLATE_COLORS } from '../lib/constants';
 import { workdaysInMonth, daysInMonthCalc } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
@@ -29,7 +28,6 @@ import {
   Coffee,
   Palette,
   ClockCounterClockwise,
-  Target,
 } from '@phosphor-icons/react';
 import styles from './SettingsPage.module.css';
 
@@ -49,9 +47,6 @@ export function SettingsPage() {
   const setTheme = useThemeStore((s) => s.setTheme);
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const getAllSnapshots = useMonthlyStore((s) => s.getAllSnapshots);
-  // v1.3.4-patch2:桌面端侧栏月度收入进度的目标编辑入口
-  const monthlyGoal = useMonthlyGoalStore((s) => s.monthlyGoal);
-  const setMonthlyGoal = useMonthlyGoalStore((s) => s.setGoal);
   const now = useNow(60_000);
 
   // ── 本地草稿 ─────────────────────────────────────────────
@@ -68,7 +63,6 @@ export function SettingsPage() {
     lunchEnabled: boolean;
     lunchStart: string;
     lunchMinutes: number;
-    monthlyGoal: number | null;
     customRestSchedule: Config['customRestSchedule'];
     workTemplates: WorkTemplate[];
     salaryLinkageEnabled: boolean;
@@ -87,7 +81,6 @@ export function SettingsPage() {
     lunchEnabled: config.lunchEnabled,
     lunchStart: config.lunchStart,
     lunchMinutes: config.lunchMinutes,
-    monthlyGoal,
     customRestSchedule: config.customRestSchedule ?? null,
     workTemplates: config.workTemplates ?? [],
     // v2.5-patch7 T-514：time → accounting 联动开关草稿。
@@ -123,12 +116,11 @@ export function SettingsPage() {
     draft.lunchEnabled !== config.lunchEnabled ||
     draft.lunchStart !== config.lunchStart ||
     draft.lunchMinutes !== config.lunchMinutes ||
-    draft.monthlyGoal !== monthlyGoal ||
     // v2.5-patch7 T-514：联动开关也纳入脏态判断
     draft.salaryLinkageEnabled !== (config.salaryLinkageEnabled ?? true)
     || JSON.stringify(draft.customRestSchedule) !== JSON.stringify(config.customRestSchedule ?? null)
     || JSON.stringify(draft.workTemplates) !== JSON.stringify(config.workTemplates ?? [])
-  ), [draft, config, currentTheme, monthlyGoal]);
+  ), [draft, config, currentTheme]);
 
   // 当月工作日预览（使用 workTemplates）
   const firstTemplate = draft.workTemplates[0];
@@ -260,10 +252,6 @@ export function SettingsPage() {
     });
     if (draft.theme !== currentTheme) {
       setTheme(draft.theme);
-    }
-    // v1.3.4-patch2:月度目标独立 store,值 null 也允许(清除目标)
-    if (draft.monthlyGoal !== monthlyGoal) {
-      setMonthlyGoal(draft.monthlyGoal);
     }
     const el = document.querySelector<HTMLElement>('.' + styles.saveBtn);
     if (el) {
@@ -492,52 +480,7 @@ export function SettingsPage() {
               </div>
             </div>
 
-            {/* ── 月度目标 · Monthly Goal(v1.3.4-patch2:桌面端侧栏底部进度条的目标编辑入口) ── */}
-            <div className={styles.subGroup}>
-              <div className={styles.subGroupEyebrow}>
-                <Target size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
-                月度目标 · Monthly Goal
-              </div>
-              <div className={styles.card}>
-                <div className={styles.row}>
-                  <span className={styles.label}>月度目标</span>
-                  <span className={styles.value}>
-                    <span className={styles.prefix}>¥</span>
-                    <input
-                      type="number"
-                      className={styles.input}
-                      value={draft.monthlyGoal ?? ''}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        if (raw === '') {
-                          setDraft((d) => ({ ...d, monthlyGoal: null }));
-                        } else {
-                          const n = Number(raw);
-                          setDraft((d) => ({ ...d, monthlyGoal: Number.isFinite(n) && n >= 0 ? n : d.monthlyGoal }));
-                        }
-                      }}
-                      min={0}
-                      placeholder="未设置"
-                    />
-                    {draft.monthlyGoal !== null && (
-                      <button
-                        type="button"
-                        className={styles.clearBtn}
-                        onClick={() => setDraft((d) => ({ ...d, monthlyGoal: null }))}
-                        aria-label="清除目标"
-                        title="清除目标"
-                      >
-                        <X size={12} weight="bold" />
-                      </button>
-                    )}
-                  </span>
-                </div>
-                <div className={styles.historyEmpty} style={{ padding: '10px 16px' }}>
-                  桌面端侧栏底部显示「已赚 / 目标」进度条
-                  <span>未设置时显示引导 chip,点击即可回到此处设置</span>
-                </div>
-              </div>
-            </div>
+            {/* ── v2.5-patch8：移除「月度目标」section（account 模式已有 GoalsSection） ──
 
             {/* ── 工时模板 (WorkTemplate - v1.3.5) ── */}
             <div className={styles.subGroup}>

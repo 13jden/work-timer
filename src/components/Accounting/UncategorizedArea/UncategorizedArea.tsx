@@ -1,6 +1,8 @@
 /** @fileoverview UncategorizedArea — horizontally scrollable unclassified record cards.
- * v2.5-patch8：默认不启用拖动手势（点击即编辑），
- * 需在父级开启「拖动归类」模式后才能长按拖动 → 减少误触 + 允许触屏正常上下滑。
+ * v2.5-patch10：未分类记录始终可拖动归类（无需点击「归类」启用模式）。
+ * - useDraggable 始终启用（移除 disabled: !dragMode）
+ * - 与 SortableFolder 的 useDroppable 配合，直接拖到下方分类文件夹即可归类
+ * - 点击卡片仍可进入编辑（onClick 在 drag 未触发时正常触发）
  */
 import { useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
@@ -14,12 +16,12 @@ export const RECORD_DRAG_PREFIX = 'record:';
 interface UncategorizedAreaProps {
   onPickRecord?: (recordId: string) => void;
   onManageAll?: () => void;
-  /** v2.5-patch8：父级启用「拖动归类」模式后才允许长按拖动卡片 */
+  /** v2.5-patch10：保留参数以兼容旧 API，但实际不再用于控制可拖动状态 */
   dragMode?: boolean;
 }
 
 /** Renders unclassified records as dnd-kit draggable cards. */
-export function UncategorizedArea({ onPickRecord, onManageAll, dragMode = false }: UncategorizedAreaProps) {
+export function UncategorizedArea({ onPickRecord, onManageAll, dragMode: _dragMode = false }: UncategorizedAreaProps) {
   const records = useAccountStore((state) => state.records);
   const unclassifiedRecords = useMemo(
     // v2.3：虚拟池预扣不进未分类区
@@ -44,14 +46,11 @@ export function UncategorizedArea({ onPickRecord, onManageAll, dragMode = false 
             key={record.id}
             record={record}
             onPick={onPickRecord}
-            dragMode={dragMode}
           />
         ))}
       </div>
       <p className={styles.hint}>
-        {dragMode
-          ? '长按卡片拖到下方分类即可归类（再次点击「完成归类」退出）'
-          : '点击卡片编辑 · 长按前先点上方「归类」启用拖动'}
+        点击卡片编辑 · 直接拖动卡片到下方分类文件夹即可归类
       </p>
     </div>
   );
@@ -60,19 +59,19 @@ export function UncategorizedArea({ onPickRecord, onManageAll, dragMode = false 
 interface UncategorizedCardProps {
   record: AccountRecord;
   onPick?: (recordId: string) => void;
-  /** v2.5-patch8：仅在父级启用时挂拖动手势 */
-  dragMode: boolean;
 }
 
-function UncategorizedCard({ record, onPick, dragMode }: UncategorizedCardProps) {
-  // v2.5-patch8：未启用 dragMode 时仍挂 useDraggable（保持 ID 一致），
-  // 但用 disabled 让 dnd-kit 不接管手势监听 → 允许父级滚动 + 直接点击编辑
-  const draggable = useDraggable({
+/**
+ * v2.5-patch10：未分类记录始终可拖动（移除 dragMode 判断）。
+ * - useDraggable 始终挂载，distance activation 让 click 编辑与 drag 归类互不冲突：
+ *   · 无移动 → onClick 触发 → 编辑记录
+ *   · 移动 N 像素 → drag 触发 → 拖到分类文件夹归类
+ */
+function UncategorizedCard({ record, onPick }: UncategorizedCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${RECORD_DRAG_PREFIX}${record.id}`,
     data: { type: 'record', recordId: record.id },
-    disabled: !dragMode,
   });
-  const { attributes, listeners, setNodeRef, isDragging } = draggable;
 
   return (
     <button
@@ -81,8 +80,8 @@ function UncategorizedCard({ record, onPick, dragMode }: UncategorizedCardProps)
       className={`${styles.card} ${isDragging ? styles.cardDragging : ''}`}
       onClick={() => onPick?.(record.id)}
       aria-label={`未分类记录 ${record.note ?? ''} ${formatAmount(Math.abs(record.amount))}`}
-      {...(dragMode ? attributes : {})}
-      {...(dragMode ? listeners : {})}
+      {...attributes}
+      {...listeners}
     >
       <span className={styles.cardName}>{record.note || '未命名记录'}</span>
       <span className={`${styles.cardAmount} ${record.type === 'income' ? styles.income : styles.expense}`}>

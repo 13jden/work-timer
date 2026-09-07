@@ -114,10 +114,15 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
         setError('请输入押金金额');
         return;
       }
+      if (!categoryId) {
+        setError('请选择挂载分类');
+        return;
+      }
       updatePool(pool.id, {
         name: name.trim(),
         settleMode,
         amount: amountVal,
+        categoryId,
       });
       onClose();
       return;
@@ -187,22 +192,20 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
         {/* v2.5 TASK-046 T-504：编辑池方向锁定，不展示 ± 按钮行与方向文字
            catHeader 已显示当前方向 chip；此处直接进入表单 */}
 
-        {/* v2.5-patch5 N-485：顶部分类（仅均摊型按当前 direction 过滤；存池型无分类） */}
-        {pool.type === 'equalize' && (
-          <div className={styles.catGrid}>
-            {directionCategories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                className={`${styles.catChipPool} ${categoryId === cat.id ? styles.catChipActive : ''}`}
-                onClick={() => setCategoryId(cat.id)}
-                style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
-              >
-                <span className={styles.catName}>{cat.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* v2.5-patch5 N-485：顶部分类（均摊型 + 存池型都按当前 direction 过滤） */}
+        <div className={styles.catGrid}>
+          {directionCategories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              className={`${styles.catChipPool} ${categoryId === cat.id ? styles.catChipActive : ''}`}
+              onClick={() => setCategoryId(cat.id)}
+              style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
+            >
+              <span className={styles.catName}>{cat.name}</span>
+            </button>
+          ))}
+        </div>
 
         <div className={styles.field}>
           <label className={styles.fieldLabel}>名称</label>

@@ -218,9 +218,35 @@ export function AddRecordModal({
       if (!categoryId) { setError('请选择分类'); return; }
       return;
     }
-    handleSave();
-    // 关键：保留分类 / 日期 / 账户，仅清空金额，方便快速连记
+    // v2.5-patch7 (TASK-051)：直接保存 + 不退出弹窗，保留分类/日期/账户，
+    // 顺手清空金额 + 备注，方便连续快速记录同类支出。
+    // 不复用 handleSave() —— 因为 handleSave 末尾会调 onClose()。
+    const amount = parseAmountToNumber(amountStr);
+    const signedAmount = type === 'expense' ? -amount : amount;
+    if (editingRecord) {
+      updateRecord(editingRecord.id, {
+        amount: signedAmount,
+        type,
+        categoryId,
+        note: note.trim() || undefined,
+        dateKey,
+        accountId,
+        isUncategorized: false,
+      });
+      onSaved?.(editingRecord.id);
+    } else {
+      const record = addRecord({
+        dateKey,
+        amount: signedAmount,
+        type,
+        categoryId,
+        note: note.trim() || undefined,
+        accountId,
+      });
+      onSaved?.(record.id);
+    }
     setAmountStr('');
+    setNote('');
     setError(null);
   };
 
@@ -373,9 +399,10 @@ export function AddRecordModal({
 
         {/* ── 数字键盘：固定最底部（移动端输入控件） ── */}
         <div className={styles.numpad} role="group" aria-label="数字键盘">
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('7')}>7</button>
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('8')}>8</button>
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('9')}>9</button>
+          {/* v2.5-patch7 (TASK-051)：顺序调整为 1-2-3 / 4-5-6 / 7-8-9 / 0(常见计算器布局) */}
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('1')}>1</button>
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('2')}>2</button>
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('3')}>3</button>
           <button
             type="button"
             className={`${styles.numpadKey} ${styles.numpadKeyAction}`}
@@ -398,9 +425,9 @@ export function AddRecordModal({
             +
           </button>
 
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('1')}>1</button>
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('2')}>2</button>
-          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('3')}>3</button>
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('7')}>7</button>
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('8')}>8</button>
+          <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('9')}>9</button>
           <button
             type="button"
             className={`${styles.numpadKey} ${styles.numpadKeyAction}`}

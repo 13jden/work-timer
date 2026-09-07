@@ -275,9 +275,11 @@
   background: var(--paper-3);
   border: 1px solid var(--line-soft);
   border-radius: 14px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  /* v2.5-patch7 (TASK-051)：改用 sans 字体(图树)代替衬线 Cormorant Garamond,
+     数字更简单清晰,符合现代计算器 / 输入面板的视觉习惯 */
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 500;
   color: var(--ink);
   cursor: pointer;
   transition: background 120ms, transform 80ms;
@@ -285,6 +287,7 @@
   align-items: center;
   justify-content: center;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
 }
 
 .numpadKey:hover {
@@ -308,6 +311,7 @@
   font-size: 18px;
   font-weight: 500;
   color: var(--ink-muted);
+  font-family: var(--font-sans);
 }
 
 .numpadKeyAction:hover {

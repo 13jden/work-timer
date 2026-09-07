@@ -16,6 +16,7 @@ import { GenerateSheet } from '../GenerateSheet';
 import { useConfigStore } from '../../store/configStore';
 import { useCalendarStore } from '../../store/calendarStore';
 import { useMonthlyStore } from '../../store/monthlyStore';
+import { useSlackingStore } from '../../store/slackingStore';
 import { HOLIDAYS } from '../../lib/constants';
 import { dailySalary, isWorkday, batchGenerateEarned } from '../../lib/compute';
 import { formatDateKey } from '../../lib/time';
@@ -117,6 +118,7 @@ function CalendarRightContent({
   const setConfig = useConfigStore((s) => s.setConfig);
   const snapshots = useMonthlyStore((s) => s.snapshots);
   const createSnapshot = useMonthlyStore((s) => s.createSnapshot);
+  const slackingSessions = useSlackingStore((s) => s.sessions);
 
   const [genOpen, setGenOpen] = useState(false);
 
@@ -190,6 +192,7 @@ function CalendarRightContent({
             defaultSalary={snapshot?.salary ?? config.monthlySalary}
             overrides={overrides}
             holidays={HOLIDAYS}
+            sessions={slackingSessions}
             onClose={() => setGenOpen(false)}
             onConfirm={handleGenerate}
           />
@@ -241,6 +244,7 @@ function CalendarRightContent({
           defaultSalary={snapshot?.salary ?? config.monthlySalary}
           overrides={overrides}
           holidays={HOLIDAYS}
+          sessions={slackingSessions}
           onClose={() => setGenOpen(false)}
           onConfirm={handleGenerate}
         />

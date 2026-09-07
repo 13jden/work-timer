@@ -1,7 +1,14 @@
 /**
  * AccountingPage — standalone accounting workspace.
+ *
+ * v2.5-patch11：
+ * - 保留 folderReorderMode 排序模式（默认 folders 不可拖动，点击进入详情）
+ * - 移除 recordDragMode 模式（未分类记录始终可拖动归类，无需按钮启用）
+ * - 「调整顺序」按钮启动 folderReorderMode（点击即拖）
+ * - 「归类」按钮已删除（未分类记录直接拖到下方文件夹）
+ * - 单一传感器配置：pointer distance 5px / touch delay 0 + tolerance 8px
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -54,41 +61,19 @@ export function AccountingPage() {
   const [addCategoryDefaultType, setAddCategoryDefaultType] = useState<'expense' | 'income'>('expense');
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // v2.5 TASK-046 T-504：文件夹排序按钮启动后使用 0 延迟传感器（点击即拖）
+  // v2.5-patch11：保留 folderReorderMode（排序按钮启用）；移除 recordDragMode（归类直接拖）
   const [folderReorderMode, setFolderReorderMode] = useState(false);
-  // v2.5-patch8：「归类」模式 —— 默认关闭，开启后未分类记录直接拖（0 延迟）,
-  // 文件夹区域才挂 droppable 监听（避免拦截页面滚动）
-  const [recordDragMode, setRecordDragMode] = useState(false);
   // v2.2 TASK-038:分类记录页(全部记录)入口
   const [allRecordsCategoryId, setAllRecordsCategoryId] = useState<string | null>(null);
 
-  // 排序模式时退出详情编辑（避免与文件夹点击冲突）
-  useEffect(() => {
-    if (folderReorderMode) setDetailCategoryId(null);
-  }, [folderReorderMode]);
-
-  // v2.5-patch8：开启 recordDragMode 时自动退出 reorder / detail / 弹窗，互斥
-  useEffect(() => {
-    if (!recordDragMode) return;
-    setFolderReorderMode(false);
-    setDetailCategoryId(null);
-  }, [recordDragMode]);
-
-  // v2.5 T-414：触摸拖拽需长按 1 秒才激活（避免滚动/主题下滑手势误触发）
-  // v2.5-patch6 N-489：桌面 pointer 也走 1 秒长按才激活（防点击误拖）
-  // v2.5-patch7 T-511：tolerance 6 → 12
-  // v2.5 TASK-046 T-504：排序/归类模式都用 0 延迟传感器（点击即拖）
-  const normalSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 12 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 12 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-  const reorderSensors = useSensors(
+  // v2.5-patch11:单一传感器配置（pointer distance 5px / touch delay 0 + tolerance 8px）
+  // - 未分类记录始终可拖动（distance 5 启动）
+  // - folderReorderMode=true 时文件夹可拖动排序；否则文件夹不参与拖动
+  const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const sensors = (folderReorderMode || recordDragMode) ? reorderSensors : normalSensors;
 
   const monthKey = getCurrentMonthKey();
   const todayKey = getTodayKey();
@@ -182,29 +167,55 @@ export function AccountingPage() {
       if (folder && record && folderCategory && folderCategory.type === record.type) {
         state.updateRecord(recordId, { categoryId: folder.categoryId, isUncategorized: false });
       }
-      // v2.5-patch9：归类成功不自动退出归类模式，由用户手动点「完成归类」关闭
       return;
     }
 
+    // v2.5-patch11：文件夹排序要求 folderReorderMode 启用
+    // v2.5-patch12:分组排序 —— 支出/收入各自分组,不允许跨组交换
+    if (!folderReorderMode) return;
     if (!activeIdValue.startsWith(FOLDER_DRAG_PREFIX) || !overIdValue.startsWith(FOLDER_DRAG_PREFIX)) return;
     if (activeIdValue === overIdValue) return;
 
-    // v2.5 T-417：网格已含支出+收入全部文件夹，排序按全集处理
-    const folderIds = state.folders
-      .filter((folder) => state.categories.some((category) => category.id === folder.categoryId))
+    const activeFolderId = activeIdValue.slice(FOLDER_DRAG_PREFIX.length);
+    const overFolderId = overIdValue.slice(FOLDER_DRAG_PREFIX.length);
+    const activeFolder = state.folders.find((folder) => folder.id === activeFolderId);
+    const overFolder = state.folders.find((folder) => folder.id === overFolderId);
+    if (!activeFolder || !overFolder) return;
+    const activeCategory = state.categories.find((category) => category.id === activeFolder.categoryId);
+    const overCategory = state.categories.find((category) => category.id === overFolder.categoryId);
+    if (!activeCategory || !overCategory) return;
+    // 不同类型 → 拒绝(支出/收入各自独立排序,不允许跨组)
+    if (activeCategory.type !== overCategory.type) return;
+
+    // 同组内:按当前 order 排序,只在组内 arrayMove,不影响另一组
+    const groupType = activeCategory.type;
+    const groupFolderIds = state.folders
+      .filter((folder) => {
+        const cat = state.categories.find((category) => category.id === folder.categoryId);
+        return cat?.type === groupType;
+      })
       .sort((left, right) => left.order - right.order)
       .map((folder) => `${FOLDER_DRAG_PREFIX}${folder.id}`);
-    const oldIndex = folderIds.indexOf(activeIdValue);
-    const newIndex = folderIds.indexOf(overIdValue);
+    const oldIndex = groupFolderIds.indexOf(activeIdValue);
+    const newIndex = groupFolderIds.indexOf(overIdValue);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reorderedIds = arrayMove(folderIds, oldIndex, newIndex)
+    // 重排组内顺序
+    const reorderedGroupIds = arrayMove(groupFolderIds, oldIndex, newIndex)
       .map((id) => id.slice(FOLDER_DRAG_PREFIX.length));
+
+    // 其他组(folder)按当前 order 保持不变
+    const reorderedSet = new Set(reorderedGroupIds);
     const otherFolderIds = state.folders
-      .filter((folder) => !reorderedIds.includes(folder.id))
+      .filter((folder) => !reorderedSet.has(folder.id))
       .sort((left, right) => left.order - right.order)
       .map((folder) => folder.id);
-    state.reorderFolders([...reorderedIds, ...otherFolderIds]);
+
+    // 拼接:本组使用新顺序(连续),另一组保持原 order 连续;两组拼接 = 整体顺序
+    // —— reorderFolders 会按数组索引重写 order,所以拼接顺序就是最终顺序。
+    // 由于两组 order 互不相干,我们把本组排前面(因为 order 通常 0..n 连续),
+    // 另一组追加在后面;用户视觉上仍是「支出在上、收入在下」(由 Section UI 决定)
+    state.reorderFolders([...reorderedGroupIds, ...otherFolderIds]);
   };
 
   return (
@@ -242,10 +253,7 @@ export function AccountingPage() {
         </section>
 
         <section className={styles.extrasWrap} aria-label="未分类记录">
-          <UncategorizedArea
-            onPickRecord={handlePickRecord}
-            dragMode={recordDragMode}
-          />
+          <UncategorizedArea onPickRecord={handlePickRecord} />
         </section>
 
         <section className={styles.extrasWrap} aria-label="分类文件夹">
@@ -253,22 +261,13 @@ export function AccountingPage() {
             <span>分类文件夹</span>
             <span className={styles.sectionHeaderRight}>
               <span className={styles.sectionHeaderMonth}>{monthKey}</span>
-              {/* v2.5-patch8：归类开关（未分类记录拖到下方文件夹） */}
-              <button
-                type="button"
-                className={`${styles.reorderBtn} ${recordDragMode ? styles.reorderBtnActive : ''}`}
-                onClick={() => setRecordDragMode((v) => !v)}
-                aria-label={recordDragMode ? '退出归类模式' : '归类'}
-                title={recordDragMode ? '点击退出归类模式' : '点击启用拖动归类'}
-              >
-                {recordDragMode ? '完成归类' : '归类'}
-              </button>
+              {/* v2.5-patch11：保留「调整顺序」按钮，用户主动启用文件夹排序模式 */}
               <button
                 type="button"
                 className={`${styles.reorderBtn} ${folderReorderMode ? styles.reorderBtnActive : ''}`}
                 onClick={() => setFolderReorderMode((v) => !v)}
                 aria-label={folderReorderMode ? '退出排序模式' : '调整顺序'}
-                title={folderReorderMode ? '点击退出排序模式' : '点击启动拖动排序'}
+                title={folderReorderMode ? '点击退出排序模式' : '点击启用拖动排序'}
               >
                 {folderReorderMode ? '完成排序' : '调整顺序'}
               </button>
@@ -278,7 +277,6 @@ export function AccountingPage() {
             monthKey={monthKey}
             activeId={activeId}
             folderReorderMode={folderReorderMode}
-            recordDragMode={recordDragMode}
             onClickCategory={handleOpenCategory}
             onAddCategory={(type) => {
               setAddCategoryDefaultType(type);

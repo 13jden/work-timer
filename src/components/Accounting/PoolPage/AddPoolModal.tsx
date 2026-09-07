@@ -101,6 +101,10 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
         setError('请输入押金金额');
         return;
       }
+      if (!categoryId) {
+        setError('请选择挂载分类');
+        return;
+      }
       createPoolWithCycles({
         name: name.trim(),
         type,
@@ -108,6 +112,7 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
         cycleMonths: 1,
         direction,
         settleMode,
+        categoryId,
       });
       onClose();
       return;
@@ -300,6 +305,23 @@ export function AddPoolModal({ open, onClose }: AddPoolModalProps) {
                   <span className={styles.typeOptName}>先用后付</span>
                   <span className={styles.typeOptDesc}>尚未支付 · 红色待付</span>
                 </button>
+              </div>
+            </div>
+            {/* v2.5-patch12:存池押金需要选分类 —— 付款支出 / 到账收入都归入此分类 */}
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>挂载分类（付款 / 到账记录归入）</label>
+              <div className={styles.catGrid}>
+                {directionCategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`${styles.catChipPool} ${categoryId === cat.id ? styles.catChipActive : ''}`}
+                    onClick={() => setCategoryId(cat.id)}
+                    style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
+                  >
+                    <span className={styles.catName}>{cat.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
             <div className={styles.field}>
