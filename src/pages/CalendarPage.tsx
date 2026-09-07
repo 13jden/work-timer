@@ -12,7 +12,6 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../store/configStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
-import { useAccountStore } from '../store/accountStore';
 import { useSlackingStore } from '../store/slackingStore';
 import { HOLIDAYS } from '../lib/constants';
 import { daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
@@ -34,16 +33,6 @@ interface CalendarPageProps {
 
 const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-
-/**
- * 解析 'YYYY-MM-DD' 为 [y, mIdx(0-11), d]，非法返回 null。
- * 用本地时区（避免 'YYYY-MM-DD' 直接 Date 构造被当 UTC 导致月份偏移）。
- */
-function parseLocalDateKey(key: string): [number, number, number] | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2]) - 1, Number(m[3])];
-}
 
 /**
  * 智能格式化金额：
@@ -212,74 +201,6 @@ export function CalendarPage({
     [snapshot, monthEarned, workdaysCount],
   );
 
-  // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
-  // 计算「本月每个工作日的 earnedAmount」：
-  //  - 已生成的快照:读 overrides[key].earnedAmount(快照不受后续配置影响)
-  //  - 今日实时:todayEarned(每秒随 useNow 同步)
-  // 不在「打开页面」时整月同步；只在 monthlyEarnedMap 与上帧不一致时才
-  // 同步真正变化的 dateKey → upsertSalaryLinkageForDate。
-  // （「根据 record 加」语义：跟随 record / 时间 实时变化,不要打开延迟）
-  const monthlyEarnedMap = useMemo(() => {
-    const todayKey = formatDateKey(now);
-    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
-    const map: Record<string, number> = {};
-    const days = daysInMonthCalc(year, month);
-    for (let d = 1; d <= days; d++) {
-      const date = new Date(year, month, d);
-      const key = formatDateKey(date);
-      const isWork = isWorkday(date, effectiveConfig, overrides, HOLIDAYS);
-      if (!isWork) continue;
-      const ov = overrides[key];
-      if (ov?.earnedGenerated && ov.earnedAmount != null) {
-        map[key] = ov.earnedAmount;
-      } else if (isCurrentMonth && key === todayKey) {
-        const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
-        map[key] = todayEarned(now, cfg, overrides, HOLIDAYS);
-      }
-    }
-    return map;
-  }, [year, month, now, overrides, effectiveConfig, effectiveSalary]);
-
-  // 仅在 monthlyEarnedMap 真正变化的 dateKey 上调用 upsert,
-  // 首帧在「联动开启」时也要同步过去日期(仅跳过今日实时值,避免每秒回灌)。
-  // v2.5-patch2 T-506：批量取消也要联动 —— prev 里有但 monthlyEarnedMap
-  // 里消失的 key,视为 amount=0 调 upsert,触发联动 record 删除 / cycle 累减。
-  // v2.5-patch3 T-471：仅当「key 仍在当前月、仍是工作日」才回写 0。
-  // 修复"切月份 / 休息日 / 未来日"被误删的联动 record —— 那些场景下 key
-  // 本来就不会出现在 monthlyEarnedMap（map 只装工作日），属于预期行为，不删。
-  // 真正应回写的场景只有「该日仍属当月工作日，但用户取消已赚」。
-  const prevMonthlyRef = useRef<Record<string, number>>({});
-  useEffect(() => {
-    if (!config.salaryLinkageEnabled) {
-      prevMonthlyRef.current = monthlyEarnedMap;
-      return;
-    }
-    const upsert = useAccountStore.getState().upsertSalaryLinkageForDate;
-    const prev = prevMonthlyRef.current;
-    const isFirst = Object.keys(prev).length === 0;
-    const todayKey = formatDateKey(now);
-    // 新增 / 改值:首帧跳过今日(避免每秒刷新),过去日期照常同步
-    for (const [key, value] of Object.entries(monthlyEarnedMap)) {
-      if (isFirst && key === todayKey) continue;
-      if (prev[key] !== value) upsert(key, value);
-    }
-    // 取消 / 消失：把 prev 里存在但当前不在 map 中的 key 视为 0 —— 仅在
-    // 「key 仍属当月工作日」时执行,避免切月 / 休息日误删联动。
-    if (!isFirst) {
-      for (const key of Object.keys(prev)) {
-        if (key in monthlyEarnedMap) continue;
-        const parsed = parseLocalDateKey(key);
-        if (!parsed) continue;
-        const [y, m, d] = parsed;
-        if (y !== year || m !== month) continue; // 不是当前月：跨月查看，不删
-        const date = new Date(y, m, d);
-        if (!isWorkday(date, effectiveConfig, overrides, HOLIDAYS)) continue; // 非工作日预期
-        upsert(key, 0);
-      }
-    }
-    prevMonthlyRef.current = monthlyEarnedMap;
-  }, [monthlyEarnedMap, config.salaryLinkageEnabled, year, month, now, effectiveConfig, overrides]);
-
   // 网格
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = daysInMonthCalc(year, month);
@@ -342,7 +263,7 @@ export function CalendarPage({
       const [y, m, d] = key.split('-').map(Number);
       return new Date(y ?? year, (m ?? month + 1) - 1, d ?? 1);
     });
-    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel');
+    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel', slackingSessions);
     const keys = new Set([...Object.keys(overrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
     setSelectMode(null);
@@ -354,7 +275,9 @@ export function CalendarPage({
     if (!pickedDate) return;
     // 用 store 最新值（可能被 DaySheet 刚保存过，避免闭包旧值）
     const latestOverrides = useCalendarStore.getState().dayOverrides;
-    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false);
+    const latestSessions = useSlackingStore.getState().sessions;
+    // v2.5-patch13:必须传 sessions,否则保存的 earnedNetMinutes 不会扣除摸鱼时间
+    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false, latestSessions);
     const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
   }
@@ -384,8 +307,33 @@ export function CalendarPage({
   /**
    * GenerateSheet 确认:统一创建 / 覆盖快照。
    * 当前月时同步更新 config.monthlySalary,让设置页和其它计算页立刻生效。
+   *
+   * v2.5-patch14: GenerateSheet 也走 batchGenerateEarned,
+   * 让 FishPage 月统计图的「净工时」在「重新生成月度」时也正确扣减摸鱼,
+   * 而不是重置为「工时-0」(之前只有批量模式 / DaySheet 单日生成会写 earnedNetMinutes 快照)。
    */
   function handleGenerate(salary: number) {
+    // 1) 批量写入历史工作日的 earnedNetMinutes / earnedAmount / earnedGenerated 快照
+    //    (只对「过去」工作日;当前月今天及未来日跳过——还没过完不应锁定)
+    const latestOverrides = useCalendarStore.getState().dayOverrides;
+    const latestSessions = useSlackingStore.getState().sessions;
+    const todayKey = formatDateKey(now);
+    const pastWorkdayDates: Date[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const key = formatDateKey(date);
+      if (key >= todayKey) continue; // 未来 + 今天都跳过(还没过完不应锁定)
+      if (isWorkday(date, effectiveConfig, latestOverrides, HOLIDAYS)) {
+        pastWorkdayDates.push(date);
+      }
+    }
+    if (pastWorkdayDates.length > 0) {
+      const next = batchGenerateEarned(pastWorkdayDates, effectiveConfig, latestOverrides, HOLIDAYS, false, latestSessions);
+      const allKeys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
+      allKeys.forEach((key) => setDayOverride(key, next[key] ?? null));
+    }
+
+    // 2) 创建月度快照(沿用旧逻辑)
     createSnapshot(year, month, salary, effectiveConfig, overrides, HOLIDAYS);
     if (isCurrentMonth) {
       useConfigStore.setState({ monthlySalary: salary });

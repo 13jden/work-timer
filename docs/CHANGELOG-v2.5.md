@@ -205,6 +205,35 @@
 
 ---
 
+## [v2.5-patch14] · 2026-09-07 · GenerateSheet 重新生成月度时摸鱼净工时快照丢失 (TASK-051)
+
+基线 v2.5-patch6 (TASK-049)。用户验收 patch6 后发现:在已赚页面(CalendarPage)点击"生成记录"(GenerateSheet)时,
+如果某些日期之前已保存了摸鱼记录,重新点击生成月度后,月统计图(FishPage 月视图 / StatsPage 月视图)的"净工时"会重置,
+变成「工时 − 0」而不是「工时 − 摸鱼」。
+
+### 根因
+
+`handleGenerate`(GenerateSheet "确认生成"按钮)只调了 `monthlyStore.createSnapshot`(写入月度薪资快照),
+**没有调用 `batchGenerateEarned` 把 `earnedNetMinutes` 快照写入 dayOverrides**。
+
+导致:
+- 用户之前用批量模式(DaySheet 单日生成)保存摸鱼记录 → `earnedNetMinutes` 写入了 override
+- 之后用 GenerateSheet 重新生成月度 → `batchGenerateEarned` 没被调用 → `earnedNetMinutes` 丢失
+- FishPage 月统计图走 `computeRangeStats` → 读不到 `earnedNetMinutes` → 重新算 `computeNetHours`(摸鱼=0) → **净工时变大**
+
+### 修复
+
+`CalendarPage.handleGenerate` 在创建月度快照前,也对当月所有**过去工作日**调用 `batchGenerateEarned`,
+把 `earnedGenerated` / `earnedAmount` / `earnedNetMinutes` 快照写入 dayOverrides(只对过去日,今天及未来日跳过)。
+这样 FishPage 月统计图能读到正确扣减摸鱼的净工时快照。
+
+### 验证
+
+- typecheck 0 错误、410 单测全过
+- 本次无新增单测(`batchGenerateEarned` 已有充分覆盖;`handleGenerate` 属 React 组件内函数,需 browser 验收)
+
+---
+
 ## [v2.5-patch6] · 2026-09-05 · account 模式三主题适配 (TASK-049)
 
 基线 v2.5-patch5。用户反馈「account 模式切到 obsidian / gold 主题后,
