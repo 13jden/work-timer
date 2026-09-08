@@ -69,10 +69,37 @@ jobs:
             set -e
             cd ${{ secrets.SERVER_PROJECT_DIR }}
             test -f dist/index.html || { echo "DEPLOY FAILED: dist/index.html missing on server"; exit 1; }
+
+            echo "=== TLS 模式 ==="
+            SITE_DOMAIN_VAL=$(grep -Es '^SITE_DOMAIN=.+' .env | head -1 | cut -d= -f2- | tr -d ' \r' || true)
+            ACME_EMAIL_VAL=$(grep -Es '^ACME_EMAIL=.+' .env | head -1 | cut -d= -f2- | tr -d ' \r' || true)
+            if [ -n "$SITE_DOMAIN_VAL" ] && [ -z "$ACME_EMAIL_VAL" ]; then
+              echo "DEPLOY FAILED: .env 里设了 SITE_DOMAIN=$SITE_DOMAIN_VAL 但没有 ACME_EMAIL,会退化成给真域名签自签证书。补上 ACME_EMAIL 后重跑。"
+              exit 1
+            fi
+            if [ -n "$SITE_DOMAIN_VAL" ]; then
+              echo "域名模式(Let's Encrypt 自动签发+续签+80→443 跳转): $SITE_DOMAIN_VAL / ACME 邮箱 $ACME_EMAIL_VAL"
+              echo "前置条件:域名 A 记录已指向本机公网 IP,且安全组放行 80 和 443"
+            else
+              echo "自签模式: .env 里没有 SITE_DOMAIN,Caddy 使用内置 CA,浏览器会提示不安全,PWA/SW 不保证可用"
+              echo "切正式证书: 在项目目录建 .env 写入 SITE_DOMAIN + ACME_EMAIL(模板见 .env.example),放行 80+443 后重跑本工作流"
+            fi
+
             docker compose up -d --build --force-recreate
             docker image prune -f
             echo "=== Deploy done ==="
             docker compose ps
-            sleep 3
-            docker ps --filter name=work-timer --filter status=running | grep -q work-timer || { echo "DEPLOY FAILED: container not running"; exit 1; }
+            sleep 5
+
+            if ! docker ps --filter name=work-timer --filter status=running | grep -q work-timer; then
+              echo "DEPLOY FAILED: container not running,最后 40 行日志:"
+              docker compose logs --tail=40 work-timer || true
+              exit 1
+            fi
             echo "CONTAINER RUNNING OK"
+
+            # 证书签发情况(域名模式下看到 certificate obtained 才算真的签下来了)
+            docker compose logs --tail=60 work-timer | grep -iE "certificate|acme|error|panic" || true
+
+            # 本机 HTTPS 自检(非致命:域名模式下用 127.0.0.1 访问不匹配站点,失败属正常)
+            wget -q -O /dev/null --no-check-certificate https://127.0.0.1/ 2>/dev/null && echo "HTTPS 本机自检通过" || echo "HTTPS 本机自检未通过(域名模式下属正常,请用真实域名验证)"

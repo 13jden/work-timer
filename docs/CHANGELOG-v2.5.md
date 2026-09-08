@@ -281,4 +281,41 @@
 
 ---
 
+## [v2.5-infra1] · 2026-09-08 · 部署链路重构:CI 构建 dist + Caddy 自动 HTTPS
+
+### A · Deploy:构建产物改由 CI 提供,服务器不再跑 npm ci / vite build
+
+- 起因:Deploy 的 `Run entrypoint.sh` 卡满 **10m3s** 被 `appleboy/ssh-action` 默认 `command_timeout: 10m` 掐断,日志停在 `✓ 4737 modules transformed`。服务器上 `npm ci`(78s) + `vite build`(4737 modules + sourcemap + workbox precache)在 10 分钟窗口内跑不完
+- `deploy.yml` 拆成四步:下载 CI 的 `dist` artifact → SSH 同步仓库并 `rm -rf dist` 清残留 → `appleboy/scp-action@v1` 上传 dist → SSH `docker compose up -d --build --force-recreate`
+- 每步显式声明 `command_timeout`(5m / 10m / 10m),不再吃默认值;容器没起来时打印最后 40 行日志再退出;结尾追加证书日志过滤与本机 HTTPS 自检(非致命)
+- `Dockerfile` 删掉 `node:22-alpine` 构建阶段,服务器不再需要 node/npm,镜像构建从 ~10min 降到秒级;本地手动构建前需自己先 `npm run build`
+- `.dockerignore` 放行 `dist/`(原先被忽略,会让 `COPY dist` 直接失败),补 `dist-desktop/`
+
+### B · HTTPS:nginx → Caddy(自动签发 + 自动续签)
+
+- 动因:Service Worker 只在安全上下文注册,`http://IP:8080` 下 TASK-052 接入的 PWA 完全不生效
+- 新增 `Caddyfile`:站点根 `/srv`、`encode zstd gzip`、SPA `try_files {path} /index.html` + `file_server`
+- 缓存策略等价迁移自 `nginx.conf`,并修掉一个 PWA 致命 bug:原 `location ~* \.(js|css|...)$` 把 `/sw.js` 也套上 `expires 1y` + `immutable`,新版本永远推不到客户端。现改为 `/sw.js` 与 `/manifest.webmanifest` 走 `no-cache, no-store, must-revalidate`,带 hash 的静态资源才 1y immutable(用 `not path /sw.js` 排除)
+- 站点地址与证书模式用占位符默认值:`{$SITE_ADDRESS::443}` / `{$TLS_ARG:internal}`,变量未设置**或为空**都正确回落到自签模式
+- `docker-compose.yml`:端口 `8080:80` → `80:80` + `443:443`;新增 `caddy_data:/data`、`caddy_config:/config` 两个命名卷持久化证书(`--force-recreate` 不丢证书,避免反复申请撞 Let's Encrypt 每域名每周 50 张限制);healthcheck 改探容器内 admin API `http://localhost:2019/config/`,不依赖域名与证书模式
+- 新增 `.env.example`:域名模式(`SITE_DOMAIN` + `ACME_EMAIL`)与自签模式两套写法及前置条件;`.gitignore` 忽略 `.env` / `.env.local`;`.dockerignore` 忽略 `.env*` 与已停用的 `nginx.conf`
+- `nginx.conf` 标注停用但保留,作为回退参考
+- deploy 脚本硬校验:`.env` 设了 `SITE_DOMAIN` 却没 `ACME_EMAIL` 直接失败退出(否则 Caddy 会给真域名签自签证书)
+
+### 待办 / 前置条件
+
+- 云安全组需放行 **80 与 443**(原先只开 8080,该映射已删除);域名模式下 80 不开则 ACME HTTP-01 验证过不去
+- 要正式证书:域名 A 记录解析到服务器公网 IP + 在服务器项目目录建 `.env`;国内服务器还需备案
+- 自签模式浏览器会提示不安全,SW / PWA 安装不保证可用
+- 2026-09-08 11:24 那次 Deploy 的 SSH 握手被 reset(`connection reset by peer`)尚未定位,需先恢复服务器连通性
+
+### 验证
+
+- `deploy.yml` / `docker-compose.yml` 经 js-yaml 解析通过;compose 结构核对:ports `80:80`+`443:443`、两个命名卷、healthcheck 指向 2019
+- Caddyfile 用 caddy v2.11.4 实跑 `validate` + `adapt`:自签模式与域名模式均 `Valid configuration`;env 未设置 / 设为空字符串都正确回落 `:443` + `internal`;域名模式 TLS automation 为 ACME(Let's Encrypt 主 + ZeroSSL 兜底)且 `automatic_https` 默认开启 80→443
+- 编译后路由顺序 `vars(root)` → `headers(/sw.js,/manifest.webmanifest)` → `headers(html)` → `headers(静态资源, not /sw.js)` → `rewrite(try_files)` → `encode+file_server`;`header` 先于 `rewrite` 执行,匹配的是原始请求路径,符合预期
+- 本机无 Docker,镜像构建与真实证书签发待首次 Deploy 实跑验证
+
+---
+
 *创建于 2026-09-04*

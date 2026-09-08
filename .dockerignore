@@ -39,6 +39,14 @@ Dockerfile
 *.md
 docs/
 
+# 环境变量(域名/邮箱由 compose 在运行时注入容器,不要烤进镜像)
+.env
+.env.*
+!.env.example
+
+# 已由 Caddyfile 取代,不再进镜像
+nginx.conf
+
 # 临时文件
 .tmp/
 *.log
