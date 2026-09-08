@@ -13,7 +13,16 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to server via SSH
+      # 1. 取 CI 作业已经构建好的 dist(服务器上不再跑 npm ci / vite build)
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # 2. 服务器仓库同步到最新 main,并清掉上一次的 dist 残留
+      #    (dist/ 在 .gitignore 里,git reset 不会动它,必须显式清理,否则旧 hash 资源会混进镜像和 SW precache)
+      - name: Sync server repo
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -21,6 +30,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 5m
           script_stop: true
           script: |
             set -e
@@ -28,6 +38,37 @@ jobs:
             git fetch origin main
             git checkout main
             git reset --hard origin/main
+            rm -rf dist
+            echo "=== repo synced to $(git rev-parse --short HEAD) ==="
+
+      # 3. 上传 dist 到服务器项目目录(落地为 <SERVER_PROJECT_DIR>/dist)
+      - name: Upload dist to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 10m
+          source: "dist"
+          target: "${{ secrets.SERVER_PROJECT_DIR }}"
+
+      # 4. 构建镜像(只 COPY dist,秒级)并重建容器
+      - name: Build image and recreate container
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ secrets.SERVER_PROJECT_DIR }}
+            test -f dist/index.html || { echo "DEPLOY FAILED: dist/index.html missing on server"; exit 1; }
             docker compose up -d --build --force-recreate
             docker image prune -f
             echo "=== Deploy done ==="

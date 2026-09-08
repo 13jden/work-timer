@@ -5,8 +5,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # 构建产物
-dist/
+# 注意:dist/ 不能被忽略!Dockerfile 直接 COPY CI 构建好的 dist
 dist-android/
+dist-desktop/
 
 # Tauri
 src-tauri/target/
