@@ -1,20 +1,23 @@
 # Salary Timer · Caddy 站点配置
 #
-# 站点地址与证书模式由 docker-compose.yml 注入的环境变量决定(Caddyfile 解析时做文本替换):
+# 站点地址:默认 persecond.work,可用服务器项目目录 .env 里的 SITE_DOMAIN 覆盖
+# (Caddyfile 占位符 {$VAR:default}:变量未设置或为空时取默认值)
 #
-#   有域名(推荐) SITE_ADDRESS=salary.example.com   TLS_ARG=you@example.com
-#                → Caddy 自动向 Let's Encrypt 申请证书并自动续签,自动 80→443 跳转
-#                → 需要服务器 80 和 443 都能从公网访问(云安全组要放行)
+# 证书:Let's Encrypt 自动签发 + 自动续签,验证方式只用 TLS-ALPN-01(见下方 disable_http_challenge)。
+# 前提:阿里云安全组放行 443;域名 A 记录指向本机(已确认 persecond.work -> 47.104.228.220)。
 #
-#   无域名(纯 IP) SITE_ADDRESS=:443                TLS_ARG=internal
-#                → 用 Caddy 内置 CA 自签证书,浏览器会警告需手动信任
-#                → 注意:证书不受信任时 Service Worker / PWA 安装不保证可用,正式用请配域名
+# 为什么不用 HTTP-01:宿主机 80 端口被阿里云建站产品自带的 OpenResty 占着(它返回 301 跳 https),
+# ACME 的 HTTP-01 验证走不通;TLS-ALPN-01 在 443 上完成验证,与 80 端口无关。
+# 副作用:80 上那个 OpenResty 的 301 正好把 http 访问转到我们的 https,无需我们自己监听 80。
 #
-# 两个变量都带默认值(:443 / internal),所以不配 .env 也能直接起来。
-# 占位符语法 {$VAR:default} —— 变量未设置或为空时取默认值。
+# 想临时用自签证书(比如域名还没解析好):把下面 tls 块整段替换成 `tls internal` 即可。
 
-{$SITE_ADDRESS::443} {
-	tls {$TLS_ARG:internal}
+{$SITE_ADDRESS:persecond.work} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
 
 	root * /srv
 	encode zstd gzip

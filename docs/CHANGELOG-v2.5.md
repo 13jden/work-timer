@@ -318,4 +318,31 @@
 
 ---
 
+## [v2.5-infra2] · 2026-09-08 · HTTPS 跑通:persecond.work + TLS-ALPN-01,与宿主机 OpenResty 共存
+
+### 背景与排查
+
+- 部署后访问 `http://persecond.work` 出现阿里云建站产品(云·速成美站类)的初始化向导,响应头 `Server: openresty`:该产品自带 OpenResty 抢占宿主机 **80 端口**并 301 到 https,导致我们容器 `docker compose up` 因端口冲突起不来;443 无人监听,站点整体不可达
+- 实测:persecond.work A 记录 → `47.104.228.220`(正确);80 被 OpenResty 占用;443 / 8080 公网不通;22 正常;`www.` / `app.` 子域无解析
+
+### 方案:不抢 80,只占 443
+
+- `docker-compose.yml` ports 从 `80:80 + 443:443` 改为**只发布 `443:443`**,避开端口冲突;OpenResty 的 301 顺带替我们完成 http→https 跳转
+- `Caddyfile` 证书验证改为 **TLS-ALPN-01**(`tls { issuer acme { disable_http_challenge } }`),不再依赖 80 端口;站点地址默认 `persecond.work`,可用服务器 `.env` 的 `SITE_DOMAIN` 覆盖
+- 移除自签双模式与 ACME 邮箱变量(已有备案域名,不再需要);`.env.example` 简化为只保留 `SITE_DOMAIN` 与前置条件说明
+- `deploy.yml`:部署前打印站点域名、DNS 解析结果、与本机公网 IP 的一致性告警;部署后新增 **runner 侧公网验证步骤**(最多 15 次 × 10s 重试),失败时按「安全组 443 → DNS → acme 日志」顺序给排查提示,成功则打印首页响应头、`/sw.js` 缓存头与 http 跳转
+
+### 前置条件
+
+- 阿里云安全组放行 **443**(TLS-ALPN-01 验证与浏览器访问都走它);80 保持被 OpenResty 占用即可
+- 将来退订阿里云建站产品后,可把 ports 加回 `80:80` 让 Caddy 自己做跳转(见 `.env.example` 注释)
+
+### 验证
+
+- caddy v2.11.4 `validate` 通过;`adapt` 输出确认 `subjects: ["persecond.work"]`、`issuers: [{module: acme, challenges: {http: {disabled: true}}}]`、`listen: [":443"]`
+- `deploy.yml` / `docker-compose.yml` 经 js-yaml 解析通过
+- 真实签发与公网可达性由新增的 Verify 步骤在 Deploy 中自动判定
+
+---
+
 *创建于 2026-09-04*

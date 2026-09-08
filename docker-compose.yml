@@ -4,33 +4,10 @@ services:
     image: work-timer:latest
     container_name: work-timer
     ports:
-      # 80:有域名时 Caddy 用它做 ACME HTTP-01 验证并自动 301 跳到 443
-      # 443:HTTPS 主入口
-      # 云安全组 / 防火墙必须同时放行 80 和 443,否则证书签不下来
-      - "80:80"
-      - "443:443"
-    environment:
-      # 在服务器项目目录放一个 .env(参考 .env.example)即可切到正式域名:
-      #   SITE_DOMAIN=salary.example.com     ← 只写裸域名,不要带 https:// 和端口
-      #   ACME_EMAIL=you@example.com         ← Let's Encrypt 到期通知邮箱,设了域名就必须一起设
-      # 两个变量留空/不设时,Caddyfile 里的默认值生效(:443 + internal 自签)
-      SITE_ADDRESS: "${SITE_DOMAIN:-}"
-      TLS_ARG: "${ACME_EMAIL:-}"
-    volumes:
-      # 证书与 Caddy 运行配置必须持久化:
-      # 每次部署都是 --force-recreate,没有这两个卷就会反复重新申请证书,
-      # 撞 Let's Encrypt 速率限制(每域名每周 50 张)后会被拒签
-      - caddy_data:/data
-      - caddy_config:/config
+      - "8080:80"
     restart: unless-stopped
     healthcheck:
-      # 探 Caddy 容器内的 admin API(仅监听容器内 localhost:2019),
-      # 不依赖域名 / 证书模式,自签和正式证书两种情况都稳定
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:2019/config/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 5s
       retries: 3
-
-volumes:
-  caddy_data:
-  caddy_config:
