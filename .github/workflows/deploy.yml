@@ -70,6 +70,16 @@ jobs:
             cd ${{ secrets.SERVER_PROJECT_DIR }}
             test -f dist/index.html || { echo "DEPLOY FAILED: dist/index.html missing on server"; exit 1; }
 
+            # 阿里云建站产品以容器形式占着 80/443(平台内删不掉)→ 停掉并禁止自启,把端口还给我们
+            for cid in $(docker ps --format '{{.Names}}'); do
+              if [ "$cid" = "work-timer" ]; then continue; fi
+              if docker port "$cid" 2>/dev/null | grep -qE '-> (0\.0\.0\.0|\[::\]):(80|443)$'; then
+                echo "停止占用 80/443 的容器: $cid"
+                docker update --restart=no "$cid" >/dev/null 2>&1 || true
+                docker stop -t 5 "$cid" || true
+              fi
+            done
+
             echo "=== 站点与证书 ==="
             SITE_DOMAIN_VAL=$(grep -Es '^SITE_DOMAIN=.+' .env | head -1 | cut -d= -f2- | tr -d ' \r' || true)
             DOMAIN="${SITE_DOMAIN_VAL:-persecond.work}"
@@ -80,12 +90,12 @@ jobs:
             if [ -n "$RESOLVED" ] && [ -n "$PUB_IP" ] && [ "$RESOLVED" != "$PUB_IP" ]; then
               echo "警告: $DOMAIN 解析到 $RESOLVED,与本机公网 IP($PUB_IP) 不一致,证书会签失败"
             fi
-            echo "前置条件: 阿里云安全组已放行 443;80 由阿里云建站产品的 OpenResty 占用,由它负责把 http 301 到 https"
+            echo "前置条件: 阿里云安全组已放行 80 和 443;占用端口的建站容器已在上一步被停止"
 
             docker compose up -d --build --force-recreate
             docker image prune -f
             echo "=== Deploy done ==="
-            docker compose ps
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
             sleep 5
 
             if ! docker ps --filter name=work-timer --filter status=running | grep -q work-timer; then

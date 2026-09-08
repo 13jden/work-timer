@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v2.5-infra3 | 2026-09-08 | 夺回 80/443:部署自动停掉建站产品容器 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra2 | 2026-09-08 | HTTPS 跑通:persecond.work + TLS-ALPN-01,与宿主机 OpenResty 共存 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra1 | 2026-09-08 | 部署链路重构:CI 构建 dist + Caddy 自动 HTTPS | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-patch14 | 2026-09-07 | GenerateSheet 重新生成月度时摸鱼净工时快照丢失 (TASK-051) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |

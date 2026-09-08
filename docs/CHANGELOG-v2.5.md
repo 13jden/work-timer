@@ -345,4 +345,25 @@
 
 ---
 
+## [v2.5-infra3] · 2026-09-08 · 夺回 80/443:部署自动停掉建站产品容器
+
+### 背景
+
+- https 返回 502 且 `Server: openresty`、证书受信任 → 443 也被占;服务器 `ss -lntp` 显示 80/443 的监听者是 **docker-proxy**,宿主机无 openresty 进程、无相关 systemd 服务 → 阿里云建站产品以**容器**形式运行,平台内删不掉
+- 该容器与我们的端口发布互斥,https 流量到不了 Caddy(502 来自它坏掉的后端)
+
+### 改动
+
+- `deploy.yml` 在 `docker compose up` 之前新增端口回收:遍历运行中容器,凡发布 80/443 且非 `work-timer` 者,先 `docker update --restart=no` 再 `docker stop`,防止它复活再抢
+- `docker-compose.yml` 恢复发布 `80:80 + 443:443`(80 供 Caddy 308 跳转与 HTTP-01 验证);同时补回被旧版文件覆盖丢失的 `environment.SITE_ADDRESS`、`caddy_data/caddy_config` 证书卷与 2019 健康检查
+- `Caddyfile` 去掉 `disable_http_challenge`,HTTP-01 与 TLS-ALPN-01 两种验证都可用
+- 部署日志改用 `docker ps -a` 全量列表,便于确认端口归属
+
+### 验证
+
+- caddy v2.11.4 `validate` 通过;`docker-compose.yml` / `deploy.yml` 经 js-yaml 解析通过;`.gitignore` 确认无 NUL 字节
+- 真实效果待 Deploy:预期日志出现「停止占用 80/443 的容器: <建站容器名>」,随后 Verify 步骤打出 `HTTPS OK`
+
+---
+
 *创建于 2026-09-04*

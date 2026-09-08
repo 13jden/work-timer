@@ -4,10 +4,28 @@ services:
     image: work-timer:latest
     container_name: work-timer
     ports:
-      - "8080:80"
+      # 80: Caddy 自动把 http 308 跳到 https,并供 Let's Encrypt HTTP-01 验证
+      # 443: HTTPS 主入口
+      # 阿里云建站产品容器若复活抢端口,deploy.yml 会在 compose up 之前把它停掉并禁止自启
+      - "80:80"
+      - "443:443"
+    environment:
+      # 站点域名,默认 persecond.work;换域名/子域名就在服务器项目目录建 .env 写 SITE_DOMAIN=xxx
+      SITE_ADDRESS: "${SITE_DOMAIN:-persecond.work}"
+    volumes:
+      # 证书与 Caddy 运行配置必须持久化:
+      # 每次部署都是 --force-recreate,没有这两个卷就会反复重新申请证书,
+      # 撞 Let's Encrypt 速率限制(每域名每周 50 张)后会被拒签
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      # 探 Caddy 容器内的 admin API(仅监听容器内 localhost:2019),不依赖外部网络与证书状态
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:2019/config/"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+volumes:
+  caddy_data:
+  caddy_config:
