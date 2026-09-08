@@ -12,7 +12,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { useConfigStore } from '../../../store/configStore';
 import { useCalendarStore } from '../../../store/calendarStore';
-import type { PoolConfig, PoolCycle } from '../../../lib/types';
+import type { PoolConfig, PoolCycle, AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { equalizeProgress, eachMonthInRange, buildDateRangeKeys, getCycleDateKeys } from '../../../lib/accounting/pool';
 import { isWorkday, findCurrentSegment, getEffectiveSegments } from '../../../lib/compute';
@@ -96,49 +96,53 @@ interface CardProps {
 /** 均摊型池卡片（v2.4 T-409：收入池显示到账进度 + 未到账标记）
  * v2.5 TASK-046 T-504：收入池卡片加「一键到账」入口
  * v2.5-patch8：支出池卡片加「付款」入口 → 走 partialClaimToPool 认领到当前周期
+ *
+ * 计算流程（自上而下 7 段）：
+ *   1. Store 订阅 + 池身份(isIncome / isSalaryPool)
+ *   2. 基础聚合(grandTotal / paidTotal / status / progress)
+ *   3. 有效当月配置 + 「今日还在增长」检测
+ *   4. 薪资池派生(totalDays / firstDateKey / todayAccumulated)
+ *   5. 收入 record 聚合(incomeEarnedSum / claimedIncomeSum)
+ *   6. totalDays / firstDateKey / elapsed(按池类型分支)
+ *   7. 显示口径(displayGrand / displayTotal / displayPaid) +
+ *      日均/已赚/未消耗(poolDaily / consumedByTime / remainingByTime) +
+ *      「一键到账」按钮态(remaining / isFullyPaid)
  */
 function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
+  // ── 1. Store 订阅 ──
   const records = useAccountStore((s) => s.records);
   const accounts = useAccountStore((s) => s.accounts);
   const partialClaimToPool = useAccountStore((s) => s.partialClaimToPool);
-  const progress = equalizeProgress(poolCycles);
-  const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
-  const grandTotal = poolCycles.reduce((sum, c) => sum + c.totalAmount, 0);
-  const status = poolOverallStatus(poolCycles);
-  const isIncome = pool.direction === 'income';
-
-  // ── 薪资池特化(virtual 任务延续) ─────────────────────────
-  // 识别条件:noDailyVirtual=true && direction=income —— 这是 ensureSalaryPool()
-  // 创建的「工资池」,amount=0、无 dayRange/dateRange,cycle.dayCount 默认走整月 31 天,
-  // 与「真实存在多少联动 record」严重不符。
-  // —— 从 records(联动 record 的真实来源)直接派生天数与首日:
-  //   totalDays    = distinct dateKey 数    (取消某天 / 跨日新增 day 都自动同步)
-  //   firstDateKey = 最早的联动 record 日期(用于 elapsed)
-  //   elapsed      = 该池实际有 record 的天数(= totalDays)，
-  //                   让 poolDaily × elapsed = grandTotal,使「已赚 ¥X」语义与「总额」一致
-  // grandTotal 继续走 cycle.totalAmount,因为 upsertSalaryLinkageForDate 已经把
-  // cycle.totalAmount 与 records 增量保持同步(原子写入),口径= sum of records。
-  // 其他 equalize 池(支出均摊、公积金等用户自己填了 dateRange 的)完全保持旧逻辑。
-  const isSalaryPool = pool.noDailyVirtual === true && pool.direction === 'income';
-
-  // 「今日还在增长」检测 —— 薪资池专属:工作时间内,今日联动 record 还在累加,
-  // 不能纳入 totalDays/grandTotal 的均值(会被偏小值稀释)。
-  // —— 仅在薪资池分支下计算;非薪资池路径完全不动。
-  // 时间订阅(useNow)与配置订阅只为该判断服务,薪资池卡片每秒重算,
-  // 其他池卡片虽也订阅但计算很轻(只多走一个 isSalaryPool === false 短路)。
-  const now = useNow(1000);
   const config = useConfigStore();
   const dayOverrides = useCalendarStore((s) => s.dayOverrides);
   const monthlyRestModes = useCalendarStore((s) => s.monthlyRestModes);
-  // 真实当月月度休息模式覆盖 —— 与 useSalaryLinkageSync 同口径
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const currentMonthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+  // 时间订阅 —— 薪资池专属 1s tick,非薪资池路径走短路、重算成本可忽略
+  const now = useNow(1000);
+
+  // ── 2. 池身份 ──
+  // 薪资池(联动工资池)识别:noDailyVirtual=true && direction=income,
+  // 由 ensureSalaryPool() 创建,amount=0、无 dayRange/dateRange,
+  // totalDays / firstDateKey 全部从 records 派生(取消某天 / 跨日新增 day 自动同步)。
+  const isIncome = pool.direction === 'income';
+  const isIncomeEqualize = isIncome && pool.type === 'equalize';
+  const isSalaryPool = pool.noDailyVirtual === true && pool.direction === 'income';
+
+  // ── 3. 基础聚合 ──
+  const progress = equalizeProgress(poolCycles);
+  const status = poolOverallStatus(poolCycles);
+  const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);
+  const grandTotal = poolCycles.reduce((sum, c) => sum + c.totalAmount, 0);
+
+  // ── 4. 有效当月配置 + 「今日」dateKey ──
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const effectiveRestMode = monthlyRestModes[currentMonthKey] ?? config.restMode;
   const effectiveConfig = { ...config, restMode: effectiveRestMode };
-  // 「今日」的 dateKey —— 必须用 formatDateKey(now) 本地时区,与联动 record 一致;
+  // 「今日」dateKey —— 必须本地时区,与联动 record 一致;
   // 卡片下方「elapsed」用的 todayKey 是另一份(UTC 旧实现,本次不动)。
   const todayKeyLocal = formatDateKey(now);
+
+  // ── 5. 「今日还在增长」检测(薪资池专属) ──
+  // 工作时间内、今日联动 record 还在累加,不能纳入 totalDays / poolDaily 均值(会被偏小值稀释)
   const isTodayInProgress = isSalaryPool
     ? isWorkday(now, effectiveConfig, dayOverrides, HOLIDAYS) &&
       findCurrentSegment(
@@ -147,87 +151,23 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
       ) !== null
     : false;
 
-  const salaryPoolRecords = isSalaryPool
-    ? records.filter(
-        (r) => r.poolId === pool.id && r.linkageSource === 'salary-time-mode' && r.amount > 0,
-      )
-    : [];
-  // 今日还在增长 → 排除今日 record(否则日均被稀释);其他日期照常计入
-  const completedSalaryPoolRecords = isTodayInProgress
-    ? salaryPoolRecords.filter((r) => r.dateKey !== todayKeyLocal)
-    : salaryPoolRecords;
-  const salaryPoolDateSet = isSalaryPool ? new Set(completedSalaryPoolRecords.map((r) => r.dateKey)) : null;
-  const salaryPoolFirstDateKey = isSalaryPool
-    ? (Array.from(salaryPoolDateSet ?? []).sort()[0] ?? '')
-    : '';
-  // v2.5-patch15 T-531：薪资池「日均」口径修正
-  // —— 不算今天(分子分母同步扣除今日部分)。
-  //   分母:totalDays = 完整工作日数(已排除今日进行中)
-  //   分子:(grandTotal - todayAccumulated) = 完整工作日累计
-  //   效果:poolDaily 精准反映「完整一天赚多少」,不再被今日的部分薪资稀释
-  //   显示「已赚 ¥X」继续走 grandTotal(仍含今日部分),与原 consumedByTime 语义一致
-  const todayAccumulated = isSalaryPool && isTodayInProgress
-    ? salaryPoolRecords
-        .filter((r) => r.dateKey === todayKeyLocal)
-        .reduce((sum, r) => sum + r.amount, 0)
-    : 0;
+  // ── 6. 薪资池派生(仅 isSalaryPool 时有值) ──
+  // salaryTotalDays:完整工作日数(今日进行中时不含今日)
+  // salaryFirstDateKey:最早联动 record 日期
+  // todayAccumulated:今日累计薪资(用于 poolDaily 扣除)
+  const salaryPoolData = isSalaryPool
+    ? deriveSalaryPoolData({
+        pool,
+        records,
+        todayKey: todayKeyLocal,
+        isTodayInProgress,
+      })
+    : null;
 
-  // ── 按自然天数计算已过/未消耗 ─────────────────────────
-  // v2.5-patch13：支出/收入池统一按自然天数算，不按周期已付款
-  // totalDays = 池总天数（从 dateRange 或 各周期 dateKeys 推导）
-  // poolDaily = 总额 / 总天数（统一日均）
-  // elapsed = 从池开始日期到今天的天数（不跨过总天数）
-  // consumed = poolDaily × elapsed（已按时间流逝消耗/赚取的部分）
-  // remaining = grandTotal − consumed
-  const totalDays = (() => {
-    if (isSalaryPool) return salaryPoolDateSet?.size ?? 0;
-    if (pool.cycleMode === 'daily' && pool.dateRange) {
-      const months = eachMonthInRange(pool.dateRange);
-      return months.reduce(
-        (sum, mk) => sum + buildDateRangeKeys(pool.dateRange!, mk).length,
-        0,
-      );
-    }
-    // 月模式：用 getCycleDateKeys 重建各周期的实际天数（考虑 dayRange 跨月）
-    return poolCycles.reduce((sum, c) => {
-      const keys = getCycleDateKeys(pool, c.monthKey);
-      return sum + keys.length;
-    }, 0);
-  })();
-  // firstDateKey = 池内第一天的 dateKey（用于计算 elapsed）
-  const firstDateKey = (() => {
-    if (isSalaryPool) return salaryPoolFirstDateKey;
-    if (pool.cycleMode === 'daily' && pool.dateRange) return pool.dateRange.start;
-    // 月模式：从第一个周期的实际 dateKeys 取第一天（正确处理 dayRange 跨月情况）
-    const firstKeys = poolCycles[0] ? getCycleDateKeys(pool, poolCycles[0].monthKey) : [];
-    return firstKeys[0] ?? '';
-  })();
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const elapsed = (() => {
-    if (isSalaryPool) {
-      // 薪资池：「已过天数」= 有 record 的天数(= totalDays),保证
-      // poolDaily × elapsed = grandTotal,「已赚 ¥X」直接等于总额,直观。
-      return totalDays;
-    }
-    if (!firstDateKey || firstDateKey > todayKey) return 0;
-    const start = new Date(firstDateKey);
-    const end = new Date(todayKey);
-    return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
-  })();
-
-
-  // v2.5 TASK-046 T-501：income equalize 池复用 calcVirtualAssets
-  // 拆分出的 earnedUnarrived —— 与总资产卡同口径,避免「池卡片 vs 总资产卡」对不上。
-  // —— 大数字 displayTotal = records 中 confirmed in 之和(已赚累计),
-  // displayPaid = claimed 部分(已到账),二者差额 remaining 即「未到账」,
-  // 该值与总资产 chip「已赚未到账」完全一致。
-  //
-  // v2.5-patch7 T-513：收入池大数字要包含「按日生成的虚拟到账记录」(!poolStatus)
-  // —— 用户在 7.1-9.30 期间设的 6480 公积金池,会逐日生成 +70.43 收入 record;
-  // 之前只统计 confirmed 联动 record 的话,日均场景永远显示 0;
-  // 修复后：累计 = 每日均摊 + 联动/手动 confirmed,扣掉已 claim 的到账 = 未到账。
-  // claimed 仍只在 displayPaid 计入(已到账口径,不再计入已赚累计,避免重复)。
-  const isIncomeEqualize = isIncome && pool.type === 'equalize';
+  // ── 7. 收入 record 聚合 ──
+  // incomeEarnedSum:所有非 claimed 收入 record 之和(每日均摊虚拟 + 联动/手动 confirmed)
+  // claimedIncomeSum:所有 claimed 收入 record 之和(已到账)
+  // —— 与总资产 chip「已赚未到账」完全一致;v2.5-patch7 T-513 修复日均场景永远显示 0 的 bug
   const incomeEarnedSum = isIncomeEqualize
     ? records.reduce(
         (sum, r) =>
@@ -237,16 +177,6 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
         0,
       )
     : grandTotal;
-  const displayTotal = isIncomeEqualize ? incomeEarnedSum : grandTotal;
-  const poolDaily = totalDays > 0
-      ? (isSalaryPool
-          ? Math.round(((incomeEarnedSum - todayAccumulated) / totalDays) * 100) / 100
-          : Math.round((grandTotal / totalDays) * 100) / 100)
-      : 0;
-  const grandTotal1= isSalaryPool ? incomeEarnedSum : grandTotal;
-  const elapsedClamped = Math.min(Math.max(0, elapsed), totalDays);
-  const consumedByTime = isSalaryPool? incomeEarnedSum:Math.round(poolDaily * elapsedClamped * 100) / 100;
-  const remainingByTime = Math.round((grandTotal - consumedByTime) * 100) / 100;
   const claimedIncomeSum = isIncomeEqualize
     ? records.reduce(
         (sum, r) =>
@@ -257,13 +187,82 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
       )
     : paidTotal;
 
+  // ── 8. 总天数 / 起始日 / 已过天数(按池类型分支) ──
+  const totalDays = isSalaryPool
+    ? salaryPoolData!.totalDays
+    : (() => {
+        // 非薪资池:按 dateRange 或 各周期 dateKeys 推导
+        if (pool.cycleMode === 'daily' && pool.dateRange) {
+          return eachMonthInRange(pool.dateRange).reduce(
+            (sum, mk) => sum + buildDateRangeKeys(pool.dateRange!, mk).length,
+            0,
+          );
+        }
+        // 月模式:用 getCycleDateKeys 重建各周期的实际天数(考虑 dayRange 跨月)
+        return poolCycles.reduce(
+          (sum, c) => sum + getCycleDateKeys(pool, c.monthKey).length,
+          0,
+        );
+      })();
+
+  const firstDateKey = isSalaryPool
+    ? salaryPoolData!.firstDateKey
+    : (() => {
+        // 非薪资池:从 dateRange.start 或 第一个周期取第一天
+        if (pool.cycleMode === 'daily' && pool.dateRange) return pool.dateRange.start;
+        const firstKeys = poolCycles[0] ? getCycleDateKeys(pool, poolCycles[0].monthKey) : [];
+        return firstKeys[0] ?? '';
+      })();
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const elapsed = isSalaryPool
+    ? totalDays // 薪资池:已过天数 = 有 record 的天数,保证 poolDaily × elapsed = 已赚总额
+    : (() => {
+        if (!firstDateKey || firstDateKey > todayKey) return 0;
+        const start = new Date(firstDateKey);
+        const end = new Date(todayKey);
+        return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+      })();
+  const elapsedClamped = Math.min(Math.max(0, elapsed), totalDays);
+
+  // ── 9. 显示口径 ──
+  // displayGrand:卡片大数字(池内总额 / 已赚总额)
+  //   - 薪资池 → incomeEarnedSum(含今日累计,让大数字 = 已赚总额,语义统一)
+  //   - 其他池 → grandTotal(原口径)
+  // displayTotal:「已赚/已付款 ¥X / ¥Y」分母
+  //   - 收入池 → incomeEarnedSum;  支出池 → grandTotal
+  // displayPaid:已到账/已付款金额
+  //   - 收入池 → claimedIncomeSum;  支出池 → paidTotal
+  const displayGrand = isSalaryPool ? incomeEarnedSum : grandTotal;
+  const displayTotal = isIncomeEqualize ? incomeEarnedSum : grandTotal;
   const displayPaid = isIncomeEqualize ? claimedIncomeSum : paidTotal;
-  // v2.5 TASK-046 T-504：剩余到账金额（用于「完成剩余到账」按钮）
+
+  // ── 10. 日均 / 已赚 / 未消耗 ──
+  // poolDaily:每完整一天赚/花多少(薪资池扣除今日部分)
+  //   - 薪资池 → (incomeEarnedSum - todayAccumulated) / totalDays
+  //           = (displayGrand - todayAccumulated) / totalDays(下面用 displayGrand 简写)
+  //   - 其他池 → grandTotal / totalDays = displayGrand / totalDays
+  // consumedByTime(已赚/已消耗):
+  //   - 薪资池 → incomeEarnedSum(含今日累计,大数字 = 已赚,语义一致)
+  //   - 其他池 → poolDaily × elapsedClamped(按时长累计)
+  // remainingByTime(仅支出池有意义):grandTotal - consumedByTime
+  // —— 注意 remainingByTime 用 grandTotal 而非 displayGrand,因为支出池口径下二者一致,
+  //   且 grandTotal 是更直接的「池合同总额」语义。
+  const poolDaily = totalDays > 0
+    ? Math.round(
+        ((displayGrand - (isSalaryPool ? salaryPoolData!.todayAccumulated : 0)) / totalDays) * 100,
+      ) / 100
+    : 0;
+  const consumedByTime = isSalaryPool
+    ? incomeEarnedSum
+    : Math.round(poolDaily * elapsedClamped * 100) / 100;
+  const remainingByTime = Math.round((grandTotal - consumedByTime) * 100) / 100;
+
+  // ── 11. 「一键到账」按钮态 ──
   const remaining = Math.max(0, displayTotal - displayPaid);
-  // v2.5 TASK-046 T-504：是否已 100% 完成（用于提示「该池已经完成确认」）
   const isFullyPaid = displayTotal > 0 && remaining < 1e-9;
 
-  // v2.5 TASK-046 T-504：「一键到账」快速认领表单
+  // ── 12. 「一键到账」表单状态 + handlers ──
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimAmountStr, setClaimAmountStr] = useState('');
   const [claimAccountId, setClaimAccountId] = useState('');
@@ -335,7 +334,7 @@ function EqualizeCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
         </button>
       </div>
       <div className={styles.cardAmtRow}>
-        <span className={styles.cardAmt}>¥{formatAmount(grandTotal1, true)}</span>
+        <span className={styles.cardAmt}>¥{formatAmount(displayGrand, true)}</span>
         <span className={styles.cardAmtLabel}>
           {isIncome
             ? `日均 ¥${formatAmount(poolDaily)} · 已赚 ¥${formatAmount(consumedByTime)}`
@@ -609,6 +608,38 @@ function DepositCard({ pool, poolCycles, onDelete, onEdit }: CardProps) {
       )}
     </div>
   );
+}
+
+// ── 薪资池派生 ──────────────────────────────────────────────
+
+/** 薪资池(联动工资池)从 records 派生的展示数据 —— 专门提取以保持主函数清晰 */
+function deriveSalaryPoolData(args: {
+  pool: PoolConfig;
+  records: AccountRecord[];
+  todayKey: string;
+  isTodayInProgress: boolean;
+}): { totalDays: number; firstDateKey: string; todayAccumulated: number } {
+  const { pool, records, todayKey, isTodayInProgress } = args;
+  // 所有联动 record(由 upsertSalaryLinkageForDate 写入)
+  const allRecords = records.filter(
+    (r) => r.poolId === pool.id && r.linkageSource === 'salary-time-mode' && r.amount > 0,
+  );
+  // 今日进行中 → 排除今日 record(否则日均被稀释)
+  const completedRecords = isTodayInProgress
+    ? allRecords.filter((r) => r.dateKey !== todayKey)
+    : allRecords;
+  const dateSet = new Set(completedRecords.map((r) => r.dateKey));
+  // 今日累计薪资(用于 poolDaily 分子扣除)
+  const todayAccumulated = isTodayInProgress
+    ? allRecords
+        .filter((r) => r.dateKey === todayKey)
+        .reduce((sum, r) => sum + r.amount, 0)
+    : 0;
+  return {
+    totalDays: dateSet.size,
+    firstDateKey: Array.from(dateSet).sort()[0] ?? '',
+    todayAccumulated,
+  };
 }
 
 // ── 状态辅助 ──────────────────────────────────────────────

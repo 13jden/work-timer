@@ -83,9 +83,17 @@ export function TimeTrackerWidget({ onOpenDetail }: Props) {
   //   - 工时段内 → 摸鱼(默认)
   //   - 已过下班 / 未到上班 / 夜班 → 加班(下一步点击会进入加班 session)
   // 让 chip 文字与 handleStart 的 autoLabel 保持一致,避免「收工仍显示摸鱼」的违和感
+  //
+  // v2.5-patch15 T-533：进一步收紧判定条件
+  //   dayState 的 mode='active' 同时覆盖「等待开工」与「工作计价中」两种状态
+  //   —— 仅 state.status === '工作计价中' 才算「真正在工时段内」
+  //   上班前(state.status='等待开工')、下班后(mode='done')、休息日(mode='rest')
+  //   一律默认「加班」。
+  // 修复点:
+  //   上班前 chip 不再误显「摸鱼」,与 handleStart 的 autoLabel 同步(用户提前来 → 默认加班)
   const state = dayState(now, config, overrides, HOLIDAYS);
   const idleLabel: TimeRecordLabel =
-    state.mode === 'active' ? 'slack' : 'overtime';
+    state.mode === 'active' && state.status === '工作计价中' ? 'slack' : 'overtime';
 
   const [, forceTick] = useState(0);
   useEffect(() => {

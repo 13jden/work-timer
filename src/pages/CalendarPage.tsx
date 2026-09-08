@@ -263,7 +263,7 @@ export function CalendarPage({
       const [y, m, d] = key.split('-').map(Number);
       return new Date(y ?? year, (m ?? month + 1) - 1, d ?? 1);
     });
-    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel', slackingSessions);
+    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel');
     const keys = new Set([...Object.keys(overrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
     setSelectMode(null);
@@ -275,9 +275,7 @@ export function CalendarPage({
     if (!pickedDate) return;
     // 用 store 最新值（可能被 DaySheet 刚保存过，避免闭包旧值）
     const latestOverrides = useCalendarStore.getState().dayOverrides;
-    const latestSessions = useSlackingStore.getState().sessions;
-    // v2.5-patch13:必须传 sessions,否则保存的 earnedNetMinutes 不会扣除摸鱼时间
-    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false, latestSessions);
+    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false);
     const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
   }
@@ -307,33 +305,8 @@ export function CalendarPage({
   /**
    * GenerateSheet 确认:统一创建 / 覆盖快照。
    * 当前月时同步更新 config.monthlySalary,让设置页和其它计算页立刻生效。
-   *
-   * v2.5-patch14: GenerateSheet 也走 batchGenerateEarned,
-   * 让 FishPage 月统计图的「净工时」在「重新生成月度」时也正确扣减摸鱼,
-   * 而不是重置为「工时-0」(之前只有批量模式 / DaySheet 单日生成会写 earnedNetMinutes 快照)。
    */
   function handleGenerate(salary: number) {
-    // 1) 批量写入历史工作日的 earnedNetMinutes / earnedAmount / earnedGenerated 快照
-    //    (只对「过去」工作日;当前月今天及未来日跳过——还没过完不应锁定)
-    const latestOverrides = useCalendarStore.getState().dayOverrides;
-    const latestSessions = useSlackingStore.getState().sessions;
-    const todayKey = formatDateKey(now);
-    const pastWorkdayDates: Date[] = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d);
-      const key = formatDateKey(date);
-      if (key >= todayKey) continue; // 未来 + 今天都跳过(还没过完不应锁定)
-      if (isWorkday(date, effectiveConfig, latestOverrides, HOLIDAYS)) {
-        pastWorkdayDates.push(date);
-      }
-    }
-    if (pastWorkdayDates.length > 0) {
-      const next = batchGenerateEarned(pastWorkdayDates, effectiveConfig, latestOverrides, HOLIDAYS, false, latestSessions);
-      const allKeys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
-      allKeys.forEach((key) => setDayOverride(key, next[key] ?? null));
-    }
-
-    // 2) 创建月度快照(沿用旧逻辑)
     createSnapshot(year, month, salary, effectiveConfig, overrides, HOLIDAYS);
     if (isCurrentMonth) {
       useConfigStore.setState({ monthlySalary: salary });
