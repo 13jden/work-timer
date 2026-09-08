@@ -354,7 +354,7 @@
 
 ### 改动
 
-- `deploy.yml` 在 `docker compose up` 之前新增端口回收:遍历运行中容器,凡发布 80/443 且非 `work-timer` 者,先 `docker update --restart=no` 再 `docker stop`,防止它复活再抢
+- `deploy.yml` 在 `docker compose up` 之前新增端口回收:用 `docker ps --filter publish=80/443` 查端口归属(首版解析 `docker port` 文本未命中,已改),对非 `work-timer` 的占用容器 `docker update --restart=no` + `docker stop`;回收后用 `ss -lntp` 复核并在 compose up 前打印 `docker ps -a` 全量,失败时日志自带诊断
 - `docker-compose.yml` 恢复发布 `80:80 + 443:443`(80 供 Caddy 308 跳转与 HTTP-01 验证);同时补回被旧版文件覆盖丢失的 `environment.SITE_ADDRESS`、`caddy_data/caddy_config` 证书卷与 2019 健康检查
 - `Caddyfile` 去掉 `disable_http_challenge`,HTTP-01 与 TLS-ALPN-01 两种验证都可用
 - 部署日志改用 `docker ps -a` 全量列表,便于确认端口归属

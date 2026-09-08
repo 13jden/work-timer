@@ -71,14 +71,23 @@ jobs:
             test -f dist/index.html || { echo "DEPLOY FAILED: dist/index.html missing on server"; exit 1; }
 
             # 阿里云建站产品以容器形式占着 80/443(平台内删不掉)→ 停掉并禁止自启,把端口还给我们
-            for cid in $(docker ps --format '{{.Names}}'); do
-              if [ "$cid" = "work-timer" ]; then continue; fi
-              if docker port "$cid" 2>/dev/null | grep -qE '-> (0\.0\.0\.0|\[::\]):(80|443)$'; then
-                echo "停止占用 80/443 的容器: $cid"
-                docker update --restart=no "$cid" >/dev/null 2>&1 || true
-                docker stop -t 5 "$cid" || true
-              fi
+            # 用 docker 官方 --filter publish= 查端口归属,不解析 docker port 的文本输出
+            HOLDERS=$( { docker ps -aq --filter publish=80; docker ps -aq --filter publish=443; } | sort -u )
+            for cid in $HOLDERS; do
+              name=$(docker inspect -f '{{.Name}}' "$cid" 2>/dev/null | tr -d '/')
+              if [ "$name" = "work-timer" ]; then continue; fi
+              echo "停止占用 80/443 的容器: $name ($cid)"
+              docker update --restart=no "$cid" >/dev/null 2>&1 || true
+              docker stop -t 5 "$cid" || true
             done
+            if ss -lntp 2>/dev/null | grep -qE ':(80|443) '; then
+              echo "警告: 回收后 80/443 仍被占用,当前占用者:"
+              ss -lntp | grep -E ':(80|443) ' || true
+            else
+              echo "80/443 已释放"
+            fi
+            echo "=== 回收后容器全量 ==="
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 
             echo "=== 站点与证书 ==="
             SITE_DOMAIN_VAL=$(grep -Es '^SITE_DOMAIN=.+' .env | head -1 | cut -d= -f2- | tr -d ' \r' || true)
