@@ -15,10 +15,12 @@
  *      而非 calendarStore 当前浏览月份 —— "打开任意页面都跟 CalendarPage 一样更新"
  *   2. 过去月份的快照在它们各自的当月早已落库,本 hook 不会回灌(只 upsert 真实当月)
  *
- * v2.5-patch15 T-532 扩展:
- *   - 新增 backfill 逻辑:启动时遍历 `recordedFromDate` → 真实当月 的所有月份,
- *     每个工作日用 effectiveDailyRate 计算并 upsert 联动 record。
- *   - 这样用户在 account 模式查看「联动累计」时,过去月份的工资池都能准确反映。
+ * v2.5-patch15 T-532 修复:
+ *   - 跨天守卫:删除循环里加 `if (cmpDateKey(key, todayKey) < 0) continue;`,
+ *     防止跨午夜时昨日联动 record 被「取消已赚」语义错杀(昨日不在新 map
+ *     里、但 prev 仍残留昨日键,会被原逻辑误判为「用户取消已赚」并删除)。
+ *   - 仅此一行;月度 tick 写 record / upsert 接口 / 今日用户取消已赚的语义
+ *     全部保留(key === todayKey 时守卫不生效)。
  *
  * 语义:
  *   - 联动开启 (config.salaryLinkageEnabled) 时,每秒(随 useNow)对比「真实当月」
@@ -42,7 +44,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { useAccountStore } from '../store/accountStore';
 import { HOLIDAYS } from '../lib/constants';
-import { daysInMonthCalc, effectiveDailyRate, isWorkday, todayEarned } from '../lib/compute';
+import { daysInMonthCalc, isWorkday, todayEarned } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { useNow } from './useNow';
 
@@ -59,18 +61,6 @@ function parseLocalDateKey(key: string): [number, number, number] | null {
 /** 比较两个 YYYY-MM-DD 字符串(字符串排序即可) */
 function cmpDateKey(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
-}
-
-/** 给 'YYYY-MM' 月份 key + delta 月数,返回新 key(字符串运算,无 Date 构造) */
-function shiftMonthKey(monthKey: string, delta: number): string | null {
-  const m = /^(\d{4})-(\d{2})$/.exec(monthKey);
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]) - 1;
-  const total = y * 12 + mo + delta;
-  const ny = Math.floor(total / 12);
-  const nmo = total - ny * 12;
-  return `${ny}-${String(nmo + 1).padStart(2, '0')}`;
 }
 
 export function useSalaryLinkageSync(): void {
@@ -145,6 +135,12 @@ export function useSalaryLinkageSync(): void {
     if (!isFirst) {
       for (const key of Object.keys(prev)) {
         if (key in monthlyEarnedMap) continue;
+        // ── v2.5-patch15 T-532：跨天守卫 ──
+        // 昨日及更早永不自动删除 —— 跨午夜时 prev 含昨天、当前 map 不含昨天
+        // (昨天非 todayKey 且无用户快照,实时 tick 未写入),原逻辑会把它误判为
+        // 「用户取消已赚」并删除,造成「8.1 23:59 有数据,8.2 00:00 消失」。
+        // 用户取消今日已赚仍正常(key === todayKey 时守卫不生效,继续走同月 + 工作日判定)。
+        if (cmpDateKey(key, todayKey) < 0) continue;
         const parsed = parseLocalDateKey(key);
         if (!parsed) continue;
         const [py, pm, pd] = parsed;
@@ -156,103 +152,6 @@ export function useSalaryLinkageSync(): void {
     }
     prevMonthlyRef.current = monthlyEarnedMap;
   }, [monthlyEarnedMap, config.salaryLinkageEnabled, now, dayOverrides, effectiveConfig, y, m]);
-
-  // ── v2.5-patch15 T-532：联动回灌 ─────────────────────────
-  // 启动时(以及 recordedFromDate / monthlyRestModes / monthlySalary / snapshots /
-  // currentMonthKey 变化时)遍历 recordedFromDate → 当前月 的所有月份,
-  // 为过去月份的每个工作日 upsert 联动 record,让 accountStore 持久化的
-  // 「联动累计」反映所有历史。
-  //
-  // 范围:
-  //   - 起:recordedFromDate 所在月(无则从今天所在月起)
-  //   - 止:当前月的前一个月(当前月由月度 tick 接管)
-  //
-  // 算法:
-  //   - 取该月快照月薪(无则用 config.monthlySalary)
-  //   - 取该月 monthlyRestMode 覆盖(无则用 config.restMode)
-  //   - 逐日遍历:isWorkday && key < todayKey 的工作日 → upsert(effectiveDailyRate)
-  //   - skip today(让月度 tick 实时处理)
-  //
-  // 幂等:upsertSalaryLinkageForDate 已实现幂等,重复调只更新 amount;
-  // 用户「取消已赚」时已由 upsert(key, 0) 自动删除,无需特殊处理。
-  //
-  // 不依赖 now(每秒变化),只在以下条件变化时重跑:
-  //   salaryLinkageEnabled / recordedFromDate / currentMonthKey(跨午夜) /
-  //   monthlyRestModes / snapshots / config.restMode / config.monthlySalary
-  // 这样 effect 不会每秒重渲浪费 CPU,backfillDoneRef 仅作为防御性兜底。
-  const backfillDoneRef = useRef<string | null>(null);
-  const todayKey = formatDateKey(now);
-  useEffect(() => {
-    if (!config.salaryLinkageEnabled) return;
-    const todayMonthKey = currentMonthKey;
-    const fromMonthKey = config.recordedFromDate
-      ? config.recordedFromDate.slice(0, 7) // YYYY-MM-DD → YYYY-MM
-      : todayMonthKey;
-    // 当前月由 tick 处理,只回灌过去月
-    const lastBackfillMonthKey = shiftMonthKey(todayMonthKey, -1);
-    if (!lastBackfillMonthKey) return;
-    // 防御性:如果 fromMonthKey 解析失败,直接放弃本次回灌
-    if (!/^\d{4}-\d{2}$/.test(fromMonthKey)) return;
-    const signature = [
-      fromMonthKey,
-      lastBackfillMonthKey,
-      config.recordedFromDate,
-      config.monthlySalary,
-      config.restMode,
-      todayKey,
-    ].join('|');
-    if (backfillDoneRef.current === signature) return;
-    if (cmpDateKey(fromMonthKey, lastBackfillMonthKey) > 0) {
-      // 起点在未来,无过去月可回灌
-      backfillDoneRef.current = signature;
-      return;
-    }
-    const upsert = useAccountStore.getState().upsertSalaryLinkageForDate;
-
-    // 迭代月份 [from, lastBackfill]
-    let cursorMonthKey: string | null = fromMonthKey;
-    let guard = 0;
-    while (cursorMonthKey && cmpDateKey(cursorMonthKey, lastBackfillMonthKey) <= 0) {
-      guard += 1;
-      if (guard > 240) break; // 20 年上限,防死循环
-      const m2 = /^(\d{4})-(\d{2})$/.exec(cursorMonthKey);
-      if (!m2) break;
-      const yy = Number(m2[1]);
-      const mm = Number(m2[2]) - 1;
-      // 该月有效配置 = monthlyRestMode 覆盖 + 该月快照月薪
-      const monthOverride = monthlyRestModes[cursorMonthKey] ?? config.restMode;
-      const monthConfig = { ...config, restMode: monthOverride };
-      const monthSnapshot = cursorMonthKey in snapshots
-        ? snapshots[cursorMonthKey]
-        : null;
-      const monthSalary = monthSnapshot?.salary ?? config.monthlySalary;
-      const cfgWithSnapshot = { ...monthConfig, monthlySalary: monthSalary };
-      const days = daysInMonthCalc(yy, mm);
-      for (let d = 1; d <= days; d++) {
-        const date = new Date(yy, mm, d);
-        const key = formatDateKey(date);
-        // 仅回灌「已过去的日期」(key < todayKey),让今天及未来留给月度 tick
-        if (cmpDateKey(key, todayKey) >= 0) continue;
-        if (!isWorkday(date, cfgWithSnapshot, dayOverrides, HOLIDAYS)) continue;
-        const amount = effectiveDailyRate(date, cfgWithSnapshot, dayOverrides, HOLIDAYS);
-        if (amount > 0) upsert(key, amount);
-      }
-      cursorMonthKey = shiftMonthKey(cursorMonthKey, 1);
-    }
-
-    backfillDoneRef.current = signature;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    config.salaryLinkageEnabled,
-    config.recordedFromDate,
-    config.restMode,
-    config.monthlySalary,
-    currentMonthKey,
-    monthlyRestModes,
-    snapshots,
-    dayOverrides,
-    todayKey,
-  ]);
 }
 
 /**
