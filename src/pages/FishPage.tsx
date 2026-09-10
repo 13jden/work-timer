@@ -4,6 +4,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useSlackingStore } from '../store/slackingStore';
 import { HOLIDAYS } from '../lib/constants';
 import { computeRangeStats } from '../lib/compute';
+import { useNow } from '../hooks/useNow';
 import { TimeTrackerDetailPage } from './TimeTrackerDetailPage';
 import styles from './FishPage.module.css';
 
@@ -38,13 +39,13 @@ export function FishPage() {
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const sessions = useSlackingStore((s) => s.sessions);
-  const now = new Date();
+  const now = useNow(1000);
 
   const stats = useMemo(() => {
     if (mode === 'day') return null;
     const range = rangeFor(mode, offset, now);
-    return computeRangeStats(range.start, range.end, config, overrides, HOLIDAYS, sessions);
-  }, [mode, offset, config, overrides, sessions]);
+    return computeRangeStats(range.start, range.end, config, overrides, HOLIDAYS, sessions, now);
+  }, [mode, offset, config, overrides, sessions, now]);
 
   if (mode === 'day') {
     return (

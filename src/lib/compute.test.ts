@@ -2191,6 +2191,89 @@ describe('v1.3.5 custom schedule and earned batches', () => {
     expect(stats.totalSlackMinutes).toBe(60);
     expect(stats.totalNetMinutes).toBeGreaterThan(0);
   });
+
+  it('recomputes generated history after a slacking session is added', () => {
+    const generated: DayOverrides = {
+      '2026-08-28': {
+        type: 'work',
+        multiplier: 1,
+        segments: null,
+        nightShift: false,
+        earnedGenerated: true,
+        earnedAmount: 500,
+        earnedNetMinutes: 540,
+      },
+    };
+    const sessions = {
+      '2026-08-28': [{
+        id: 'late-slack',
+        dateKey: '2026-08-28',
+        label: 'slack' as const,
+        startTs: date(2026, 7, 28, 10).getTime(),
+        endTs: date(2026, 7, 28, 11).getTime(),
+        nightShift: false,
+      }],
+    };
+
+    const stats = computeRangeStats(
+      date(2026, 7, 28),
+      date(2026, 7, 28),
+      baseConfig,
+      generated,
+      emptyHolidays,
+      sessions,
+      date(2026, 8, 1),
+    );
+
+    expect(stats.perDay[0]?.netMinutes).toBe(480);
+    expect(stats.perDay[0]?.slackMinutes).toBe(60);
+  });
+
+  it('shows today in totals but marks it as excluded from averages', () => {
+    const now = date(2026, 7, 28, 12);
+    const stats = computeRangeStats(
+      date(2026, 7, 28),
+      date(2026, 7, 28),
+      baseConfig,
+      noOverrides,
+      emptyHolidays,
+      {},
+      now,
+    );
+
+    expect(stats.perDay).toHaveLength(1);
+    expect(stats.perDay[0]?.netMinutes).toBe(180);
+    expect(stats.perDay[0]?.earned).toBeGreaterThan(0);
+    expect(stats.perDay[0]?.earnedGenerated).toBe(false);
+    expect(stats.totalNetMinutes).toBe(180);
+  });
+
+  it('shows today generated amount without including today in averages', () => {
+    const generatedToday: DayOverrides = {
+      '2026-08-28': {
+        type: 'work',
+        multiplier: 1,
+        segments: null,
+        nightShift: false,
+        earnedGenerated: true,
+        earnedAmount: 321,
+        earnedNetMinutes: 540,
+      },
+    };
+    const stats = computeRangeStats(
+      date(2026, 7, 28),
+      date(2026, 7, 28),
+      baseConfig,
+      generatedToday,
+      emptyHolidays,
+      {},
+      date(2026, 7, 28, 12),
+    );
+
+    expect(stats.perDay[0]?.earned).toBe(321);
+    expect(stats.perDay[0]?.netMinutes).toBe(180);
+    expect(stats.perDay[0]?.earnedGenerated).toBe(false);
+  });
 });
 
 // ══════════════════════════════════════════════════════════════

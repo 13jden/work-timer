@@ -1599,40 +1599,48 @@ export function computeRangeStats(
     const date = new Date(cursor);
     const key = formatDateKey(date);
     const isRest = !isWorkday(date, config, overrides, holidays);
-    const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
-    // v2.5-patch16 T-533：跨天 session 的「当日部分」要进入区间统计,
-    // 否则 8.1 23:30 → 8.2 00:30 这种摸鱼/加班只能计入 8.1,
-    // 8.2 的 netMinutes 就会少扣 30 min。
-    const breakdown = computeNetHours({
-      date: atDayEnd,
-      config,
-      overrides,
-      holidays,
-      slackingSessions: getSessionsForDate(sessions, key, atDayEnd.getTime()),
-    });
     const entry = getDayOverride(overrides, key);
     const isToday =
       date.getFullYear() === now.getFullYear() &&
       date.getMonth() === now.getMonth() &&
       date.getDate() === now.getDate();
-    const isGeneratedHistory = entry?.earnedGenerated && !isToday && entry.earnedAmount != null;
+    const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    // 历史日按日终统计；今日只统计到当前时刻，避免今日柱子提前显示整天工时，
+    // 也避免进行中的 session 被错误延长到 23:59。
+    const calculationTime = isToday ? now : atDayEnd;
+    // v2.5-patch16 T-533：跨天 session 的「当日部分」要进入区间统计,
+    // 否则 8.1 23:30 → 8.2 00:30 这种摸鱼/加班只能计入 8.1,
+    // 8.2 的 netMinutes 就会少扣 30 min。
+    const breakdown = computeNetHours({
+      date: calculationTime,
+      config,
+      overrides,
+      holidays,
+      slackingSessions: getSessionsForDate(sessions, key, calculationTime.getTime()),
+    });
+    const hasGeneratedEarned = Boolean(entry?.earnedGenerated && entry.earnedAmount != null);
+    const isGeneratedHistory = hasGeneratedEarned && !isToday;
 
     // 取消日（用户取消生成）: entry 存在但 earnedGenerated=false → 不计入任何口径
     const isCancelled = entry != null && entry.earnedGenerated === false && entry.earnedAmount == null;
 
+    // v2.5-patch18：净工时不再读取生成时的 earnedNetMinutes 快照。
+    // 「已赚金额」代表用户当天实际拿到的工资，值应该锁定，不受后续补录影响；
+    // 但「净工时/摸鱼/加班」是纯统计口径，用户在生成记录之后补充/编辑/删除
+    // 摸鱼或加班 session 时，图表必须立刻反映最新的 session 状态 ——
+    // 否则「先生成记录、再补充摸鱼/加班」时统计图会一直停在生成时的旧值。
+    // breakdown 已经用当前 sessions 实时算好，这里始终用它。
     perDay.push({
       date,
       dateKey: key,
-      netMinutes: isRest || isCancelled
-        ? 0
-        : isGeneratedHistory && entry.earnedNetMinutes != null
-          ? entry.earnedNetMinutes
-          : Math.max(0, breakdown.netMinutes),
+      netMinutes: isRest || isCancelled ? 0 : Math.max(0, breakdown.netMinutes),
       earned: isRest || isCancelled
         ? 0
-        : isGeneratedHistory
-          ? entry.earnedAmount!
-          : effectiveDailyRate(date, config, overrides, holidays),
+        : hasGeneratedEarned
+          ? entry!.earnedAmount!
+          : isToday
+            ? todayEarned(now, config, overrides, holidays)
+            : effectiveDailyRate(date, config, overrides, holidays),
       slackMinutes: isRest ? 0 : breakdown.slackingMinutes,
       compMinutes: isRest ? 0 : breakdown.overtimeBonus + breakdown.nightBonus,
       isRest,
