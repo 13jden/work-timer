@@ -30,9 +30,11 @@ import { isInNightWindow } from './time';
 import {
   formatDateKey,
   formatHMS,
+  parseDateKey,
+  previousDateKey,
   toMinutes,
 } from './time';
-import { NIGHT_SHIFT_END_MIN, NIGHT_SHIFT_START_MIN } from './constants';
+import { MAKEUP_WORKDAYS, NIGHT_SHIFT_END_MIN, NIGHT_SHIFT_START_MIN } from './constants';
 
 // ════════════════════════════════════════════════════════════
 // 兼容旧 v1/v2 数据
@@ -346,7 +348,8 @@ export function isHoliday(date: Date, holidays: HolidayMap): string | null {
  *      - work / paid_overtime / freelance / leave → true
  *      - rest → false
  *   2. 节假日 → false
- *   3. restMode 判定
+ *   3. 调休上班日(MAKEUP_WORKDAYS) → true(覆盖周末默认休息)
+ *   4. restMode 判定
  */
 export function isWorkday(
   date: Date,
@@ -365,6 +368,8 @@ export function isWorkday(
     );
   }
   if (isHoliday(date, holidays)) return false;
+  // v2.5-patch16 T-531：调休上班日（中秋 9.20 / 国庆 10.10）覆盖周末默认休息
+  if (MAKEUP_WORKDAYS.has(key)) return true;
 
   if (config.restMode === 'custom') {
     const assigned = config.customRestSchedule?.workDays[formatDateKey(date)];
@@ -1041,6 +1046,64 @@ function intervalsUnionTotal(intervals: Array<{ startMin: number; endMin: number
 }
 
 /**
+ * v2.5-patch16 T-533：获取与指定日期有重叠的 sessions,并截断到该日 0 点起、当日 24 点止。
+ *
+ * 解决问题:
+ *   跨天 session(例如昨天 23:00 → 今天 02:00)按 `dateKey = 起始日` 存储在 slackingStore。
+ *   计算「今天的净工时」时只看 `sessions[today]`,就会漏掉昨日跨入今天的部分,
+ *   导致今日 netMinutes 多算(没有扣除 02:00 那段)、
+ *   今日已赚快照(快照包含摸鱼扣除部分)同样错误,也就是用户报「跨天的时候,记录还是被删掉了」。
+ *
+ * 行为:
+ *   1. 取 `sessions[dateKey]` 全部 session;
+ *   2. 取 `sessions[dateKey - 1]` 中 **endTs > dateKey.0 点** 的 session(即跨入今天);
+ *   3. 把每条 session 的 startTs / endTs **裁剪到 dateKey 当天 [0:00, 24:00)**;
+ *      endTs === null 的进行中 session,以 nowTs 兜底;
+ *   4. 过滤掉裁剪后不剩分钟的空段。
+ *
+ * 调用方把结果直接传给 `computeNetHours.slackingSessions`,
+ * 内层 `sessionsToIntervals` 会按 session.startDate 截断 —— 因为预先截断过,
+ * 跨入段在「当日」里就是 0:00 开始,而不是 -1:00。
+ *
+ * 注意: 不处理 endTs > dateKey 的次日跨段(理论上不会出现;
+ * 跨天 session 一律按起始日 dateKey 存储,跨入段的归属日由调用方决定)。
+ */
+export function getSessionsForDate(
+  sessions: Record<string, SlackingSession[]>,
+  dateKey: string,
+  nowTs: number = Date.now(),
+): SlackingSession[] {
+  const target = parseDateKey(dateKey);
+  if (!target) return [];
+  const dayStart = target.getTime();
+  const dayEnd = dayStart + 24 * 3600 * 1000;
+
+  const candidates: SlackingSession[] = [];
+  // 1. 当天的 sessions
+  for (const s of sessions[dateKey] ?? []) candidates.push(s);
+
+  // 2. 前一日中,跨入今天的 sessions(只看时间,不按 label)
+  const prevKey = previousDateKey(dateKey);
+  if (prevKey) {
+    for (const s of sessions[prevKey] ?? []) {
+      const eEnd = s.endTs ?? nowTs;
+      if (eEnd > dayStart) candidates.push(s);
+    }
+  }
+
+  // 3. 裁剪到当日 [dayStart, dayEnd)
+  const out: SlackingSession[] = [];
+  for (const s of candidates) {
+    const eEnd = s.endTs ?? nowTs;
+    const newStart = Math.max(s.startTs, dayStart);
+    const newEnd = Math.min(eEnd, dayEnd);
+    if (newEnd <= newStart) continue;
+    out.push({ ...s, startTs: newStart, endTs: newEnd });
+  }
+  return out;
+}
+
+/**
  * 计算当日净工时
  *
  * v1.3.4-patch1 改造:netMinutes 改为**实时累计**口径
@@ -1441,6 +1504,9 @@ export function isRestDayCustom(date: Date, config: Config): boolean {
 /**
  * 批量标记已赚。保留已有 DaySheet 的 type、segments、nightShift 等手工设置。
  * cancel=true 时只移除由该功能生成的标记，手工 DaySheet 配置保持不变。
+ *
+ * v2.5-patch16 T-534：传入选日期的 sessions，让 earnedNetMinutes 快照正确包含摸鱼/加班记录。
+ *   不传 sessions 时退化为旧行为（computeNetHours 用空 sessions，即无摸鱼/加班）。
  */
 export function batchGenerateEarned(
   dates: Date[],
@@ -1448,6 +1514,7 @@ export function batchGenerateEarned(
   overrides: DayOverrides,
   holidays: HolidayMap,
   cancel = false,
+  sessions?: Record<string, SlackingSession[]>,
 ): DayOverrides {
   const next = { ...overrides };
   for (const date of dates) {
@@ -1466,12 +1533,18 @@ export function batchGenerateEarned(
     }
     if (!isWorkday(date, config, overrides, holidays)) continue;
     const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    // v2.5-patch16 T-533：跨天 session 的「当日部分」也要进入快照。
+    // sessions?.[key] 漏掉了「昨 23:00 → 今 02:00」这种跨天段,
+    // 今 02:00 那一小时的摸鱼会被错误忽略。
+    const slackingSessions = sessions
+      ? getSessionsForDate(sessions, key, atDayEnd.getTime())
+      : [];
     const breakdown = computeNetHours({
       date: atDayEnd,
       config,
       overrides,
       holidays,
-      slackingSessions: [],
+      slackingSessions,
     });
     next[key] = {
       ...(previous ?? { type: 'work', multiplier: 1, segments: null, nightShift: false }),
@@ -1491,6 +1564,14 @@ export interface RangeDayStat {
   slackMinutes: number;
   compMinutes: number;
   isRest: boolean;
+  /**
+   * v2.5-patch16 T-535：该日是否已被手动「标记已赚」
+   *
+   * 用作日均分母的「有效天数」信号。
+   * - true:用户当日主动生成过已赚记录 → 计入日均分母
+   * - false:今日实时 / 未生成 / 已取消 → 不计入日均分母
+   */
+  earnedGenerated: boolean;
 }
 
 export interface RangeStats {
@@ -1519,12 +1600,15 @@ export function computeRangeStats(
     const key = formatDateKey(date);
     const isRest = !isWorkday(date, config, overrides, holidays);
     const atDayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    // v2.5-patch16 T-533：跨天 session 的「当日部分」要进入区间统计,
+    // 否则 8.1 23:30 → 8.2 00:30 这种摸鱼/加班只能计入 8.1,
+    // 8.2 的 netMinutes 就会少扣 30 min。
     const breakdown = computeNetHours({
       date: atDayEnd,
       config,
       overrides,
       holidays,
-      slackingSessions: sessions[key] ?? [],
+      slackingSessions: getSessionsForDate(sessions, key, atDayEnd.getTime()),
     });
     const entry = getDayOverride(overrides, key);
     const isToday =
@@ -1533,15 +1617,18 @@ export function computeRangeStats(
       date.getDate() === now.getDate();
     const isGeneratedHistory = entry?.earnedGenerated && !isToday && entry.earnedAmount != null;
 
+    // 取消日（用户取消生成）: entry 存在但 earnedGenerated=false → 不计入任何口径
+    const isCancelled = entry != null && entry.earnedGenerated === false && entry.earnedAmount == null;
+
     perDay.push({
       date,
       dateKey: key,
-      netMinutes: isRest
+      netMinutes: isRest || isCancelled
         ? 0
         : isGeneratedHistory && entry.earnedNetMinutes != null
           ? entry.earnedNetMinutes
           : Math.max(0, breakdown.netMinutes),
-      earned: isRest
+      earned: isRest || isCancelled
         ? 0
         : isGeneratedHistory
           ? entry.earnedAmount!
@@ -1549,6 +1636,9 @@ export function computeRangeStats(
       slackMinutes: isRest ? 0 : breakdown.slackingMinutes,
       compMinutes: isRest ? 0 : breakdown.overtimeBonus + breakdown.nightBonus,
       isRest,
+      // v2.5-patch16 T-535：日均分母信号；今日实时也按「未生成」处理,
+      // 让「我记录了几天的薪资」成为日均的唯一口径,符合用户预期。
+      earnedGenerated: Boolean(isGeneratedHistory),
     });
     cursor.setDate(cursor.getDate() + 1);
   }

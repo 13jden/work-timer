@@ -46,6 +46,32 @@ export function formatDateKey(date: Date): string {
 }
 
 /**
+ * "YYYY-MM-DD" → Date(本地 0 点)
+ * 解析失败返回 null
+ */
+export function parseDateKey(key: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || !mo || !d) return null;
+  return new Date(y, mo - 1, d, 0, 0, 0, 0);
+}
+
+/**
+ * v2.5-patch16 T-533：上一个日期 key。
+ * 2026-09-10 → 2026-09-09,2026-09-01 → 2026-08-31,跨年/闰年都正确。
+ * 解析失败返回 null。
+ */
+export function previousDateKey(key: string): string | null {
+  const d = parseDateKey(key);
+  if (!d) return null;
+  d.setDate(d.getDate() - 1);
+  return formatDateKey(d);
+}
+
+/**
  * 毫秒 → "HH:MM:SS"
  */
 export function formatHMS(ms: number, status: string, label: string): {

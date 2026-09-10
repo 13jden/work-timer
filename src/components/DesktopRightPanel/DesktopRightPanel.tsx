@@ -143,7 +143,7 @@ function CalendarRightContent({
     if (!pickedDate) return;
     // 用 store 最新值（避免闭包旧值）
     const latestOverrides = useCalendarStore.getState().dayOverrides;
-    const next = batchGenerateEarned([pickedDate], config, latestOverrides, HOLIDAYS, false);
+    const next = batchGenerateEarned([pickedDate], config, latestOverrides, HOLIDAYS, false, slackingSessions);
     const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
   }

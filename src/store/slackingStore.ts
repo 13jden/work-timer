@@ -13,7 +13,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SLACKING_KEY } from '../lib/constants';
 import { loadJSON } from '../lib/storage';
-import { detectNightShift, isInNightWindow } from '../lib/time';
+import { detectNightShift, isInNightWindow, previousDateKey } from '../lib/time';
 import type { SlackingSession, SlackingSessions, SlackingLabel } from '../lib/types';
 
 // ── Store 形状 ──────────────────────────────────────────────
@@ -219,10 +219,30 @@ export const useSlackingStore = create<SlackingState>()(
       },
 
       // Selectors(实现成方法,通过 getState 调用)
+      // v2.5-patch17:包含昨天跨入今天的 session，让跨天摸鱼在今天 panel 也可见可删。
       getSessionsByDate: (dateKey) => {
+        const nowTs = Date.now();
+        const target = new Date(dateKey + 'T00:00:00');
+        const dayStart = target.getTime();
         const list = get().sessions[dateKey] ?? [];
-        // 按 startTs 升序排序
-        return list.slice().sort((a, b) => a.startTs - b.startTs);
+
+        // 追加昨天跨入今天的 session（截断到今天 0 点起）
+        const prevKey = previousDateKey(dateKey);
+        let crossDay: SlackingSession[] = [];
+        if (prevKey) {
+          crossDay = (get().sessions[prevKey] ?? [])
+            .filter((s) => {
+              const eEnd = s.endTs ?? nowTs;
+              return eEnd > dayStart; // 跨入今天
+            })
+            .map((s) => {
+              // 截断到今天 0 点
+              const eEnd = s.endTs ?? nowTs;
+              return { ...s, startTs: dayStart, endTs: Math.min(eEnd, dayStart + 24 * 3600 * 1000) };
+            });
+        }
+
+        return [...list, ...crossDay].sort((a, b) => a.startTs - b.startTs);
       },
       getCurrentSession: () => {
         const id = get().currentSessionId;

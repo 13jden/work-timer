@@ -20,6 +20,7 @@ import {
   effectiveHourlyRate,
   slackingEarn,
   overtimeSessionSplit,
+  getSessionsForDate,
 } from '../lib/compute';
 import { useNow } from '../hooks/useNow';
 import type { TimeRecord, TimeRecordLabel } from '../lib/types';
@@ -63,9 +64,10 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
   const config = useConfigStore();
   const overrides = useCalendarStore((s) => s.dayOverrides);
   const getSessionsByDate = useSlackingStore((s) => s.getSessionsByDate);
+  const allSessions = useSlackingStore((s) => s.sessions);
   const removeSession = useSlackingStore((s) => s.removeSession);
 
-  // 日视图的日期偏移（0=今天，-1=昨天，以此类推）
+  // 日视图的日期偏移(0=今天,-1=昨天,以此类推)
   const [dayOffset, setDayOffset] = useState(0);
   const viewDate = useMemo(() => {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -74,12 +76,21 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
   }, [now, dayOffset]);
   const isToday = dayOffset === 0;
   const viewDateKey = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(viewDate.getDate()).padStart(2, '0')}`;
+  // 列表显示:按 dateKey 直接拿(展示原始 startTs/endTs)
   const viewSessions = getSessionsByDate(viewDateKey);
 
-  // 计算用的时间点：今日用 now（实时），其他日用当天 23:59:59
+  // 计算用的时间点:今日用 now(实时),其他日用当天 23:59:59
   const calcDate = isToday
     ? now
     : new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 23, 59, 59);
+
+  // v2.5-patch16 T-533：净工时计算要走「与该日有重叠的 sessions」,
+  // 否则「昨天 23:00 → 今天 02:00」的摸鱼/加班就只能计入昨天,
+  // 今天这边少扣 → 净工时多算。
+  const calcSessions = useMemo(
+    () => getSessionsForDate(allSessions, viewDateKey, calcDate.getTime()),
+    [allSessions, viewDateKey, calcDate],
+  );
 
   // 净工时
   const net = useMemo(() => computeNetHours({
@@ -87,8 +98,8 @@ export function TimeTrackerDetailPage({ onBack, onModeChange }: Props) {
     config,
     overrides,
     holidays: HOLIDAYS,
-    slackingSessions: viewSessions,
-  }), [calcDate, config, overrides, viewSessions]);
+    slackingSessions: calcSessions,
+  }), [calcDate, config, overrides, calcSessions]);
 
   const earned = useMemo(() => todayEarned(calcDate, config, overrides, HOLIDAYS), [calcDate, config, overrides]);
   const hourly = useMemo(() => effectiveHourlyRate(calcDate, config, overrides, HOLIDAYS), [calcDate, config, overrides]);

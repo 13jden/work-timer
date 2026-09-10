@@ -80,7 +80,12 @@ export function FishPage() {
   const fTotalSlack = filteredPerDay.reduce((sum, d) => sum + d.slackMinutes, 0);
   const fTotalComp = filteredPerDay.reduce((sum, d) => sum + d.compMinutes, 0);
   const fTotalEarned = filteredPerDay.reduce((sum, d) => sum + (d.earned ?? 0), 0);
-  const fWorkDays = filteredPerDay.filter(d => !d.isRest).length;
+  // v2.5-patch16 T-535：日均严格按「已生成记录的日期」计算。
+  // 取消已赚的日期、今日进行中(未生成)等都不计入分母;
+  // 分子也只取这些日期的净工时,与分母口径一致。
+  const recordedPerDay = filteredPerDay.filter((d) => d.earnedGenerated);
+  const fEarnedDays = recordedPerDay.length;
+  const fRecordedNet = recordedPerDay.reduce((sum, d) => sum + d.netMinutes, 0);
 
   const todayIndex = chartPerDay.findIndex(d => d.dateKey === todayKey);
   const fallbackIndex = chartPerDay.findIndex(d => !d.isRest);
@@ -91,7 +96,10 @@ export function FishPage() {
 
   const max = 540;
 
-  const workDays = fWorkDays || 1;
+  // v2.5-patch16 T-535：日均严格用「已赚日期的 netMinutes」当分子，与分母口径一致。
+  // 没有已赚日期时显示 0(避免除以 0 显示 fTotalNet 这种"全部"/1 的虚假值)。
+  const earnedDays = fEarnedDays;
+  const dailyAvgMinutes = earnedDays > 0 ? fRecordedNet / earnedDays : 0;
 
   const totalNet = fTotalNet;
   const effectiveMin = totalNet - fTotalComp;
@@ -141,7 +149,7 @@ export function FishPage() {
       ) : (
         <>
           <div className={styles.sDay}>
-            工作日 {workDays} 天
+            已赚天数 {earnedDays} 天
           </div>
           <div className={styles.sBig}>
             {fmtMinutes(fTotalNet)}
@@ -228,13 +236,13 @@ export function FishPage() {
         <div className={styles.duoItem}>
           <div className={styles.duoLabel}>累计净工时</div>
           <div className={styles.duoValue}>{fmtMinutes(fTotalNet)}</div>
-          <div className={styles.duoSub}>工作日 {workDays} 天</div>
+          <div className={styles.duoSub}>已赚天数 {earnedDays} 天</div>
         </div>
         <div className={styles.duoDivider}></div>
         <div className={styles.duoItem}>
           <div className={styles.duoLabel}>日均净工时</div>
-          <div className={styles.duoValue}>{fmtMinutes(fTotalNet / workDays)}</div>
-          <div className={styles.duoSub}>非工作日不参与平均</div>
+          <div className={styles.duoValue}>{fmtMinutes(dailyAvgMinutes)}</div>
+          <div className={styles.duoSub}>仅已赚天数参与平均</div>
         </div>
       </div>
 
@@ -287,7 +295,7 @@ export function FishPage() {
       </div>
 
       <div className={styles.footnote}>
-        * 日均、净时薪均按工作日计算，非工作日不参与平均<br />
+        * 日均按已赚天数计算，非工作日不参与平均<br />
         当前基础时薪 ¥{baseHourly.toFixed(2)}/h
       </div>
     </div>

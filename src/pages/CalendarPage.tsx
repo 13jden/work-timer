@@ -14,7 +14,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useMonthlyStore } from '../store/monthlyStore';
 import { useSlackingStore } from '../store/slackingStore';
 import { HOLIDAYS } from '../lib/constants';
-import { daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, getDayOverride } from '../lib/compute';
+import { daysInMonthCalc, isWorkday, dayUnits, todayEarned, batchGenerateEarned, effectiveDailyRate, dailySalary, getDayOverride } from '../lib/compute';
 import { formatDateKey } from '../lib/time';
 import { DaySheet } from '../components/DaySheet';
 import { GenerateSheet } from '../components/GenerateSheet';
@@ -101,30 +101,45 @@ export function CalendarPage({
   // 快照月薪
   const effectiveSalary = snapshot?.salary ?? config.monthlySalary;
 
-  // 当月已赚：
-  // - 今日及之前已生成记录的 earnedAmount 快照（不受后续配置影响）
-  // - 今日实时已赚（如果是当月且今日未生成）
+  // 当月已赚（用于「日均」分子 — 仅算已生成快照的工作日之和）：
+  // v2.5-patch16 T-535：只算「已生成已赚记录」的工作日快照和。
+  // - 今日实时（还在进行中）不计入（避免日均被拉低）
+  // - 没生成记录的工作日也不计入（用户没填，就算 0 元拉低）
+  // - 今天 < todayKey 天然排除今日；如果今天是未来月也走不进循环
   const monthEarned = useMemo(() => {
     const todayKey = formatDateKey(now);
-    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
     let total = 0;
-
-    // 累加所有已生成记录的快照值
     for (const key of Object.keys(overrides)) {
       const ov = overrides[key];
       if (!ov?.earnedGenerated || ov.earnedAmount == null) continue;
       const [y, m] = key.split('-').map(Number);
-      if (y === year && m === month + 1) {
-        total += ov.earnedAmount;
-      }
+      if (y !== year || m !== month + 1) continue;
+      if (key >= todayKey) continue; // 今日及未来排除
+      total += ov.earnedAmount;
     }
+    return total;
+  }, [year, month, now, overrides]);
 
-    // 今日如果还没生成过，加上实时已赚
+  // 当月已赚（用于 Summary「已赚」卡片显示 — 含今日实时）：
+  // v2.5-patch16 T-535：显示口径跟日均分子分开。今日还没结束,
+  // 把 todayEarned(now) 也加进来,让用户实时看到「目前共赚多少」。
+  // 计算口径（上面的 monthEarned）则继续只看已生成快照。
+  const monthEarnedDisplay = useMemo(() => {
+    const todayKey = formatDateKey(now);
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    let total = 0;
+    for (const key of Object.keys(overrides)) {
+      const ov = overrides[key];
+      if (!ov?.earnedGenerated || ov.earnedAmount == null) continue;
+      const [y, m] = key.split('-').map(Number);
+      if (y !== year || m !== month + 1) continue;
+      if (key >= todayKey) continue; // 今日及未来排除(今日走下面 todayEarned)
+      total += ov.earnedAmount;
+    }
     if (isCurrentMonth && !overrides[todayKey]?.earnedGenerated) {
       const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
       total += todayEarned(now, cfg, overrides, HOLIDAYS);
     }
-
     return total;
   }, [year, month, now, overrides, effectiveConfig, effectiveSalary]);
 
@@ -149,56 +164,52 @@ export function CalendarPage({
     return todayEarned(now, cfg, overrides, HOLIDAYS);
   }, [isCurrentMonth, now, effectiveConfig, effectiveSalary, overrides]);
 
-  // 工作日数
-  // v2.5-patch7 T-515：日均分母只算「已结束的工作日」
-  // - 过去月:整月工作日(全部已结束)
-  // - 当月:截至今日已完成的工作日。
-  //   「今日完成」= 今天是工作日 且 当前时间 >= endTime
-  //   否则今日排除(今日还在进行中,日均会被拉低)
-  //   今日若是休息日,本就不计入 workdaysCount
-  // - 未来月:0(无意义,不显示日均)
+  // 工作日数（用于 Summary「工作日」卡片显示 — 本月日历工作日总数）：
+  // v2.5-patch16 T-535：显示口径跟日均分母分开。
+  // 这里直接走日历口径（跟日历网格每个 cell 一致）,
+  // 让用户看到「这个月有几天工作日」的总数。
+  // - 当月:截至今日所有工作日(含今日,因为今天是日历里的工作日)
+  // - 过去月:整月所有工作日
+  // - 未来月:整月所有工作日(预览)
   const workdaysCount = useMemo(() => {
     let count = 0;
     const days = daysInMonthCalc(year, month);
-    const isPastMonth =
-      year < now.getFullYear() ||
-      (year === now.getFullYear() && month < now.getMonth());
-    // 当月今日是否已结束
-    let todayFinished = false;
-    if (isCurrentMonth) {
-      const [endH, endM] = effectiveConfig.endTime.split(':').map(Number);
-      const endMin = (Number.isFinite(endH) ? endH! : 18) * 60 + (Number.isFinite(endM) ? endM! : 0);
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      todayFinished = nowMin >= endMin;
-    }
-    // 计算「已结束的工作日」上限
-    let limit: number;
-    if (isPastMonth) {
-      limit = days;
-    } else if (isCurrentMonth) {
-      // 今日已完成 → 含今日;否则到昨天
-      limit = todayFinished ? now.getDate() : now.getDate() - 1;
-      if (limit < 0) limit = 0;
-    } else {
-      limit = 0;
-    }
-    for (let d = 1; d <= limit; d++) {
+    for (let d = 1; d <= days; d++) {
       if (isWorkday(new Date(year, month, d), effectiveConfig, overrides, HOLIDAYS)) count++;
     }
     return count;
-  }, [year, month, isCurrentMonth, effectiveConfig, overrides, now]);
+  }, [year, month, effectiveConfig, overrides]);
+
+  // 工作日数（用于「日均」分母 — 已生成已赚记录的天数）
+  // v2.5-patch16 T-535：等于"用户主动记录了多少天薪资",与「已赚」分子口径一致
+  // - 今日（key >= todayKey）排除：今天还在进行中,用户尚未生成快照
+  // - 没生成记录的日子不算分母（用户没填,日均不该被它拉低）
+  const workdaysCountForAvg = useMemo(() => {
+    const todayKey = formatDateKey(now);
+    let count = 0;
+    for (const key of Object.keys(overrides)) {
+      const ov = overrides[key];
+      if (!ov?.earnedGenerated || ov.earnedAmount == null) continue;
+      const [y, m] = key.split('-').map(Number);
+      if (y !== year || m !== month + 1) continue;
+      if (key >= todayKey) continue;
+      count++;
+    }
+    return count;
+  }, [year, month, now, overrides]);
 
   // 快照日均
-  // v2.5-patch3 T-474：用户期望"日均 = 当月已赚总数 ÷ 非休息日模式的天数"。
+  // v2.5-patch16 T-535：
   // - 已有月度快照：保留快照的 dailyRate（用户锁定当天口径，不被后续配置影响）
-  // - 无快照：用 monthEarned / 本月已结束工作日（workdaysCount 已收紧到已完成日）
+  // - 无快照：日均 = monthEarned / workdaysCountForAvg（仅算已生成记录,不含今日实时、不含未生成的工作日）
+  // Summary「日均」卡片显示这个值。
   const daily = useMemo(
     () => {
       if (snapshot) return snapshot.dailyRate;
-      if (workdaysCount <= 0) return 0;
-      return Math.round((monthEarned / workdaysCount) * 100) / 100;
+      if (workdaysCountForAvg <= 0) return 0;
+      return Math.round((monthEarned / workdaysCountForAvg) * 100) / 100;
     },
-    [snapshot, monthEarned, workdaysCount],
+    [snapshot, monthEarned, workdaysCountForAvg],
   );
 
   // 网格
@@ -263,7 +274,7 @@ export function CalendarPage({
       const [y, m, d] = key.split('-').map(Number);
       return new Date(y ?? year, (m ?? month + 1) - 1, d ?? 1);
     });
-    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel');
+    const next = batchGenerateEarned(dates, effectiveConfig, overrides, HOLIDAYS, selectMode === 'cancel', slackingSessions);
     const keys = new Set([...Object.keys(overrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
     setSelectMode(null);
@@ -275,7 +286,7 @@ export function CalendarPage({
     if (!pickedDate) return;
     // 用 store 最新值（可能被 DaySheet 刚保存过，避免闭包旧值）
     const latestOverrides = useCalendarStore.getState().dayOverrides;
-    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false);
+    const next = batchGenerateEarned([pickedDate], effectiveConfig, latestOverrides, HOLIDAYS, false, slackingSessions);
     const keys = new Set([...Object.keys(latestOverrides), ...Object.keys(next)]);
     keys.forEach((key) => setDayOverride(key, next[key] ?? null));
   }
@@ -301,6 +312,15 @@ export function CalendarPage({
   const isPickedWork = pickedDate
     ? isWorkday(pickedDate, effectiveConfig, overrides, HOLIDAYS)
     : false;
+
+  // v2.5-patch17：DaySheet「今日值这么多」预览用的基础日均。
+  // 用 dailySalary（纯配置算出的基础日均：月薪/工作日总数，倍率=1），
+  // 而不是 Summary 卡片的「日均」（daily，会随已生成记录数漂移，
+  // 跟"这天配置算出多少钱"是两个不同的口径）。跟桌面端 DesktopRightPanel 保持一致。
+  const pickedDailyEarning = useMemo(() => {
+    if (!pickedDate) return 0;
+    return dailySalary(pickedDate.getFullYear(), pickedDate.getMonth(), effectiveConfig, overrides, HOLIDAYS);
+  }, [pickedDate, effectiveConfig, overrides]);
 
   /**
    * GenerateSheet 确认:统一创建 / 覆盖快照。
@@ -398,7 +418,7 @@ export function CalendarPage({
             title={selectMode ? '退出多选模式' : '批量生成已赚'}
           >
             <div className={styles.summaryNum}>
-              ¥{Math.round(monthEarned).toLocaleString('en-US')}
+              ¥{Math.round(monthEarnedDisplay).toLocaleString('en-US')}
             </div>
             <div className={styles.summaryLbl}>已赚</div>
             {!isFutureMonth && !selectMode && hasUnGeneratedPastDays && (
@@ -520,7 +540,7 @@ export function CalendarPage({
           open={sheetOpen}
           date={pickedDate}
           isWork={isPickedWork}
-          dailyEarning={daily}
+          dailyEarning={pickedDailyEarning}
           currentEntry={pickedEntry}
           salaryMode={config.salaryMode}
           segmentTemplates={config.segmentTemplates}

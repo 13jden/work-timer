@@ -17,6 +17,7 @@ import { HOLIDAYS } from '../../lib/constants';
 import {
   computeNetHours,
   effectiveHourlyRate,
+  getSessionsForDate,
   overtimeSessionSplit,
   todayEarned,
 } from '../../lib/compute';
@@ -45,7 +46,12 @@ export function NetHoursDashboard({ compact = false }: Props) {
   const sessions = useSlackingStore((s) => s.sessions);
 
   const dateKey = todayKey(now);
-  const todaySessions = sessions[dateKey] ?? [];
+  // v2.5-patch16 T-533：跨天 session 的「今日部分」也要算进来,
+  // 否则昨日 23:00 → 今日 02:00 的摸鱼/加班只计入昨日、今日多算 2h。
+  const todaySessions = useMemo(
+    () => getSessionsForDate(sessions, dateKey, now.getTime()),
+    [sessions, dateKey, now],
+  );
 
   const net = useMemo(
     () => computeNetHours({

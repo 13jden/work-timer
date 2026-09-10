@@ -88,9 +88,14 @@ export function useSalaryLinkageSync(): void {
   // 计算「真实当月」每个工作日的 earnedAmount:
   //   - 已生成的快照:读 dayOverrides[key].earnedAmount(快照不受后续配置影响)
   //   - 今日实时:todayEarned(每秒随 useNow 同步)
-  const monthlyEarnedMap = useMemo(() => {
+  //
+  // v2.5-patch17 T-536：同时记录「该 key 的值是否来自已生成快照」(generatedKeys)。
+  // 用来在下方删除循环里区分「用户主动取消已赚」vs「日期自然跨过今天」——
+  // 两者都会导致 key 从 map 里消失,但只有前者应该删除记账联动 record。
+  const { map: monthlyEarnedMap, generatedKeys } = useMemo(() => {
     const todayKey = formatDateKey(now);
     const map: Record<string, number> = {};
+    const generated = new Set<string>();
     const days = daysInMonthCalc(y, m);
     for (let d = 1; d <= days; d++) {
       const date = new Date(y, m, d);
@@ -100,41 +105,59 @@ export function useSalaryLinkageSync(): void {
       const ov = dayOverrides[key];
       if (ov?.earnedGenerated && ov.earnedAmount != null) {
         map[key] = ov.earnedAmount;
+        generated.add(key);
       } else if (key === todayKey) {
         const cfg = { ...effectiveConfig, monthlySalary: effectiveSalary };
         map[key] = todayEarned(now, cfg, dayOverrides, HOLIDAYS);
       }
     }
-    return map;
+    return { map, generatedKeys: generated };
     // effectiveConfig 因 `{ ...config, restMode }` 每次渲染都新建对象,会触发
     // useMemo 重算;但 map 输出在 restMode 未变时仍稳定,effect 里 prev[key]
     // ! == value 守卫会过滤掉无效 upsert —— 性能可以接受。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, dayOverrides, effectiveConfig, effectiveSalary]);
 
-  // 仅在 monthlyEarnedMap 真正变化的 dateKey 上调用 upsert;
-  // 首帧跳过今日实时值(避免每秒回灌),过去日期照常一次性同步。
+  // 仅在 monthlyEarnedMap 真正变化的 dateKey 上调用 upsert;过去日期与今日
+  // 首帧都立即同步一次 —— 打开 App 就应该看到今日记录,不必等下一秒变化。
+  // (首帧仍会被下面的 `prev[key] !== value` 覆盖:prev 初始为空对象,
+  //  所以第一次一定会写入,之后每秒只在金额真正变化时才 upsert,不会重复新增。)
   // 取消 / 消失:把 prev 里有但当前 map 里消失的 key 视为 0,
   // 仅当「key 仍属真实当月 + 仍是工作日」时执行 —— 避免切月 / 休息日误删联动。
   const prevMonthlyRef = useRef<Record<string, number>>({});
+  // v2.5-patch17 T-536：记录上一帧「哪些 key 是已生成快照」。
+  // 用来区分下面删除循环里两种不同的「key 从 map 消失」:
+  //   - 曾是已生成快照,现在不再生成(用户主动点了「取消已赚」)→ 必须删除联动 record
+  //   - 从未生成快照,只是「今日实时值」随日期跨过午夜消失(T-532 场景)→ 不删除
+  const prevGeneratedKeysRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!config.salaryLinkageEnabled) {
       prevMonthlyRef.current = monthlyEarnedMap;
+      prevGeneratedKeysRef.current = generatedKeys;
       return;
     }
     const upsert = useAccountStore.getState().upsertSalaryLinkageForDate;
     const prev = prevMonthlyRef.current;
+    const prevGenerated = prevGeneratedKeysRef.current;
     const isFirst = Object.keys(prev).length === 0;
     const todayKey = formatDateKey(now);
-    // 新增 / 改值
+    // 新增 / 改值(含首帧的今日实时值 —— 打开 App 就应该立即同步今日记录)
     for (const [key, value] of Object.entries(monthlyEarnedMap)) {
-      if (isFirst && key === todayKey) continue; // 首帧跳过今日(避免 0→真实值回灌)
       if (prev[key] !== value) upsert(key, value);
     }
     // 取消 / 消失
     if (!isFirst) {
       for (const key of Object.keys(prev)) {
         if (key in monthlyEarnedMap) continue;
+        // ── v2.5-patch17 T-536：用户主动取消已赚 → 无条件删除联动 record ──
+        // 上一帧 key 是「已生成快照」(prevGenerated 里有),这一帧却不在 map 里,
+        // 说明用户点了「取消已赚」(dayOverrides[key].earnedGenerated 被清空)。
+        // 这跟 T-532 的自然跨午夜消失是两回事,不受下面的跨天守卫限制 ——
+        // 过去日期取消已赚,联动 record 也必须同步删掉。
+        if (prevGenerated.has(key)) {
+          upsert(key, 0);
+          continue;
+        }
         // ── v2.5-patch15 T-532：跨天守卫 ──
         // 昨日及更早永不自动删除 —— 跨午夜时 prev 含昨天、当前 map 不含昨天
         // (昨天非 todayKey 且无用户快照,实时 tick 未写入),原逻辑会把它误判为
@@ -151,7 +174,8 @@ export function useSalaryLinkageSync(): void {
       }
     }
     prevMonthlyRef.current = monthlyEarnedMap;
-  }, [monthlyEarnedMap, config.salaryLinkageEnabled, now, dayOverrides, effectiveConfig, y, m]);
+    prevGeneratedKeysRef.current = generatedKeys;
+  }, [monthlyEarnedMap, generatedKeys, config.salaryLinkageEnabled, now, dayOverrides, effectiveConfig, y, m]);
 }
 
 /**
