@@ -133,7 +133,7 @@ export function App() {
     // 只认向下滑（dy>0）；上滑不再切换，避免与滚动回弹混淆
     // v2.5 T-415：触发距离 70 → 120，手势更长更不易误触
     // v2.5-patch10：必须先滑到顶部才能触发（atTopRef.current）
-    if (dt > 350 || dy < 120 || Math.abs(dy) < 2 * Math.abs(dx) || !atTopRef.current) return;
+    if (dt > 350 || dy < 200 || Math.abs(dy) < 2 * Math.abs(dx) || !atTopRef.current) return;
     setMode(mode === 'timer' ? 'accounting' : 'timer');
   }
 
