@@ -46,6 +46,13 @@ function formatEarnText(value: number): string {
   return `¥${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** 格式化日期: M/D (如 9/11) */
+function formatDate(date: Date): string {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
+}
+
 export function CalendarPage({
   isDesktopInline = false,
   onPickDate,
@@ -349,7 +356,6 @@ export function CalendarPage({
 
 
   const monthLabel = `${MONTH_NAMES[month]}`;
-  const yearLabel = `${year}`;
 
   // ── DaySheet 渲染策略 ──────────────────────────────────────
   // v1.3.4-patch4:
@@ -381,7 +387,7 @@ export function CalendarPage({
           <div className={styles.headEyebrowRow}>
             <span className={styles.headEyebrow}>calendar</span>
             <span className={styles.headEnglish}>Monthly overview</span>
-            <span className={styles.headRight}>{yearLabel}</span>
+            <span className={styles.headRight}>{formatDate(now)}</span>
           </div>
           <button
             type="button"

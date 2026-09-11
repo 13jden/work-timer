@@ -101,8 +101,20 @@ export interface Config {
   /** 主题 ID */
   theme: 'paper' | 'obsidian' | 'gold';
   /**
-   * 用户首次打开 App 的日期(ISO "YYYY-MM-DD"),用于"用户记录区间"。
-   * 空字符串表示未初始化,store 初始化时写入今天。
+   * 数据完整链锚点(YYYY-MM-DD)。
+   *
+   * 语义(v2.5-patch19 T-540 起):
+   *   - **初始值**:用户首次启用 App 时 = 今天;`onRehydrateStorage` 只在
+   *     persisted 为空时写入,后续 setConfig 即使被调用也**不会**回退覆盖
+   *     已有值
+   *   - **滚动向前**:每次 SalaryLinkageSync tick 检查 [recordedFromDate, todayKey)
+   *     工作日缺失的 record(time mode + account 联动),全部补齐后
+   *     recordedFromDate := todayKey,下次 tick 走早返回
+   *   - **TASK-053 立场保留**:anchor 之前(用户启用 App 之前)的工作日
+   *     永远不会被 backfill 主动补 record
+   *   - **作用**:用户启用后即使中间几天没打开 App,backfill 窗口会随用户
+   *     每日使用滚动到 today,正常场景下永远只补「最近一段 gap」,不会因
+   *     一次大跨度 gap 触发整段历史回灌
    */
   recordedFromDate: string;
 
