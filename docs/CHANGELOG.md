@@ -5,6 +5,7 @@
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
 | v2.5-patch17 | 2026-09-10 | 薪资联动、已赚统计与跨天记录修正 (TASK-053) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
+| v2.5-patch18 | 2026-09-11 | T-532 跨天守卫回归覆盖(同月跨日 + 跨月跨午夜两条专门用例) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra3 | 2026-09-08 | 夺回 80/443:部署自动停掉建站产品容器 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra2 | 2026-09-08 | HTTPS 跑通:persecond.work + TLS-ALPN-01,与宿主机 OpenResty 共存 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra1 | 2026-09-08 | 部署链路重构:CI 构建 dist + Caddy 自动 HTTPS | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |

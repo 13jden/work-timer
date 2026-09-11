@@ -6,6 +6,41 @@
 
 ---
 
+## [v2.5-patch18] · 2026-09-11 · T-532 跨天守卫回归覆盖
+
+基线 v2.5-patch17 (TASK-053)。T-532 的「跨午夜时昨日联动 record 不被误删」在 patch17 已合入一行守卫(`if (cmpDateKey(key, todayKey) < 0) continue;`),但回归覆盖只有「首次挂载」一条,跨天场景缺乏专门断言 —— 本轮补 2 条专门用例锁住守卫行为。
+
+### A · 新增跨天守卫回归测试
+
+`src/hooks/useSalaryLinkageSync.test.tsx` 新增 2 条用例(共 +118 行):
+
+1. **`跨天守卫:同月跨日(9-1 → 9-2)时昨日联动记录不会被清空`** ——
+   9-1 20:00 挂载,`vi.advanceTimersByTime(1s)` 让 9-1 联动 record 写入;再把系统时间拨到 9-1 23:59:30 并 `advanceTimersByTime(90s)` → 9-2 00:01:00(y/m 仍是 (2026,8) 同月,todayKey 从 9-1 翻到 9-2),断言 9-1 record 的 `id` / `amount` 完全不变。
+
+   这是 T-532 必须独立守住的场景 —— 否则月度守卫 `if (py !== y || pm !== m) continue` 在「同月跨日」形同虚设,9-1 仍会被错杀。
+
+2. **`跨天守卫:跨午夜时昨日联动记录不会被清空`** ——
+   8-31 20:00 挂载,1s 内 8 月所有工作日联动 record 写满;把系统时间拨到 8-31 23:59:30 并 `advanceTimersByTime(60s)` → 9-1 00:00:30(跨月),断言:
+   - 8-31 record 的 `id` / `amount` 不变
+   - 8 月联动 record 数量 = 上一帧的数量(没被批量清掉)
+   - 9-1 允许不存在或单条(`<= 1`,凌晨还没到工作段)
+
+   若 T-532 守卫失效,8-31 / 8 月整批 record 会被错杀,这条用例即失败。
+
+### 不做的事
+
+- ❌ 不改 `useSalaryLinkageSync.ts` 任何代码(T-532 守卫行已在 patch17)
+- ❌ 不改 `accountStore.upsertSalaryLinkageForDate` 接口
+- ❌ 不动 Caddyfile / public/download / public/downloads(与跨天守卫无关)
+
+### 验证
+
+- `npm run typecheck` 通过
+- **415 / 415 单测全过**(原 410 → +5:本次新增 2 条 + patch17 累计 3 条)
+- `npm run build` 成功
+
+---
+
 ## [v2.5-patch17] · 2026-09-10 · 薪资联动、已赚统计与跨天记录修正 (TASK-053)
 
 - 工资联动改为打开应用即同步今日已赚；即使下班后金额已定格，也会在首帧写入今日记账记录，后续仍按金额变化幂等更新。
