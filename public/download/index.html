@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Salary Timer · Android</title>
+    <meta name="description" content="每秒都在赚的薪资计时器,Android 版 APK 下载。" />
+    <meta name="theme-color" content="#0E0E0E" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://persecond.work/download/" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230E0E0E'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Inter,sans-serif' font-size='18' font-weight='800' fill='%23D4F500'%3E%C2%A5%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <style>
+      /* === Theme: cream paper + ink black + lime accent === */
+      :root {
+        --bg: #F7F0DA;          /* cream paper */
+        --bg-edge: #EDE4C8;     /* cream rule */
+        --ink: #0E0E0E;         /* near-black */
+        --ink-soft: #4A4A48;    /* secondary text on cream */
+        --ink-faint: #8A8A85;   /* tertiary */
+        --paper: #FFFFFF;       /* white surface */
+        --lime: #D4F500;        /* lime yellow accent */
+        --lime-deep: #A8C700;   /* deeper lime */
+        --danger: #E03E3E;      /* not used now, reserved */
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Inter', system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* Subtle paper texture (very faint grid) */
+      body {
+        background-image:
+          radial-gradient(circle at 1px 1px, rgba(14, 14, 14, 0.05) 1px, transparent 0);
+        background-size: 24px 24px;
+        background-position: 0 0;
+        min-height: 100vh;
+      }
+
+      .wrap {
+        max-width: 540px;
+        margin: 0 auto;
+        padding: 48px 22px 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      @media (max-width: 480px) {
+        .wrap { padding: 32px 18px 64px; gap: 22px; }
+      }
+
+      /* === Eyebrow === */
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .eyebrow .pip {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--lime);
+      }
+      .eyebrow .sep {
+        flex: 1;
+        height: 1px;
+        background: var(--ink);
+        opacity: 0.85;
+      }
+
+      /* === Hero: ink-black card with dot pattern + lime live rate === */
+      .hero {
+        position: relative;
+        background: var(--ink);
+        color: #FFFFFF;
+        border-radius: 22px;
+        border: 2px solid var(--ink);
+        padding: 26px 24px 28px;
+        overflow: hidden;
+        box-shadow: 6px 6px 0 0 var(--ink);
+      }
+      .hero::before {
+        /* white dot pattern over black */
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.08) 1px, transparent 0);
+        background-size: 14px 14px;
+        pointer-events: none;
+      }
+      .hero > * { position: relative; }
+
+      .hero .row-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+        margin-bottom: 14px;
+      }
+      .hero .row-top .clock {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        font-size: 11px;
+        color: var(--lime);
+      }
+
+      .hero .rate {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: clamp(48px, 13vw, 76px);
+        line-height: 0.96;
+        letter-spacing: -0.045em;
+        color: var(--lime);
+        font-variant-numeric: tabular-nums;
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
+        flex-wrap: wrap;
+      }
+      .hero .rate .yen { font-size: 0.72em; opacity: 0.9; }
+      .hero .rate .per {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.30em;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: rgba(255, 255, 255, 0.7);
+        margin-left: 10px;
+        white-space: nowrap;
+      }
+
+      .hero .earned {
+        margin-top: 14px;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.72);
+        font-variant-numeric: tabular-nums;
+      }
+      .hero .earned b {
+        color: #FFFFFF;
+        font-weight: 500;
+      }
+      .hero .earned .yen {
+        color: var(--lime);
+        font-weight: 500;
+      }
+
+      /* === Sub copy === */
+      .sub {
+        font-size: 16px;
+        color: var(--ink-soft);
+        margin: 0;
+        max-width: 36em;
+      }
+      .sub b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      /* === Meta: bordered grid (matches app's card style) === */
+      .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 2px solid var(--ink);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: 4px 4px 0 0 var(--ink);
+      }
+      .meta > div {
+        padding: 14px 16px;
+        border-right: 2px solid var(--ink);
+        border-bottom: 2px solid var(--ink);
+      }
+      .meta > div:nth-child(2n)        { border-right: 0; }
+      .meta > div:nth-last-child(-n+2) { border-bottom: 0; }
+      .meta dt {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 0 0 4px;
+        font-weight: 700;
+      }
+      .meta dd {
+        margin: 0;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* === Download CTA: lime pill, ink border + hard shadow === */
+      .cta {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 4px;
+      }
+      .cta a {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 24px;
+        background: var(--lime);
+        color: var(--ink);
+        text-decoration: none;
+        border-radius: 18px;
+        border: 2px solid var(--ink);
+        box-shadow: 6px 6px 0 0 var(--ink);
+        transition: transform 90ms ease, box-shadow 90ms ease, background 140ms ease;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+      }
+      .cta a:hover {
+        background: #E0FF1A;
+        transform: translate(-2px, -2px);
+        box-shadow: 8px 8px 0 0 var(--ink);
+      }
+      .cta a:active {
+        transform: translate(2px, 2px);
+        box-shadow: 2px 2px 0 0 var(--ink);
+      }
+      .cta a:focus-visible {
+        outline: 3px solid var(--lime-deep);
+        outline-offset: 3px;
+      }
+      .cta a .label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .cta a .label svg {
+        width: 22px;
+        height: 22px;
+      }
+      .cta a .size {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 5px 11px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--lime);
+      }
+
+      .sub-meta {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--ink-faint);
+        line-height: 1.7;
+        word-break: break-all;
+      }
+      .sub-meta b {
+        color: var(--ink-soft);
+        font-weight: 500;
+      }
+
+      /* === Footer === */
+      footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 12px;
+        color: var(--ink-soft);
+        padding-top: 8px;
+      }
+      footer a {
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border-bottom: 2px solid var(--lime);
+        padding-bottom: 2px;
+      }
+      footer a:hover { border-bottom-color: var(--lime-deep); }
+      footer .hash {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        opacity: 0.75;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .cta a { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap" role="main">
+      <div class="eyebrow">
+        <span class="pip" aria-hidden="true"></span>
+        <span>Salary Timer</span>
+        <span class="sep" aria-hidden="true"></span>
+        <span>Android · arm64</span>
+      </div>
+
+      <section class="hero" aria-label="薪资秒薪示意">
+        <div class="row-top">
+          <span>live rate</span>
+          <span class="clock" id="clock">--:--:--</span>
+        </div>
+        <div class="rate" aria-live="polite">
+          <span class="yen" aria-hidden="true">¥</span><span id="rate">0.0537</span><span class="per">/ 秒</span>
+        </div>
+        <div class="earned">
+          本页停留 <b id="elapsed">0.0</b> 秒 · 已「赚到」<span class="yen">¥</span><b id="earned">0.00</b>
+        </div>
+      </section>
+
+      <p class="sub">
+        每秒都在为咖啡努力的<b>秒薪计数器</b>,现在装进你的口袋。
+      </p>
+
+      <dl class="meta">
+        <div>
+          <dt>版本</dt>
+          <dd id="meta-version">v2.5.0</dd>
+        </div>
+        <div>
+          <dt>更新时间</dt>
+          <dd id="meta-date">2026-09-10</dd>
+        </div>
+        <div>
+          <dt>架构</dt>
+          <dd>arm64-v8a</dd>
+        </div>
+        <div>
+          <dt>最低系统</dt>
+          <dd>Android 7.0+</dd>
+        </div>
+      </dl>
+
+      <div class="cta">
+        <a id="download" href="/downloads/SalaryTimer-2.5.0-arm64.apk" download>
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 4v12" />
+              <path d="m6 12 6 6 6-6" />
+              <path d="M5 20h14" />
+            </svg>
+            <span>Download for Android</span>
+          </span>
+          <span class="size" id="meta-size">12.2 MB</span>
+        </a>
+        <div class="sub-meta" id="sub-meta">
+          SHA-256 · <b id="meta-sha">计算中…</b>
+        </div>
+      </div>
+
+      <footer>
+        <a href="/">← 返回 Salary Timer</a>
+        <span class="hash" id="meta-build">build #—</span>
+      </footer>
+    </main>
+
+    <script>
+      (function () {
+        var PAGE_LOAD = Date.now();
+        var RATE_PER_SEC = 0.0537; // ¥193/h ≈ ¥0.0536/s
+        var rateEl = document.getElementById('rate');
+        var earnedEl = document.getElementById('earned');
+        var elapsedEl = document.getElementById('elapsed');
+        var clockEl = document.getElementById('clock');
+
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+        function tickClock() {
+          var d = new Date();
+          clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        }
+
+        function tickEarn() {
+          var elapsedSec = (Date.now() - PAGE_LOAD) / 1000;
+          var earned = RATE_PER_SEC * elapsedSec;
+          elapsedEl.textContent = elapsedSec.toFixed(1);
+          earnedEl.textContent = earned.toFixed(2);
+        }
+
+        tickClock(); tickEarn();
+        setInterval(tickClock, 1000);
+        setInterval(tickEarn, 100);
+
+        // Optional: pull release metadata from /downloads/manifest.json
+        fetch('/downloads/manifest.json', { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (m) {
+            if (!m) return;
+            if (m.version) document.getElementById('meta-version').textContent = 'v' + m.version;
+            if (m.updated) document.getElementById('meta-date').textContent = m.updated;
+            if (m.sizeLabel) document.getElementById('meta-size').textContent = m.sizeLabel;
+            if (m.sha256) document.getElementById('meta-sha').textContent = m.sha256.slice(0, 24) + '…';
+            if (m.build) document.getElementById('meta-build').textContent = 'build #' + m.build;
+            if (m.apk) {
+              var a = document.getElementById('download');
+              a.href = m.apk;
+              a.setAttribute('download', m.apk.split('/').pop());
+            }
+          })
+          .catch(function () {});
+      })();
+    </script>
+  </body>
+</html>

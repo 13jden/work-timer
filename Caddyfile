@@ -30,7 +30,7 @@
 	}
 	header @static Cache-Control "public, max-age=31536000, immutable"
 
-	# SPA 路由:任何不存在的路径回 index.html
-	try_files {path} /index.html
+	# 目录索引优先(/download/ → /download/index.html),然后 SPA 路由回 index.html
+	try_files {path} {path}/index.html /index.html
 	file_server
 }
