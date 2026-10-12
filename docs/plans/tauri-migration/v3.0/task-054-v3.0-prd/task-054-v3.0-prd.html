@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Salary Timer v3.0 · 产品思路 — 回归简单记账</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#F5F2EA; --paper-2:#EDE9DD; --card:#FFFDF6; --card-2:#FBF9F0;
+    --ink:#0F0F0F; --ink-soft:#3A3A3A; --muted:#8B8B82;
+    --line:#E0DBC8; --line-soft:#EAE5D6;
+    --accent:#C8FF00; --accent-deep:#6C8A00; --accent-soft:#EFFFB8;
+    --expense:#C04A3A; --income:#2D8F5B;
+    --dark:#131320; --dark-2:#1C212C; --dark-ink:#E8E8F0; --dark-muted:#9A9AA8;
+    --serif:"Cormorant Garamond","Noto Serif SC",serif;
+    --sans:"Figtree","Noto Sans SC",system-ui,sans-serif;
+    --mono:"JetBrains Mono",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.7;font-size:15px}
+  ::selection{background:var(--accent);color:var(--ink)}
+
+  /* ── hero ─────────────────────────────── */
+  .hero{max-width:1080px;margin:0 auto;padding:88px 32px 56px}
+  .hero .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;gap:10px}
+  .hero .eyebrow::before{content:"";width:34px;height:1px;background:var(--accent-deep)}
+  .hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(40px,6vw,68px);line-height:1.12;margin:18px 0 8px;letter-spacing:.01em}
+  .hero h1 em{font-style:italic;background:linear-gradient(transparent 62%,var(--accent) 62%)}
+  .hero .sub{font-size:17px;color:var(--ink-soft);max-width:640px;margin-top:14px}
+  .hero .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink-soft)}
+  .chip b{color:var(--ink)}
+
+  /* ── toc ─────────────────────────────── */
+  .toc{max-width:1080px;margin:0 auto;padding:0 32px 8px}
+  .toc-inner{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0}
+  .toc a{font-size:13px;color:var(--ink-soft);text-decoration:none;padding:5px 12px;border-radius:999px;border:1px solid transparent;transition:.18s}
+  .toc a:hover{border-color:var(--line);background:var(--card)}
+  .toc a b{font-family:var(--mono);color:var(--accent-deep);font-weight:500;margin-right:4px}
+
+  /* ── section ─────────────────────────── */
+  main{max-width:1080px;margin:0 auto;padding:0 32px}
+  section{padding:64px 0 8px}
+  .sec-head{margin-bottom:34px}
+  .sec-head .no{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--accent-deep)}
+  .sec-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(28px,3.6vw,40px);margin:8px 0 10px}
+  .sec-head .lead{color:var(--ink-soft);max-width:760px}
+  h3{font-size:18px;font-weight:700;margin:34px 0 12px}
+  h4{font-size:15px;font-weight:700;margin:20px 0 8px}
+  p{margin:8px 0}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  strong{font-weight:700}
+  .hl{background:linear-gradient(transparent 62%,var(--accent) 62%);padding:0 2px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);border-radius:12px;overflow:hidden}
+  th{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--card-2)}
+  td{padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .tbl-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:14px 0}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card-2);color:var(--ink-soft);white-space:nowrap}
+  .tag.green{background:#E8F5EE;border-color:#BFE0CD;color:var(--income)}
+  .tag.red{background:#FBEDEA;border-color:#EBC7C0;color:var(--expense)}
+  .tag.lime{background:var(--accent-soft);border-color:#D6EFA0;color:var(--accent-deep)}
+  .tag.dark{background:var(--dark-2);border-color:#333a4a;color:var(--dark-ink)}
+
+  /* ── dark retrospective ──────────────── */
+  .dark-sec{background:var(--dark);color:var(--dark-ink);border-radius:24px;padding:44px 40px;margin-top:8px}
+  .dark-sec .no{color:var(--accent)}
+  .dark-sec h2{font-family:var(--serif);font-size:clamp(26px,3vw,34px);margin:8px 0 6px;color:#fff}
+  .dark-sec .lead{color:var(--dark-muted);max-width:720px}
+  .pain{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
+  .pain-item{background:var(--dark-2);border:1px solid #2A3040;border-radius:14px;padding:18px}
+  .pain-item .k{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.14em}
+  .pain-item h5{font-size:15px;margin:8px 0 6px;color:#fff}
+  .pain-item p{font-size:13px;color:var(--dark-muted);line-height:1.65}
+
+  /* ── principles ──────────────────────── */
+  .principle{position:relative;overflow:hidden}
+  .principle .num{font-family:var(--serif);font-style:italic;font-size:52px;line-height:1;color:var(--accent-deep);opacity:.35}
+  .principle h5{font-size:17px;margin:6px 0 6px}
+  .principle p{font-size:13.5px;color:var(--ink-soft)}
+
+  /* ── naming ──────────────────────────── */
+  .name-card{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:26px;position:relative}
+  .name-card .from{font-family:var(--mono);font-size:12px;color:var(--muted);text-decoration:line-through}
+  .name-card .arrow{color:var(--accent-deep);margin:0 8px}
+  .name-card .to{font-family:var(--serif);font-size:34px;font-weight:600}
+  .name-card .en{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--accent-deep);text-transform:uppercase}
+  .name-card .why{font-size:13.5px;color:var(--ink-soft);margin-top:12px}
+
+  /* ── phone mockups ───────────────────── */
+  .stage{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;margin:20px 0}
+  .phone{width:300px;flex:0 0 auto;background:#0F0F0F;border-radius:38px;padding:10px;box-shadow:0 24px 48px -20px rgba(15,15,15,.35)}
+  .phone-screen{background:var(--paper);border-radius:29px;overflow:hidden;height:600px;display:flex;flex-direction:column;position:relative}
+  .phone-caption{font-size:12.5px;color:var(--muted);text-align:center;margin-top:12px;max-width:300px}
+  .phone-caption b{color:var(--ink-soft)}
+  .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:96px;height:20px;background:#0F0F0F;border-radius:999px;z-index:5}
+
+  .p-top{padding:38px 16px 10px;flex:0 0 auto}
+  .p-eyebrow{font-family:var(--mono);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+  .p-title{font-size:19px;font-weight:700;text-align:center;margin-top:2px}
+  .p-body{flex:1;overflow:hidden;padding:8px 12px 14px;display:flex;flex-direction:column;gap:9px}
+
+  .p-hero{background:var(--dark);color:var(--dark-ink);border-radius:16px;padding:14px;position:relative;overflow:hidden}
+  .p-hero::before{content:"";position:absolute;right:-24px;top:-30px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(200,255,0,.22),transparent 70%)}
+  .p-hero .lbl{font-size:10px;color:var(--dark-muted);display:flex;justify-content:space-between;align-items:center}
+  .p-hero .amt{font-family:var(--mono);font-size:27px;font-weight:700;color:#fff;margin:4px 0 6px}
+  .p-hero .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .p-chip{font-size:9px;padding:2.5px 7px;border-radius:999px;border:1px dashed #4a5164;color:var(--dark-muted)}
+  .p-chip.g{border-color:rgba(74,222,128,.5);color:#7ed9a2}
+  .p-chip.r{border-color:rgba(255,107,107,.5);color:#ff9c9c}
+  .p-chip.solid{border-style:solid;color:#cfd4e2}
+  .p-hint{font-size:9.5px;color:var(--muted);text-align:center;margin-top:7px}
+
+  .p-sec{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 12px}
+  .p-sec-h{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px}
+  .p-sec-h .more{font-size:10px;color:var(--accent-deep);font-weight:500}
+
+  .p-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:11.5px}
+  .p-row:last-child{border-bottom:none}
+  .p-ico{width:26px;height:26px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+  .p-row .nm{flex:1;min-width:0}
+  .p-row .nm small{display:block;font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p-amt{font-family:var(--mono);font-size:11.5px;font-weight:600}
+  .p-amt.exp{color:var(--expense)} .p-amt.inc{color:var(--income)}
+  .p-thumb{width:30px;height:30px;border-radius:8px;flex:0 0 auto;background:linear-gradient(135deg,#F3D9B1,#D9A05B);display:flex;align-items:center;justify-content:center;font-size:12px}
+
+  .p-seg{display:flex;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px}
+  .p-seg span{flex:1;text-align:center;font-size:10.5px;padding:5px 0;border-radius:8px;color:var(--muted)}
+  .p-seg span.on{background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+  .p-dayhead{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);padding:8px 2px 3px;border-bottom:1px solid var(--line)}
+  .p-dayhead b{color:var(--ink-soft)}
+
+  .p-bars{display:flex;align-items:flex-end;gap:4px;height:92px;padding:8px 4px 0}
+  .p-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}
+  .p-bar i{display:block;border-radius:3px 3px 0 0}
+  .p-bar i.e{background:var(--expense)} .p-bar i.i{background:var(--income)}
+  .p-rank{display:flex;align-items:center;gap:7px;font-size:10.5px;padding:5px 0}
+  .p-rank .bar{flex:1;height:6px;background:var(--paper-2);border-radius:99px;overflow:hidden}
+  .p-rank .bar i{display:block;height:100%;background:var(--accent-deep);border-radius:99px}
+
+  /* waterfall */
+  .wf{columns:2;column-gap:9px}
+  .wf-card{break-inside:avoid;background:var(--card);border:1px solid var(--line-soft);border-radius:13px;overflow:hidden;margin-bottom:9px}
+  .wf-cover{display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff}
+  .wf-body{padding:8px 10px 10px}
+  .wf-body .t{font-size:11.5px;font-weight:700;line-height:1.35}
+  .wf-body .m{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+  .wf-body .m .a{font-family:var(--mono);font-size:11.5px;font-weight:700}
+  .wf-body .m .d{font-size:9px;color:var(--muted)}
+
+  /* sheet mockup */
+  .sheet{margin:0 10px 12px;background:var(--card);border-radius:18px 18px 0 0;border:1px solid var(--line-soft);border-bottom:none;padding:16px 14px;box-shadow:0 -12px 30px rgba(0,0,0,.08)}
+  .sheet .grab{width:34px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 12px}
+  .expr{font-family:var(--mono);font-size:26px;font-weight:700;text-align:right;padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:12px}
+  .preview{font-family:var(--mono);font-size:12px;text-align:right;color:var(--accent-deep);margin-top:7px}
+  .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+  .keypad span{text-align:center;font-family:var(--mono);font-size:14px;padding:9px 0;background:var(--paper);border:1px solid var(--line-soft);border-radius:9px;color:var(--ink-soft)}
+  .keypad span.op{background:var(--accent-soft);color:var(--accent-deep);font-weight:700}
+  .keypad span.ok{background:var(--ink);color:#fff;font-weight:700}
+
+  .p-btn{display:block;text-align:center;font-size:12px;font-weight:700;padding:10px;border-radius:12px;background:var(--ink);color:#fff;margin-top:auto}
+  .p-btn.lime{background:var(--accent);color:var(--ink)}
+  .p-field{font-size:11px;color:var(--muted);margin:8px 0 4px}
+  .p-input{font-size:12.5px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+  .p-typegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .p-type{border:1px solid var(--line);border-radius:11px;padding:9px 6px;text-align:center;font-size:10.5px;color:var(--muted);background:var(--paper)}
+  .p-type.on{border-color:var(--ink);background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .p-type small{display:block;font-size:8.5px;color:var(--muted);font-weight:400;margin-top:2px}
+  .p-chips-row{display:flex;flex-wrap:wrap;gap:6px}
+  .p-chips-row span{font-size:10px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft);background:var(--paper)}
+  .p-chips-row span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .p-adv{font-size:10.5px;color:var(--muted);text-align:center;padding:7px;border:1px dashed var(--line);border-radius:10px}
+  .p-calc{font-family:var(--mono);font-size:11px;color:var(--accent-deep);text-align:center;margin-top:2px}
+
+  .p-imgbox{border:1px solid var(--line);border-radius:12px;padding:9px;display:flex;gap:9px;align-items:center;background:var(--paper)}
+  .p-img{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#F3D9B1,#D9A05B);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .p-img.add{background:none;border:1.5px dashed var(--line);color:var(--muted);font-size:10px;flex-direction:column;gap:2px}
+
+  /* ── before/after tabs ───────────────── */
+  .ba-tabs{display:inline-flex;background:var(--paper-2);border-radius:11px;padding:3px;gap:2px;margin:16px 0 4px}
+  .ba-tabs button{border:none;background:transparent;font-family:var(--sans);font-size:13px;padding:7px 18px;border-radius:9px;color:var(--muted);cursor:pointer;font-weight:600}
+  .ba-tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .ba-pane{display:none}
+  .ba-pane.on{display:block}
+
+  /* ── flow / ia ───────────────────────── */
+  .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+  .flow .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600}
+  .flow .node.new{border-color:var(--accent-deep);background:var(--accent-soft)}
+  .flow .node small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+  .flow .arr{color:var(--muted);font-family:var(--mono)}
+
+  /* ── opt cards ───────────────────────── */
+  .opt{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:20px;display:flex;flex-direction:column;gap:8px}
+  .opt .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .opt h5{font-size:15.5px}
+  .opt p{font-size:13px;color:var(--ink-soft)}
+  .opt .gain{font-size:12px;color:var(--accent-deep)}
+
+  /* ── footer ──────────────────────────── */
+  footer{max-width:1080px;margin:40px auto 0;padding:34px 32px 60px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer b{color:var(--ink-soft)}
+
+  .qa{border-left:3px solid var(--accent);background:var(--card);border-radius:0 14px 14px 0;padding:14px 18px;margin:10px 0}
+  .qa b{display:block;font-size:14px}
+  .qa p{font-size:13px;color:var(--ink-soft)}
+
+  ul.clean{list-style:none;margin:8px 0}
+  ul.clean li{padding-left:22px;position:relative;margin:6px 0;font-size:14px}
+  ul.clean li::before{content:"—";position:absolute;left:0;color:var(--accent-deep)}
+  .del{text-decoration:line-through;color:var(--muted)}
+  .mono{font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<header class="hero">
+  <div class="eyebrow">Salary Timer · Product Proposal · TASK-054</div>
+  <h1>v3.0 <em>回归简单记账</em></h1>
+  <p class="sub">记账主题上线五个版本后，我们听到了最真实的声音：<strong>池太绕、钱包多余、统计看不见明细</strong>。v3.0 不新增复杂度，而是做一次「减法 + 叙事」——把记账还给「记一笔」这个动作本身，同时给钱一个名字、一张脸、一段故事。</p>
+  <div class="meta">
+    <span class="chip">日期 <b>2026-10-09</b></span>
+    <span class="chip">状态 <b>产品思路 · 待评审</b></span>
+    <span class="chip">范围 <b>记账主题（不动计时主题）</b></span>
+    <span class="chip">基线 <b>v2.5-patch18</b></span>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#s1"><b>01</b>复盘</a>
+    <a href="#s2"><b>02</b>设计原则</a>
+    <a href="#s3"><b>03</b>命名决策</a>
+    <a href="#s4"><b>04</b>五项核心设计</a>
+    <a href="#s5"><b>05</b>优化建议</a>
+    <a href="#s6"><b>06</b>信息架构</a>
+    <a href="#s7"><b>07</b>数据模型演进</a>
+    <a href="#s8"><b>08</b>版本计划</a>
+    <a href="#s9"><b>09</b>待确认问题</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ════════════════════ 01 复盘 ════════════════════ -->
+<section id="s1">
+  <div class="dark-sec">
+    <div class="no">01 · RETROSPECTIVE</div>
+    <h2>v2.x 把记账做「重」了</h2>
+    <p class="lead">v2.0 → v2.5 用五个版本搭完了完整的记账体系（415 条单测护航），但复杂度已经溢出用户的理解预算。下面是四个最重的地方：</p>
+    <div class="pain">
+      <div class="pain-item">
+        <div class="k">PAIN 01</div>
+        <h5>「池」太绕</h5>
+        <p>建池表单 12 个字段（类型 / 方向 / 周期模式 / 日期范围 / 日均 / 结算方式 / 目标账户…）。用户要先理解<b>虚拟记录、认领、周期、先付后付</b>四个概念——这是会计学，不是记账。</p>
+      </div>
+      <div class="pain-item">
+        <div class="k">PAIN 02</div>
+        <h5>钱包多余</h5>
+        <p>记一笔要选账户、拖行归入账户、「未归入」红标、余额迁移……对只想记一笔的用户，账户归属是二等需求。多数人心里的资产只有一个数：<b>我总共有多少钱</b>。</p>
+      </div>
+      <div class="pain-item">
+        <div class="k">PAIN 03</div>
+        <h5>统计图表优先</h5>
+        <p>月 / 年视图只有柱状图 + 分类排行，想看某条具体记录必须点柱子逐级下钻到日。「翻一翻账」的高频诉求被图表挡在门外。</p>
+      </div>
+      <div class="pain-item">
+        <div class="k">PAIN 04</div>
+        <h5>记录没有叙事</h5>
+        <p>一次云南行的 12 笔支出散落在 4 个分类、7 个日期里；一笔兼职收入混在工资中间。系统答不出「<b>这件事总共花了多少</b>」。而且记录没有图片，账只是数字，回忆没有画面。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 02 原则 ════════════════════ -->
+<section id="s2">
+  <div class="sec-head">
+    <div class="no">02 · PRINCIPLES</div>
+    <h2>三条设计原则</h2>
+    <p class="lead">v3.0 的每一个取舍都用这三条裁决。</p>
+  </div>
+  <div class="grid3">
+    <div class="card principle">
+      <div class="num">i.</div>
+      <h5>三秒记一笔</h5>
+      <p>主路径永远最短：金额 → 分类 → 保存。账户、图片、定期账、一程全部是「可选挂载」，收在折叠区，不挡主路。</p>
+    </div>
+    <div class="card principle">
+      <div class="num">ii.</div>
+      <h5>所见即账</h5>
+      <p>统计默认展示一条条真实记录，图表是「点一下才来」的附加值；总资产就是用户心里那个数，由用户亲手写下，不替用户推导。</p>
+    </div>
+    <div class="card principle">
+      <div class="num">iii.</div>
+      <h5>钱要有故事</h5>
+      <p>均摊的房租、压着的押金、一趟旅行、一次兼职——每一笔「整块的钱」都给它名字、封面和总账，让记账留下生活的痕迹。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 03 命名 ════════════════════ -->
+<section id="s3">
+  <div class="sec-head">
+    <div class="no">03 · NAMING</div>
+    <h2>两个命名决策</h2>
+    <p class="lead">名字是简化的一半。「池」和「消费块」都换成用户语言。以下为首选方案 + 备选，最终由你拍板（见 <a href="#s9">09 待确认</a>）。</p>
+  </div>
+  <div class="grid2">
+    <div class="name-card">
+      <span class="tag lime">需求 ① 池简化 · 改名</span>
+      <div style="margin-top:14px">
+        <span class="from">池 Pool</span><span class="arrow">→</span><span class="to">定期账</span>
+        <div class="en" style="margin-top:4px">Recurring Ledger</div>
+      </div>
+      <p class="why">「定期」天然传达「长期、周期性发生」，不需要理解虚拟 / 认领；「账」保持记账语境。两个子类型一并说人话：<br>
+      <span class="tag">均摊型 → <b>均摊</b>（房租 / 会员 / 年薪）</span>　<span class="tag">存池型 → <b>押金</b></span></p>
+      <p class="why small muted">备选：长期账 · 摊销计划 · 固定账</p>
+    </div>
+    <div class="name-card">
+      <span class="tag lime">需求 ② 消费块 · 新事物</span>
+      <div style="margin-top:14px">
+        <span class="from">消费块</span><span class="arrow">→</span><span class="to">一程</span>
+        <div class="en" style="margin-top:4px">Journey</div>
+      </div>
+      <p class="why">一趟旅行、一次兼职、一场演唱会，都是「一程」。它自带叙事感，贴合 App「打工浪漫」的基调，也撑得起小红书式瀑布流的封面卡片气质。支出是「花掉的一程」，收入是「赚来的一程」。</p>
+      <p class="why small muted">备选：账册 · 账集 · 账单故事</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 04 五项核心设计 ════════════════════ -->
+<section id="s4">
+  <div class="sec-head">
+    <div class="no">04 · CORE DESIGN</div>
+    <h2>五项核心设计</h2>
+    <p class="lead">对应你提出的 5 个需求。每一项：现状问题 → 设计方案 → 界面示意。</p>
+  </div>
+
+  <!-- ── 04-1 定期账 ── -->
+  <h3>① 池 → 「定期账」：功能全保留，门槛砍一半</h3>
+  <div class="grid2">
+    <div>
+      <p><strong>保留什么</strong>：均摊收支的核心机制（逐日生成、认领结算、逾期回滚、工资联动池）<span class="hl">一行不动</span>——这是 v2.3 最值钱的部分，415 条单测继续护航。</p>
+      <p><strong>砍掉什么</strong>：把「建池」从 12 字段会计表单，变成 3 步直觉表单：</p>
+      <ul class="clean">
+        <li><b>第 1 步</b> · 选类型：三张大卡片「均摊支出 / 均摊收入 / 押金」，一句话解释，不出现「池、周期、虚拟」字眼</li>
+        <li><b>第 2 步</b> · 名字 + 金额：预置常用名（房租 / 会员 / 年费 / 工资 / 押金…），点一下即填</li>
+        <li><b>第 3 步</b> · 周期：默认「每月」零配置；需要才展开「自定义起止日期」</li>
+      </ul>
+      <p class="small muted">日均金额自动推导并实时预览（¥3,000 ÷ 30 天 = ¥100/天）；「手动日均、每月几号起」等收进「高级选项」折叠区。押金的 prepay/postpay 改成一个开关：<b>「已经付了吗？」</b>。</p>
+      <p><strong>展示简化</strong>：卡片不再出现「虚拟 / 交易 / 周期状态」术语——均摊卡显示「¥100/天 · 本期已结 ¥2,100 / ¥3,000」，押金卡显示「待退 +¥1,500」。工资联动池（内部实现）从列表隐藏。</p>
+      <p><strong>认领简化</strong>：沿用 v2.5-patch8 的「定期账卡片上直接结算」流程，按钮文案改为「记一笔还款 / 记一笔到账」，系统自动匹配未结清的部分，用户不接触贪心匹配细节。</p>
+    </div>
+    <div class="stage" style="justify-content:center">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top">
+              <div class="p-eyebrow"><span>RECURRING</span><span>3 步创建</span></div>
+              <div class="p-title">新建定期账</div>
+            </div>
+            <div class="p-body">
+              <div class="p-field">这是哪种钱？</div>
+              <div class="p-typegrid">
+                <div class="p-type on">均摊支出<small>房租 / 会员</small></div>
+                <div class="p-type">均摊收入<small>工资 / 收款</small></div>
+                <div class="p-type">押金<small>会退的钱</small></div>
+              </div>
+              <div class="p-field">叫什么？</div>
+              <div class="p-chips-row">
+                <span class="on">房租</span><span>会员</span><span>年费</span><span>保险</span><span>自定义…</span>
+              </div>
+              <div class="p-field">多少钱？</div>
+              <div class="p-input mono" style="text-align:right;font-size:17px;font-weight:700">¥ 3,000</div>
+              <div class="p-field">什么节奏？</div>
+              <div class="p-seg"><span class="on">每月</span><span>自定义日期范围</span></div>
+              <div class="p-calc">自动均摊 ≈ ¥100 / 天</div>
+              <div class="p-adv">高级选项 ▾（手动日均 · 每月几号起）</div>
+              <div class="p-btn lime">创建定期账</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>简化后的创建弹窗</b><br>必填只剩 3 项，日均实时预览</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 04-2 一程 ── -->
+  <h3 style="margin-top:56px">② 「一程」：一件事一笔总账，一张封面，一段瀑布流</h3>
+  <div class="grid2">
+    <div>
+      <p><strong>定义</strong>：一程 = 围绕「一件事」的记录集合。可以是支出（云南 7 日游），也可以是收入（设计兼职）。<span class="hl">总金额 = 关联记录自动求和</span>，不单独维护，永远不会对不上账。</p>
+      <ul class="clean">
+        <li><b>封面</b>：每程可关联一张图片（相册选取，或复用记录已附的图），存本地 IndexedDB</li>
+        <li><b>入口</b>：「我的」页新增「我一程」区 → 进入瀑布流列表页</li>
+        <li><b>瀑布流</b>：小红书式双列，卡片 = 封面 + 标题 + 总金额；按时间排列（新在上），左右交错</li>
+        <li><b>详情页</b>：封面头图 + 总账 + 关联记录清单，可继续「记一笔」自动挂到本程</li>
+        <li><b>关联方式</b>：记账弹窗 / 编辑记录时选「所属一程」（只列同类型的程，支出程不混收入记录）</li>
+        <li><b>删除语义</b>：删程不删记录（仅解除关联）；删记录，程总额自动减少</li>
+      </ul>
+      <p class="small muted">无封面的程用渐变占位卡 + 大字金额，瀑布流不出现空图。</p>
+    </div>
+    <div class="stage" style="justify-content:center">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top">
+              <div class="p-eyebrow"><span>JOURNEY</span><span>5 程</span></div>
+              <div class="p-title">我一程</div>
+            </div>
+            <div class="p-body" style="overflow:hidden">
+              <div class="wf">
+                <div class="wf-card">
+                  <div class="wf-cover" style="height:118px;background:linear-gradient(135deg,#7FB4A0,#3E7C6B)">🏔️</div>
+                  <div class="wf-body">
+                    <div class="t">云南 7 日游</div>
+                    <div class="m"><span class="a" style="color:var(--expense)">−¥4,280</span><span class="d">12 笔 · 09-30</span></div>
+                  </div>
+                </div>
+                <div class="wf-card">
+                  <div class="wf-cover" style="height:86px;background:linear-gradient(135deg,#E8C98A,#C9934A)">✏️</div>
+                  <div class="wf-body">
+                    <div class="t">设计兼职</div>
+                    <div class="m"><span class="a" style="color:var(--income)">+¥3,000</span><span class="d">2 笔 · 09-18</span></div>
+                  </div>
+                </div>
+                <div class="wf-card">
+                  <div class="wf-cover" style="height:92px;background:linear-gradient(135deg,#B7A6E8,#7B61C4)">🎤</div>
+                  <div class="wf-body">
+                    <div class="t">演唱会</div>
+                    <div class="m"><span class="a" style="color:var(--expense)">−¥1,280</span><span class="d">3 笔 · 08-24</span></div>
+                  </div>
+                </div>
+                <div class="wf-card">
+                  <div class="wf-cover" style="height:112px;background:linear-gradient(135deg,#F0B9A6,#D9705B)">⛺</div>
+                  <div class="wf-body">
+                    <div class="t">五一露营</div>
+                    <div class="m"><span class="a" style="color:var(--expense)">−¥860</span><span class="d">6 笔 · 05-03</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>瀑布流列表页</b><br>封面 + 标题 + 金额，按时间左右分布</div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div style="height:132px;background:linear-gradient(160deg,#7FB4A0,#3E7C6B);display:flex;align-items:flex-end;padding:14px;color:#fff;flex:0 0 auto">
+              <div>
+                <div style="font-family:var(--mono);font-size:9px;letter-spacing:.2em;opacity:.8">JOURNEY · 09-24 → 09-30</div>
+                <div style="font-size:20px;font-weight:700">云南 7 日游</div>
+              </div>
+            </div>
+            <div class="p-body" style="padding-top:12px">
+              <div class="p-sec" style="display:flex;justify-content:space-around;text-align:center">
+                <div><div style="font-family:var(--mono);font-size:17px;font-weight:700;color:var(--expense)">−¥4,280</div><div style="font-size:9.5px;color:var(--muted)">总支出</div></div>
+                <div><div style="font-family:var(--mono);font-size:17px;font-weight:700">12</div><div style="font-size:9.5px;color:var(--muted)">笔记录</div></div>
+                <div><div style="font-family:var(--mono);font-size:17px;font-weight:700">7</div><div style="font-size:9.5px;color:var(--muted)">天</div></div>
+              </div>
+              <div class="p-sec" style="flex:1">
+                <div class="p-sec-h">这一程的记录 <span class="more">＋ 记一笔</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#6FA8DC">✈</span><span class="nm">机票 · 昆明往返<small>09-24 · 交通</small></span><span class="p-amt exp">−¥1,200</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#C9934A">🏨</span><span class="nm">大理海景民宿 ×3 晚<small>09-25 · 住宿</small></span><span class="p-amt exp">−¥980</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#D9705B">🍜</span><span class="nm">菌子火锅<small>09-26 · 餐饮</small></span><span class="p-amt exp">−¥286</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#7B61C4">🎫</span><span class="nm">玉龙雪山门票<small>09-27 · 玩乐</small></span><span class="p-amt exp">−¥460</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#8B8B82">…</span><span class="nm">其余 8 笔<small>点开查看</small></span><span class="p-amt exp">−¥1,354</span></div>
+              </div>
+              <div class="p-btn">＋ 给这一程记一笔</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>一程详情页</b><br>封面头图 + 总账 + 记录清单，可继续记账</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 04-3 总资产 ── -->
+  <h3 style="margin-top:56px">③ 取消钱包：总资产就是一个数，亲手改、随便算</h3>
+  <div class="grid2">
+    <div>
+      <p><strong>移除</strong>：多账户、记账选账户、拖拽归入账户、「未归入」状态、余额迁移——全部下线。<span class="hl">记账记录不再自动改动总资产</span>，资产与流水彻底解耦：流水负责「钱去哪了」，总资产负责「我现在有多少」。</p>
+      <p><strong>新的总资产</strong>：一个由用户手动维护的数字。点总资产卡 → 打开「资产计算器」：</p>
+      <ul class="clean">
+        <li>支持 <b>± 表达式</b>，与记账金额输入同一套键盘逻辑：<span class="mono">+500</span>、<span class="mono">-200</span>、<span class="mono">13000</span>、<span class="mono">12500+500-200</span> 都可以</li>
+        <li>实时预览「→ 调整后 ¥13,000」，不怕输错</li>
+        <li>可附一句备注（「工资到账」「交完房租」），保存后写入<b>调整历史</b></li>
+        <li>调整历史同时是「资产趋势图」的数据源（见优化建议 ②）</li>
+      </ul>
+      <p><strong>迁移</strong>：升级时 Σ 现有账户余额 → 初始总资产（一次性，可见迁移提示）；旧账户数据保留只读存档，记录上的 accountId 冻结不再展示。</p>
+      <p><strong>保留</strong>：虚拟分解 chips（待退 / 待付 / 预付未消耗 / 已赚未到账）——它们来自定期账语义，仍然有价值，只是「实际」一栏改为手动总资产。</p>
+    </div>
+    <div class="stage" style="justify-content:center">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top">
+              <div class="p-eyebrow"><span>MINE · WHAT YOU OWN</span><span>v3.0</span></div>
+              <div class="p-title">资产</div>
+            </div>
+            <div class="p-body">
+              <div class="p-hero">
+                <div class="lbl"><span>总资产</span><span style="color:var(--accent)">✎ 点我调整</span></div>
+                <div class="amt">+¥12,500</div>
+                <div class="chips">
+                  <span class="p-chip solid">实际 ¥10,000</span>
+                  <span class="p-chip g">待退 +¥1,500</span>
+                  <span class="p-chip g">已赚未到账 +¥1,300</span>
+                  <span class="p-chip r">待付 −¥300</span>
+                </div>
+              </div>
+              <div class="p-hint">支持 ± 计算 · 每次修改留痕</div>
+              <div class="p-sec">
+                <div class="p-sec-h">我一程 <span class="more">查看全部 ›</span></div>
+                <div style="display:flex;gap:8px">
+                  <div style="flex:1;border-radius:11px;overflow:hidden;border:1px solid var(--line-soft)">
+                    <div style="height:52px;background:linear-gradient(135deg,#7FB4A0,#3E7C6B);display:flex;align-items:center;justify-content:center;font-size:18px">🏔️</div>
+                    <div style="padding:6px 8px;font-size:10px"><b>云南 7 日游</b><div class="mono" style="color:var(--expense)">−¥4,280</div></div>
+                  </div>
+                  <div style="flex:1;border-radius:11px;overflow:hidden;border:1px solid var(--line-soft)">
+                    <div style="height:52px;background:linear-gradient(135deg,#E8C98A,#C9934A);display:flex;align-items:center;justify-content:center;font-size:18px">✏️</div>
+                    <div style="padding:6px 8px;font-size:10px"><b>设计兼职</b><div class="mono" style="color:var(--income)">+¥3,000</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-sec">
+                <div class="p-sec-h">定期账 <span class="more">＋ 新建</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#4A5164">🏠</span><span class="nm">房租 · 均摊<small>¥100/天 · 本期已结 ¥2,100 / ¥3,000</small></span><span class="tag" style="font-size:9px">进行中</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#7B61C4">▶</span><span class="nm">视频会员 · 均摊<small>¥0.8/天 · 年费 ¥288</small></span><span class="tag" style="font-size:9px">进行中</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#3E7C6B">🔑</span><span class="nm">租房押金 · 押金<small>已付 · 退租时退回</small></span><span class="tag green" style="font-size:9px">待退 +¥1,500</span></div>
+              </div>
+              <div class="p-sec" style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;font-weight:700">月度结余目标</span>
+                <span class="mono" style="font-size:11px;color:var(--accent-deep)">¥8,200 / ¥12,000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>新「资产」页</b><br>总资产卡 → 我一程 → 定期账 → 月度目标（账户区移除）</div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top" style="opacity:.35">
+              <div class="p-title">资产</div>
+            </div>
+            <div style="flex:1"></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div style="font-size:13px;font-weight:700">调整总资产</div>
+              <div style="font-size:10.5px;color:var(--muted);margin:4px 0 10px">当前 +¥12,500 · 输入新总额，或用 ± 增减</div>
+              <div class="expr">+500</div>
+              <div class="preview">→ 调整后 +¥13,000</div>
+              <div class="p-field">记一句（可选）</div>
+              <div class="p-input">工资到账</div>
+              <div class="keypad">
+                <span>7</span><span>8</span><span>9</span><span class="op">＋</span>
+                <span>4</span><span>5</span><span>6</span><span class="op">−</span>
+                <span>1</span><span>2</span><span>3</span><span>⌫</span>
+                <span>.</span><span>0</span><span>00</span><span class="ok">保存</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>资产计算器</b><br>与记账同一套输入逻辑，实时预览结果</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 04-4 图片 ── -->
+  <h3 style="margin-top:56px">④ 记录附图：给每一笔账一张小票</h3>
+  <div class="grid2">
+    <div>
+      <ul class="clean">
+        <li><b>记账弹窗</b>新增「添加图片」区：拍照 / 相册任选；已附图显示缩略图，可替换、可删除</li>
+        <li><b>压缩后入库</b>：canvas 缩放至最长边 ≤1280px、JPEG 0.8 质量（单张约 100–300KB）</li>
+        <li><b>存储方案</b>：图片 Blob 存 <b>IndexedDB</b>（<span class="mono">salary_timer_images</span>），记录只存 <span class="mono">imageId</span> —— localStorage 只有 5MB 配额，绝不能塞图片</li>
+        <li><b>展示链路</b>：列表行 36px 缩略图 → 编辑弹窗大图 → 点击全屏预览（捏合缩放后续版本再做）</li>
+        <li><b>删除策略</b>：删记录时级联删除其图片（无其他引用时），不留孤儿文件</li>
+        <li>一程封面与记录附图共用同一套 IndexedDB 存储</li>
+      </ul>
+    </div>
+    <div class="stage" style="justify-content:center">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top">
+              <div class="p-eyebrow"><span>RECORDS</span><span>附图效果</span></div>
+              <div class="p-title">记录行 & 弹窗</div>
+            </div>
+            <div class="p-body">
+              <div class="p-sec">
+                <div class="p-sec-h">10月9日 · 今天</div>
+                <div class="p-row"><span class="p-ico" style="background:#D9A05B">☕</span><span class="nm">咖啡<small>瑞幸 · 生椰拿铁</small></span><span class="p-thumb">🧾</span><span class="p-amt exp">−¥15</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#D9705B">🍜</span><span class="nm">午餐<small>楼下茶餐厅</small></span><span class="p-thumb" style="background:linear-gradient(135deg,#B7A6E8,#7B61C4)">🍱</span><span class="p-amt exp">−¥32</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#6FA8DC">🚇</span><span class="nm">地铁<small>无图片</small></span><span class="p-amt exp">−¥6</span></div>
+              </div>
+              <div class="p-sec" style="flex:1">
+                <div class="p-sec-h">编辑记录</div>
+                <div class="p-field">金额</div>
+                <div class="p-input mono" style="text-align:right;font-weight:700;font-size:15px">¥ 32</div>
+                <div class="p-field">图片</div>
+                <div class="p-imgbox">
+                  <div class="p-img">🍱</div>
+                  <div style="flex:1;font-size:10.5px;color:var(--muted)">午餐小票.jpg<br>128 KB · 点击预览</div>
+                  <span style="font-size:10px;color:var(--expense)">移除</span>
+                </div>
+                <div class="p-field">所属一程</div>
+                <div class="p-input" style="display:flex;justify-content:space-between"><span>无</span><span class="muted">›</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>附图记录</b><br>列表缩略图 + 弹窗大图 + 全屏预览</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 04-5 统计 ── -->
+  <h3 style="margin-top:56px">⑤ 统计页「列表优先」：先看见账，再看图表</h3>
+  <div class="grid2">
+    <div>
+      <p>日 / 月 / 年三视图<span class="hl">默认全部是「按时间排序的记录列表」</span>，与日视图体验一致；汇总条右侧新增 <b>「列表 | 统计」</b> 切换，点「统计」才展示柱状图 + 分类占比。</p>
+      <ul class="clean">
+        <li><b>月 · 列表</b>：按天分组，天头 = 日期 + 当日支/收小计，天头吸顶便于翻读</li>
+        <li><b>年 · 列表</b>：按月分组（月头 = 月份 + 当月支/收小计），月份可折叠，展开后仍按天分组</li>
+        <li><b>统计模式</b>：月 / 年 = 现有双柱图 + 分类排行（不动）；日视图统计 = 当日分类占比条</li>
+        <li>列表行复用现有记录行组件：点击编辑、长按等交互不变；认领 / 均摊标记保留</li>
+        <li>「点柱子下钻」的旧路径保留在统计模式中，两种浏览方式互不冲突</li>
+      </ul>
+      <p class="small muted">右侧手机模型可点击切换「列表 / 统计」，体验新交互。</p>
+    </div>
+    <div class="stage" style="justify-content:center">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="p-top">
+              <div class="p-eyebrow"><span>STATS · WHERE IT ALL GOES</span><span>10/9</span></div>
+              <div class="p-title">日统计</div>
+            </div>
+            <div class="p-body" id="statsDemo">
+              <div class="p-seg"><span>日</span><span class="on">月</span><span>年</span></div>
+              <div class="p-seg"><span class="on">支出</span><span>收入</span></div>
+              <div class="p-sec" style="padding:9px 12px">
+                <div style="display:flex;justify-content:space-between;font-size:10.5px">
+                  <span>本月支出 <b class="mono" style="color:var(--expense)">¥8,420</b> <span class="muted">较上月 +12%</span></span>
+                  <span>收入 <b class="mono" style="color:var(--income)">¥15,000</b></span>
+                </div>
+              </div>
+              <div class="p-seg" id="statsToggle">
+                <span class="on" data-mode="list" onclick="setStatsMode('list')">列表</span>
+                <span data-mode="chart" onclick="setStatsMode('chart')">统计</span>
+              </div>
+              <div class="ba-pane on" data-pane="list" style="flex:1;overflow:hidden">
+                <div class="p-dayhead"><b>10月9日 · 今天</b><span class="mono">−¥86</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#D9A05B">☕</span><span class="nm">咖啡</span><span class="p-amt exp">−¥15</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#D9705B">🍜</span><span class="nm">午餐</span><span class="p-amt exp">−¥32</span></div>
+                <div class="p-dayhead"><b>10月8日 · 周三</b><span class="mono">−¥145</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#4A5164">🏠</span><span class="nm">房租 · 均摊<small>定期账 · 自动</small></span><span class="p-amt exp">−¥100</span></div>
+                <div class="p-row"><span class="p-ico" style="background:#6FA8DC">🛒</span><span class="nm">超市采购</span><span class="p-amt exp">−¥45</span></div>
+                <div class="p-dayhead"><b>10月7日 · 周二</b><span class="mono">−¥63</span></div>
+              </div>
+              <div class="ba-pane" data-pane="chart" style="flex:1;overflow:hidden">
+                <div class="p-sec">
+                  <div class="p-bars">
+                    <div class="p-bar"><i class="e" style="height:34%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:58%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:22%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:71%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:40%"></i><i class="i" style="height:96%"></i></div>
+                    <div class="p-bar"><i class="e" style="height:30%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:52%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:18%"></i><i class="i" style="height:0"></i></div>
+                    <div class="p-bar"><i class="e" style="height:64%"></i><i class="i" style="height:0"></i></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:8.5px;color:var(--muted);padding:0 4px"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>31</span></div>
+                </div>
+                <div class="p-sec" style="margin-top:9px">
+                  <div class="p-sec-h">分类占比</div>
+                  <div class="p-rank"><span style="width:52px">餐饮</span><span class="bar"><i style="width:86%"></i></span><span class="mono">¥2,860 · 34%</span></div>
+                  <div class="p-rank"><span style="width:52px">居住</span><span class="bar"><i style="width:70%"></i></span><span class="mono">¥2,300 · 27%</span></div>
+                  <div class="p-rank"><span style="width:52px">交通</span><span class="bar"><i style="width:38%"></i></span><span class="mono">¥1,180 · 14%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>月视图 · 默认列表</b><br>点上方「列表 / 统计」试试切换</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 05 优化建议 ════════════════════ -->
+<section id="s5">
+  <div class="sec-head">
+    <div class="no">05 · MORE IDEAS</div>
+    <h2>围绕「简单记账 + 更好统计」的六个优化建议</h2>
+    <p class="lead">除五项核心需求外，从记账 App 通用体验出发补充的建议。前两项强烈建议排入 v3.1；其余进 backlog 按需取用。</p>
+  </div>
+  <div class="grid3">
+    <div class="opt">
+      <div class="head"><h5>① 月度预算</h5><span class="tag lime">P1 · 建议 v3.1</span></div>
+      <p>设一个月预算，统计页与快速记录页顶部显示进度条；花到 80% 变黄、100% 变红并轻提醒。「简单记账」最经典的闭环：记了之后，知道还能不能花。</p>
+      <div class="gain">价值 ★★★★★ · 成本 低（纯展示层 + 一个配置项）</div>
+    </div>
+    <div class="opt">
+      <div class="head"><h5>② 资产趋势</h5><span class="tag lime">P1 · 建议 v3.1</span></div>
+      <p>需求③的每次总资产修改天然生成快照——把快照画成一条趋势线放在「资产」页：这个月我的钱是变多还是变少了。手动资产从此有了时间维度。</p>
+      <div class="gain">价值 ★★★★ · 成本 极低（数据已随需求③产生）</div>
+    </div>
+    <div class="opt">
+      <div class="head"><h5>③ 账单搜索</h5><span class="tag">P2 · backlog</span></div>
+      <p>统计页工具条加搜索入口：按备注 / 分类名关键词过滤记录列表。列表优先之后，搜索是自然配套——翻不到就搜。</p>
+      <div class="gain">价值 ★★★★ · 成本 低</div>
+    </div>
+    <div class="opt">
+      <div class="head"><h5>④ CSV 导出</h5><span class="tag">P2 · backlog</span></div>
+      <p>本地导出一张 CSV（日期 / 类型 / 分类 / 金额 / 备注 / 一程）。不上云的隐私友好导出，也是需求③账户迁移前的安全网。</p>
+      <div class="gain">价值 ★★★ · 成本 极低</div>
+    </div>
+    <div class="opt">
+      <div class="head"><h5>⑤ 智能分类建议</h5><span class="tag">P3 · backlog</span></div>
+      <p>按时间段猜分类：早上 8 点记账默认高亮「通勤 / 早餐」，晚上 9 点高亮「宵夜 / 娱乐」。减少一次点击，但需要克制，不做成打扰。</p>
+      <div class="gain">价值 ★★★ · 成本 中</div>
+    </div>
+    <div class="opt">
+      <div class="head"><h5>⑥ 一键「再来一笔」</h5><span class="tag">P3 · backlog</span></div>
+      <p>长按任意记录 →「再来一笔」：同金额同分类直接记到今天。为连续小额支出（每天一杯咖啡）设计，呼应 App 的咖啡灵魂。</p>
+      <div class="gain">价值 ★★★ · 成本 极低</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 06 信息架构 ════════════════════ -->
+<section id="s6">
+  <div class="sec-head">
+    <div class="no">06 · INFORMATION ARCHITECTURE</div>
+    <h2>信息架构变化</h2>
+    <p class="lead">四个 tab 与双主题框架<b>不动</b>（计时侧零影响）；变化集中在「资产」页内部与两个新页面。</p>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <h4 style="margin-top:0">记账主题 4 tab（不变）</h4>
+    <div class="flow">
+      <div class="node">快速记录<small>ACCT</small></div>
+      <div class="node">记账日历<small>CAL</small></div>
+      <div class="node">日统计<small>STATS · 列表优先 ✦</small></div>
+      <div class="node">资产<small>MINE · 重构 ✦</small></div>
+    </div>
+    <h4>「资产」页分区（v2.5 → v3.0）</h4>
+    <div class="grid2">
+      <div>
+        <p class="small muted" style="margin-bottom:6px">v2.5 现状</p>
+        <ul class="clean small">
+          <li>总资产卡（虚拟总额 + 分解）</li>
+          <li class="del">横向账户卡片行（多钱包）</li>
+          <li>月度目标</li>
+          <li>池管理（PoolSection）</li>
+        </ul>
+      </div>
+      <div>
+        <p class="small muted" style="margin-bottom:6px">v3.0 新序</p>
+        <ul class="clean small">
+          <li><b>总资产卡</b>（点按 → 资产计算器）</li>
+          <li><b>我一程</b>（最近 2 程预览 + 查看全部）✦ 新</li>
+          <li><b>定期账</b>（原池管理，简化卡片 + 简化创建）</li>
+          <li>月度目标（不变）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h4 style="margin-top:0">新增页面 / 弹层与入口</h4>
+    <div class="flow">
+      <div class="node">资产页 · 我一程区</div>
+      <span class="arr">→</span>
+      <div class="node new">一程瀑布流页<small>JourneyListPage ✦</small></div>
+      <span class="arr">→</span>
+      <div class="node new">一程详情页<small>JourneyDetailPage ✦</small></div>
+    </div>
+    <div class="flow">
+      <div class="node">总资产卡点按</div>
+      <span class="arr">→</span>
+      <div class="node new">资产计算器 Sheet ✦</div>
+      <span class="arr">→</span>
+      <div class="node new">调整历史（含趋势入口）✦</div>
+    </div>
+    <div class="flow">
+      <div class="node">记账 / 编辑弹窗</div>
+      <span class="arr">→</span>
+      <div class="node new">附图选择 + 所属一程选择 ✦</div>
+      <span class="arr">→</span>
+      <div class="node new">图片全屏预览 ✦</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 07 数据模型 ════════════════════ -->
+<section id="s7">
+  <div class="sec-head">
+    <div class="no">07 · DATA MODEL</div>
+    <h2>数据模型演进</h2>
+    <p class="lead">原则：<b>能不动就不动</b>。池的三件套（PoolConfig / PoolCycle / PoolTransaction）一行不改；新增都走新字段与新存储。</p>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th style="width:80px">动作</th><th style="width:220px">对象</th><th>说明</th></tr>
+      <tr><td><span class="tag green">新增</span></td><td class="mono">Journey</td><td>一程：<span class="mono">id / title / type(income|expense) / coverImageId? / note? / startKey? / endKey? / createdAt / updatedAt</span></td></tr>
+      <tr><td><span class="tag green">新增</span></td><td class="mono">AssetSnapshot</td><td>总资产调整历史：<span class="mono">id / before / after / delta / note? / createdAt</span>（上限 200 条，环形裁剪）</td></tr>
+      <tr><td><span class="tag green">新增</span></td><td class="mono">assets（store 字段）</td><td><span class="mono">{ totalAssets: number, updatedAt: number }</span> —— 手动维护的总资产</td></tr>
+      <tr><td><span class="tag green">新增</span></td><td class="mono">IndexedDB: salary_timer_images</td><td><span class="mono">imageId → Blob</span>；记录与一程封面共用；配压缩管线（≤1280px · JPEG 0.8）</td></tr>
+      <tr><td><span class="tag">扩展</span></td><td class="mono">AccountRecord</td><td><span class="mono">+ journeyId?: string</span>（所属一程）· <span class="mono">+ imageId?: string</span>（附图）· <span class="mono">accountId</span> 冻结为 ''，不再参与任何逻辑</td></tr>
+      <tr><td><span class="tag">保留</span></td><td class="mono">PoolConfig / PoolCycle / PoolTransaction</td><td>机制零改动，仅 UI 层更名「定期账」；工资联动池（noDailyVirtual）继续内部隐藏运行</td></tr>
+      <tr><td><span class="tag red">废弃</span></td><td class="mono">Account UI 层</td><td>账户选择器 / 拖拽归入 / AccountDock / 「未归入」标记全部移除；<span class="mono">Account[]</span> 数据只读存档，迁移时 Σ 余额 → 初始总资产</td></tr>
+      <tr><td><span class="tag red">改写</span></td><td class="mono">calcVirtualAssets</td><td><span class="mono">actualTotal</span> 改读手动总资产；移除 pendingAdjust 账户口径；定期账四个分解项（待退 / 待付 / 预付未消耗 / 已赚未到账）保留</td></tr>
+    </table>
+  </div>
+  <p class="small muted">迁移脚本随 TASK-057 交付：rehydrate 时检测 <span class="mono">assets</span> 未初始化且存在账户 → 一次性迁移并打 <span class="mono">migratedV3</span> 标记，可回滚（账户数据未删）。</p>
+</section>
+
+<!-- ════════════════════ 08 版本计划 ════════════════════ -->
+<section id="s8">
+  <div class="sec-head">
+    <div class="no">08 · ROADMAP</div>
+    <h2>版本计划与任务拆分</h2>
+    <p class="lead">五个阶段全部收在 v3.0 一个版本内（对应 <span class="mono">docs/CHANGELOG-v3.0.md</span>），按「先独立小改、后数据迁移、最后新叙事」的顺序推进，每一步都可单独验收。</p>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th style="width:100px">TASK</th><th>内容</th><th style="width:90px">阶段</th><th style="width:130px">依赖</th><th style="width:150px">文档</th></tr>
+      <tr><td class="mono">TASK-054</td><td>v3.0 产品思路 PRD</td><td>—</td><td>—</td><td><span class="tag green">✅ 本文档</span></td></tr>
+      <tr><td class="mono">TASK-055</td><td>统计页列表优先（列表 | 统计切换 + 月按天 / 年按月分组）</td><td>Phase 1</td><td>无</td><td class="mono small">TASK-055-v3.0-stats-list-first.md</td></tr>
+      <tr><td class="mono">TASK-056</td><td>记录附图（IndexedDB + 压缩 + 缩略图 / 全屏预览）</td><td>Phase 2</td><td>无</td><td class="mono small">TASK-056-v3.0-record-images.md</td></tr>
+      <tr><td class="mono">TASK-057</td><td>取消钱包 · 总资产直接改（资产计算器 + 迁移 + 调整历史）</td><td>Phase 3</td><td>无</td><td class="mono small">TASK-057-v3.0-total-assets.md</td></tr>
+      <tr><td class="mono">TASK-058</td><td>池 → 定期账（更名 + 3 步创建 + 卡片简化）</td><td>Phase 4</td><td>TASK-057</td><td class="mono small">TASK-058-v3.0-pool-to-recurring.md</td></tr>
+      <tr><td class="mono">TASK-059</td><td>一程（瀑布流 + 详情页 + 记录关联 + 封面）</td><td>Phase 5</td><td>TASK-056 / 057</td><td class="mono small">TASK-059-v3.0-journey.md</td></tr>
+      <tr><td class="mono">v3.1 候选</td><td>月度预算 · 资产趋势 · 账单搜索 · CSV 导出</td><td>下一版本</td><td>v3.0</td><td class="muted small">见 05 优化建议</td></tr>
+    </table>
+  </div>
+  <p class="small muted">依赖说明：TASK-058 依赖 057（资产卡与池卡同页，先定资产新布局）；TASK-059 依赖 056（封面复用图片管线）与 057（记录弹窗此时已移除账户选择，避免二次改动）。</p>
+</section>
+
+<!-- ════════════════════ 09 待确认 ════════════════════ -->
+<section id="s9">
+  <div class="sec-head">
+    <div class="no">09 · OPEN QUESTIONS</div>
+    <h2>待你确认的问题</h2>
+    <p class="lead">以下决策已给出推荐项，评审时逐条拍板即可。</p>
+  </div>
+  <div class="qa"><b>Q1 · 命名：「定期账」与「一程」可以吗？</b><p>备选：池 → 长期账 / 摊销计划；消费块 → 账册 / 账集。命名只影响 UI 文案层，代码内部保留 pool / journey 英文标识，改名成本极低。</p></div>
+  <div class="qa"><b>Q2 · 记账与总资产彻底解耦，确认吗？</b><p>推荐：是（记录不自动改总资产，资产纯手动）。若你仍希望「记账同步影响资产」，可在 v3.1 加一个可选开关，不影响本期结构。</p></div>
+  <div class="qa"><b>Q3 · 删除记录时，附图级联删除还是保留？</b><p>推荐：级联删除（无其他引用时），避免本地存储无限膨胀。若你想留作「相册」，需要额外一个图片管理页，成本上升。</p></div>
+  <div class="qa"><b>Q4 · 一程封面允许从记录附图中挑选吗？</b><p>推荐：允许（旅行中拍的图直接设为封面，零额外操作）。</p></div>
+  <div class="qa"><b>Q5 · 旧多账户数据迁移前，需要先导出 CSV 留底吗？</b><p>推荐：把「CSV 导出」提前到 TASK-057 之前做一个最小版（仅账户余额 + 记录表），作为迁移安全网。</p></div>
+</section>
+
+</main>
+
+<footer>
+  <span><b>Salary Timer · v3.0 产品思路</b> · TASK-054 · 配套实现方案见 docs/plans/tauri-migration/v3.0/ROADMAP.md</span>
+  <span>2026-10-09 · 待评审</span>
+</footer>
+
+<script>
+  // 统计页模型：列表 / 统计切换
+  function setStatsMode(mode){
+    var toggle=document.getElementById('statsToggle');
+    if(!toggle)return;
+    var spans=toggle.querySelectorAll('span');
+    spans.forEach(function(s){s.classList.toggle('on',s.getAttribute('data-mode')===mode);});
+    var demo=document.getElementById('statsDemo');
+    demo.querySelectorAll('[data-pane]').forEach(function(p){
+      p.classList.toggle('on',p.getAttribute('data-pane')===mode);
+    });
+  }
+</script>
+</body>
+</html>
