@@ -1,0 +1,11 @@
+/* RecordThumb — 列表缩略图 */
+
+.thumb {
+  flex-shrink: 0;
+  display: block;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--paper-2);
+  cursor: zoom-in;
+  border: 1px solid var(--line-soft);
+}

@@ -1,0 +1,1 @@
+export { RecordThumb } from './RecordThumb';

@@ -47,6 +47,7 @@ import { CategoryRankList } from './CategoryRankList';
 import { MonthGroupedList, YearGroupedList } from './GroupedRecordList';
 import { CategoryRecordsPage } from '../CategoryRecordsPage';
 import { AddRecordModal } from '../AddRecordModal';
+import { ImagePreview } from '../ImagePreview';
 import { PageTopbar } from '../../PageTopbar';
 import { RecordRow } from '../RecordRow';
 import styles from './StatsPage.module.css';
@@ -119,6 +120,8 @@ export function StatsPage() {
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const [year, setYear] = useState(new Date().getFullYear());
   const [rankCategoryId, setRankCategoryId] = useState<string | null>(null);
+  /** v3.0 TASK-056：点击缩略图触发的全屏预览 */
+  const [previewImageId, setPreviewImageId] = useState<string | null>(null);
   /** v2.3 T-307：虚拟/实际筛选开关 */
   const [includeVirtual] = useState(false);
   const statsOptions = useMemo(() => ({ includeVirtualPool: includeVirtual }), [includeVirtual]);
@@ -306,6 +309,7 @@ export function StatsPage() {
                   record={record}
                   isDragging={dragRecord?.id === record.id}
                   onOpen={() => handleOpenRecord(record)}
+                  onPreviewImage={setPreviewImageId}
                 />
               ))}
             </div>
@@ -329,6 +333,7 @@ export function StatsPage() {
             records={monthListRecords}
             activeDayKey={dayKey.startsWith(monthKey) ? todayKey : undefined}
             onOpenRecord={handleOpenRecord}
+            onPreviewImage={setPreviewImageId}
           />
         </>
       )}
@@ -378,6 +383,7 @@ export function StatsPage() {
             activeMonthKey={monthKey}
             activeDayKey={dayKey}
             onOpenRecord={handleOpenRecord}
+            onPreviewImage={setPreviewImageId}
             onNavigateMonth={(mk) => {
               setMonthKey(mk);
               setView('month');
@@ -430,6 +436,9 @@ export function StatsPage() {
         editingRecord={editingRecord}
         onClose={() => setEditingRecord(null)}
       />
+
+      {/* v3.0 TASK-056：全屏图片预览 */}
+      <ImagePreview imageId={previewImageId} onClose={() => setPreviewImageId(null)} />
     </div>
   );
 }
@@ -500,10 +509,12 @@ interface DraggableRecordRowProps {
   record: AccountRecord;
   isDragging: boolean;
   onOpen: () => void;
+  /** v3.0 TASK-056：点击缩略图预览 */
+  onPreviewImage?: (imageId: string) => void;
 }
 
 /** 日视图记录行（整行可拖拽归入账户，点击编辑），复用 RecordRow 共用组件 */
-function DraggableRecordRow({ record, isDragging, onOpen }: DraggableRecordRowProps) {
+function DraggableRecordRow({ record, isDragging, onOpen, onPreviewImage }: DraggableRecordRowProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: record.id });
   return (
     <div
@@ -512,7 +523,7 @@ function DraggableRecordRow({ record, isDragging, onOpen }: DraggableRecordRowPr
       {...listeners}
       {...attributes}
     >
-      <RecordRow record={record} onOpen={onOpen} />
+      <RecordRow record={record} onOpen={onOpen} onPreviewImage={onPreviewImage} />
     </div>
   );
 }

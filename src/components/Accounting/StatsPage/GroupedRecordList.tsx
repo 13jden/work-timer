@@ -21,10 +21,12 @@ export interface MonthListProps {
   activeDayKey?: string;
   /** 点击记录打开编辑 */
   onOpenRecord: (record: AccountRecord) => void;
+  /** v3.0 TASK-056：点击缩略图预览 */
+  onPreviewImage?: (imageId: string) => void;
 }
 
 /** 月视图：按天分组，天头吸顶 */
-export function MonthGroupedList({ records, activeDayKey, onOpenRecord }: MonthListProps) {
+export function MonthGroupedList({ records, activeDayKey, onOpenRecord, onPreviewImage }: MonthListProps) {
   const dayGroups = groupByDay(records);
   if (dayGroups.length === 0) return <div className={styles.empty}>当月暂无记录</div>;
 
@@ -36,6 +38,7 @@ export function MonthGroupedList({ records, activeDayKey, onOpenRecord }: MonthL
           day={day}
           isActive={day.dateKey === activeDayKey}
           onOpenRecord={onOpenRecord}
+          onPreviewImage={onPreviewImage}
         />
       ))}
     </div>
@@ -52,6 +55,8 @@ export interface YearListProps {
   activeDayKey?: string;
   /** 点击记录打开编辑 */
   onOpenRecord: (record: AccountRecord) => void;
+  /** v3.0 TASK-056：点击缩略图预览 */
+  onPreviewImage?: (imageId: string) => void;
   /** 跳转到指定月 */
   onNavigateMonth: (monthKey: string) => void;
 }
@@ -62,6 +67,7 @@ export function YearGroupedList({
   activeMonthKey,
   activeDayKey,
   onOpenRecord,
+  onPreviewImage,
   onNavigateMonth,
 }: YearListProps) {
   // 提取 monthKey 用于判断"最近 2 个月"
@@ -139,6 +145,7 @@ export function YearGroupedList({
                     day={day}
                     isActive={day.dateKey === activeDayKey}
                     onOpenRecord={onOpenRecord}
+                    onPreviewImage={onPreviewImage}
                     onMonthDayClick={() => {
                       onNavigateMonth(month.monthKey);
                     }}
@@ -159,11 +166,13 @@ interface DaySectionProps {
   day: DayGroup;
   isActive: boolean;
   onOpenRecord: (record: AccountRecord) => void;
+  /** v3.0 TASK-056：点击缩略图预览 */
+  onPreviewImage?: (imageId: string) => void;
   /** 月视图内：点击天头 → 跳转到日视图 */
   onMonthDayClick?: () => void;
 }
 
-function DaySection({ day, isActive, onOpenRecord, onMonthDayClick }: DaySectionProps) {
+function DaySection({ day, isActive, onOpenRecord, onPreviewImage, onMonthDayClick }: DaySectionProps) {
   const [y, m, d] = day.dateKey.split('-').map(Number);
   const date = new Date(y ?? 2026, (m ?? 1) - 1, d ?? 1);
   const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
@@ -200,6 +209,7 @@ function DaySection({ day, isActive, onOpenRecord, onMonthDayClick }: DaySection
             key={record.id}
             record={record}
             onOpen={() => onOpenRecord(record)}
+            onPreviewImage={onPreviewImage}
           />
         ))}
       </div>

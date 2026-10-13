@@ -422,17 +422,34 @@
 
 /* ── 备注：单行输入（独立样式, 此处为历史遗留, 当前使用上面的 .minimalNote） ── */
 
+/* ── v3.0 TASK-056：分类区 4 列 × 2.5 行可滚动（用户要求） ── */
+.catGridScroll {
+  max-height: 200px; /* 大约 2.5 行 × 72px + 8px gap × 2 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0;
+  /* 滚动条收敛到最小 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.catGridScroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.catGridScroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 2px;
+}
+
 /* ── 分类：4 列网格 ── */
 .catGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: minmax(72px, auto);
+  grid-auto-rows: minmax(60px, auto);
   gap: 8px;
-  padding: 2px 0;
-  /* 不限 max-height，让 grid 按内容自然撑开。
-     原因：mobile 键盘弹起→收起时，浏览器重排容器 max-height + overflow-y:auto
-     会触发 grid item 高度被压缩、gap 失效 → 视觉重叠。放开高度即可回避该问题。
-     分类数固定 ≤ 12（9 类别 + 添加），4 列仅 3 行，自然布局不溢出。 */
+  /* 取消之前注释掉的 max-height —— 现在外层 .catGridScroll 控制高度 */
 }
 
 .catGridCell {
@@ -518,6 +535,90 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── v3.0 TASK-056：备注行内的图片按钮 / 缩略图 ── */
+.imageAddBtn {
+  flex-shrink: 0;
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--ink-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+  margin-right: 4px;
+}
+
+.imageAddBtn:hover:not(:disabled) {
+  background: var(--paper-2);
+  border-style: solid;
+  color: var(--ink);
+  border-color: var(--accent-deep);
+}
+
+.imageAddBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.fileInputHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imagePreviewChip {
+  flex-shrink: 0;
+  align-self: center;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+}
+
+.imagePreviewImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+}
+
+.imagePreviewRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  font-weight: 600;
+  border: 1.5px solid var(--paper-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+.imagePreviewRemove:hover {
+  background: var(--danger);
+  color: #fff;
 }
 
 /* ── Error ── */

@@ -4,8 +4,9 @@
  * 底部半屏模态框，支持：
  * - 金额输入（大字号）
  * - 类型切换（支出 / 收入）
- * - 分类选择（chip 列表）
+ * - 分类选择（chip 列表，最多 2.5 行可滚动 — v3.0 TASK-056 用户要求）
  * - 备注输入
+ * - 附图（v3.0 TASK-056：右侧图片按钮 / 已选时显示缩略图）
  * - 日期选择
  * - 账户选择
  *
@@ -18,6 +19,9 @@ import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
 import { IconByKey } from '../../IconByKey';
 import { AddCategoryModal } from '../AddCategoryModal';
+import { compressImage, genImageId, ImageCompressError } from '../../../lib/imageCompress';
+import { putImage, isImageDBSupported } from '../../../lib/imageStore';
+import { useImage } from '../../../hooks/useImage';
 import styles from './AddRecordModal.module.css';
 
 interface AddRecordModalProps {
@@ -57,10 +61,24 @@ export function AddRecordModal({
   const [note, setNote] = useState('');
   const [dateKey, setDateKey] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
-  /** v2.5-patch8：池关联从 AddRecordModal 中移除,迁移到 Mine 页的池卡片直接编辑 */
   const [error, setError] = useState<string | null>(null);
-  /** v2.5-patch6：内嵌打开「添加分类」 */
   const [showAddCategory, setShowAddCategory] = useState(false);
+
+  // v3.0 TASK-056：图片状态
+  // - pendingBlob: 用户新选的、待 save 时入库的 Blob
+  // - pendingId: 与 pendingBlob 配对的 imageId（genImageId 在选中时分配）
+  // - removeExisting: 编辑模式下，用户点了「移除」要清除旧图
+  // - previewUrl: pendingBlob 的 ObjectURL（用于 modal 内的缩略图预览）
+  // - imageStatus: idle / compressing / ready / error
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [removeExisting, setRemoveExisting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageStatus, setImageStatus] = useState<'idle' | 'compressing' | 'ready' | 'error'>('idle');
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
   const amountRef = useRef<HTMLInputElement>(null);
 
   // 初始化表单
@@ -81,6 +99,17 @@ export function AddRecordModal({
       setDateKey(defaultDate ?? getTodayKey());
       setAccountId(accounts[0]?.id ?? '');
     }
+    // 打开 modal 时：清空上一轮的图片状态
+    setPendingBlob(null);
+    setPendingId(null);
+    setRemoveExisting(false);
+    setImageStatus('idle');
+    setImageError(null);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
     setError(null);
     const id = setTimeout(() => amountRef.current?.focus(), 350);
     return () => clearTimeout(id);
@@ -123,7 +152,74 @@ export function AddRecordModal({
     }
   }, [type, filteredCategories, categoryId]);
 
-  const handleSave = () => {
+  // ── v3.0 TASK-056：图片处理 ──────────────────────────────
+  const handlePickFile = async (file: File) => {
+    if (!isImageDBSupported()) {
+      setImageError('当前环境不支持图片存储');
+      setImageStatus('error');
+      return;
+    }
+    setImageStatus('compressing');
+    setImageError(null);
+    try {
+      const { blob } = await compressImage(file);
+      // 释放旧 preview URL
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
+      setPendingBlob(blob);
+      setPendingId(genImageId());
+      // 编辑模式下选了新图 → 旧图不应再被 removeExisting 标记清掉（由 store 级联处理）
+      setRemoveExisting(false);
+      setImageStatus('ready');
+    } catch (e) {
+      const msg = e instanceof ImageCompressError
+        ? e.code === 'UNSUPPORTED_FORMAT' ? '该图片格式暂不支持' : '图片处理失败'
+        : '图片处理失败';
+      setImageError(msg);
+      setImageStatus('error');
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void handlePickFile(file);
+    // 重置 value 以便重复选同一张图
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
+    setPendingBlob(null);
+    setPendingId(null);
+    setImageStatus('idle');
+    setImageError(null);
+    // 编辑模式下：标记删除现有图（save 时会传给 updateRecord）
+    if (editingRecord?.imageId) setRemoveExisting(true);
+  };
+
+  // 弹窗关闭时回收 previewUrl（保险 — 上面 effect 也做了）
+  useEffect(() => {
+    if (!open) return;
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, [open]);
+
+  // 是否在弹窗内显示图片预览（优先级：新选的 > 编辑模式原有的）
+  const showPreview = !!(previewUrl && pendingBlob);
+  const editingHasImage = !!editingRecord?.imageId && !removeExisting && !pendingBlob;
+  const showEditingImage = editingHasImage;
+
+  const handleSave = async () => {
     const amount = parseAmountToNumber(amountStr);
     if (!isFinite(amount) || amount <= 0) {
       setError('请输入有效金额');
@@ -133,32 +229,47 @@ export function AddRecordModal({
       setError('请选择分类');
       return;
     }
-    // v2.4 T-409：账户可为空（未归入），总资产卡以调整项展示
 
-    // 支出存负数，收入存正数
     const signedAmount = type === 'expense' ? -amount : amount;
 
+    // v3.0 TASK-056：先入库待保存图片（成功后再写记录）
+    let savedImageId: string | undefined;
+    if (pendingBlob && pendingId) {
+      const ok = await putImage(pendingId, pendingBlob);
+      if (!ok) {
+        setError('图片保存失败，请重试');
+        return;
+      }
+      savedImageId = pendingId;
+    } else if (editingRecord?.imageId && !removeExisting && !pendingBlob) {
+      // 编辑但未改图：保留旧 imageId
+      savedImageId = editingRecord.imageId;
+    } else if (editingRecord && removeExisting) {
+      // 编辑且明确移除：不传 imageId
+      savedImageId = undefined;
+    }
+
+    const patchBase = {
+      amount: signedAmount,
+      type,
+      categoryId,
+      note: note.trim() || undefined,
+      dateKey,
+      accountId,
+      isUncategorized: false,
+    };
+
     if (editingRecord) {
+      // 含 imageId 字段（即便 undefined）以触发 store 的级联清理
       updateRecord(editingRecord.id, {
-        amount: signedAmount,
-        type,
-        categoryId,
-        note: note.trim() || undefined,
-        dateKey,
-        accountId,
-        // v2.5-patch8：池关联不在弹窗里改,保留原 poolId 不动
-        // v2.4 T-410：弹窗内必然选中了真实分类，清除未分类状态
-        isUncategorized: false,
+        ...patchBase,
+        imageId: savedImageId,
       });
       onSaved?.(editingRecord.id);
     } else {
       const record = addRecord({
-        dateKey,
-        amount: signedAmount,
-        type,
-        categoryId,
-        note: note.trim() || undefined,
-        accountId,
+        ...patchBase,
+        ...(savedImageId ? { imageId: savedImageId } : {}),
       });
       onSaved?.(record.id);
     }
@@ -167,9 +278,6 @@ export function AddRecordModal({
 
   const handleDelete = () => {
     if (!editingRecord) return;
-    // v2.5-patch8：claimed record 且所属池可能已退休(pools 中找不到) →
-    // 提示级联删除（同池所有 record 一起删）。
-    // 已退休的池 records 是孤儿数据,留下 daily virtual 会导致"账户已扣但均摊进度永远凑不齐"。
     if (editingRecord.poolStatus === 'claimed' && editingRecord.poolId) {
       const poolExists = pools.some((p) => p.id === editingRecord.poolId);
       const poolRecords = records.filter((r) => r.poolId === editingRecord.poolId);
@@ -207,47 +315,62 @@ export function AddRecordModal({
 
   const canSubmit = () => {
     const amt = resolveAmount();
-    return isFinite(amt) && amt > 0 && !!categoryId;
+    return isFinite(amt) && amt > 0 && !!categoryId && imageStatus !== 'compressing';
   };
 
-  const handleSaveAndAgain = () => {
+  const handleSaveAndAgain = async () => {
     if (!canSubmit()) {
-      // 若分类未选：只报错，不关闭
       const amt = parseAmountToNumber(amountStr);
       if (!isFinite(amt) || amt <= 0) { setError('请输入有效金额'); return; }
       if (!categoryId) { setError('请选择分类'); return; }
       return;
     }
-    // v2.5-patch7 (TASK-051)：直接保存 + 不退出弹窗，保留分类/日期/账户，
-    // 顺手清空金额 + 备注，方便连续快速记录同类支出。
-    // 不复用 handleSave() —— 因为 handleSave 末尾会调 onClose()。
     const amount = parseAmountToNumber(amountStr);
     const signedAmount = type === 'expense' ? -amount : amount;
+    let savedImageId: string | undefined;
+    if (pendingBlob && pendingId) {
+      const ok = await putImage(pendingId, pendingBlob);
+      if (!ok) {
+        setError('图片保存失败，请重试');
+        return;
+      }
+      savedImageId = pendingId;
+    } else if (editingRecord?.imageId && !removeExisting && !pendingBlob) {
+      savedImageId = editingRecord.imageId;
+    }
+    const patchBase = {
+      amount: signedAmount,
+      type,
+      categoryId,
+      note: note.trim() || undefined,
+      dateKey,
+      accountId,
+      isUncategorized: false,
+    };
     if (editingRecord) {
-      updateRecord(editingRecord.id, {
-        amount: signedAmount,
-        type,
-        categoryId,
-        note: note.trim() || undefined,
-        dateKey,
-        accountId,
-        isUncategorized: false,
-      });
+      updateRecord(editingRecord.id, { ...patchBase, imageId: savedImageId });
       onSaved?.(editingRecord.id);
     } else {
       const record = addRecord({
-        dateKey,
-        amount: signedAmount,
-        type,
-        categoryId,
-        note: note.trim() || undefined,
-        accountId,
+        ...patchBase,
+        ...(savedImageId ? { imageId: savedImageId } : {}),
       });
       onSaved?.(record.id);
     }
     setAmountStr('');
     setNote('');
     setError(null);
+    // 保留 imageId（在 IndexedDB 仍在用），清掉本地 blob 引用即可
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
+    setPendingBlob(null);
+    setPendingId(null);
+    setImageStatus('idle');
+    setImageError(null);
+    if (editingRecord?.imageId && removeExisting) setRemoveExisting(false);
   };
 
   return (
@@ -293,39 +416,40 @@ export function AddRecordModal({
           </button>
         </div>
 
-        {/* ── 分类：4 列网格（可滑动），最后一项是 + 添加 ── */}
-        <div className={styles.catGrid}>
-          {filteredCategories.map((cat) => (
+        {/* ── 分类：v3.0 TASK-056 用户要求 4 列 × 2.5 行可滚动，不撑爆弹窗 ── */}
+        <div className={styles.catGridScroll}>
+          <div className={styles.catGrid}>
+            {filteredCategories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`${styles.catGridCell} ${categoryId === cat.id ? styles.catGridCellActive : ''}`}
+                onClick={() => setCategoryId(cat.id)}
+                style={{
+                  borderColor: categoryId === cat.id ? cat.color : undefined,
+                  backgroundColor: categoryId === cat.id ? cat.color : undefined,
+                }}
+              >
+                <span className={styles.catIcon}>
+                  <IconByKey icon={cat.icon} size={18} weight="regular" color={categoryId === cat.id ? '#fff' : cat.color} />
+                </span>
+                <span className={styles.catName}>{cat.name}</span>
+              </button>
+            ))}
             <button
-              key={cat.id}
               type="button"
-              className={`${styles.catGridCell} ${categoryId === cat.id ? styles.catGridCellActive : ''}`}
-              onClick={() => setCategoryId(cat.id)}
-              style={{
-                borderColor: categoryId === cat.id ? cat.color : undefined,
-                backgroundColor: categoryId === cat.id ? cat.color : undefined,
-              }}
+              className={styles.catGridCellAdd}
+              onClick={() => setShowAddCategory(true)}
+              aria-label="添加分类"
+              title="添加分类"
             >
-              <span className={styles.catIcon}>
-                <IconByKey icon={cat.icon} size={18} weight="regular" color={categoryId === cat.id ? '#fff' : cat.color} />
-              </span>
-              <span className={styles.catName}>{cat.name}</span>
+              <span className={styles.catAddSign}>+</span>
+              <span className={styles.catName}>添加</span>
             </button>
-          ))}
-          {/* v2.5-patch6：自定义添加分类按钮（每种类型下都能添加） */}
-          <button
-            type="button"
-            className={styles.catGridCellAdd}
-            onClick={() => setShowAddCategory(true)}
-            aria-label="添加分类"
-            title="添加分类"
-          >
-            <span className={styles.catAddSign}>+</span>
-            <span className={styles.catName}>添加</span>
-          </button>
+          </div>
         </div>
 
-        {/* ── 备注 + 金额 一行（两列：备注占主，金额占辅） ── */}
+        {/* ── 备注 + 金额 + 图片按钮 一行（v3.0 TASK-056） ── */}
         <div className={styles.noteAmountRow}>
           <input
             type="text"
@@ -336,12 +460,49 @@ export function AddRecordModal({
             maxLength={50}
             aria-label="备注"
           />
+          {/* v3.0 TASK-056：图片按钮（备注右侧）/ 选中时显示缩略图 */}
+          {showPreview || showEditingImage ? (
+            <div className={styles.imagePreviewChip}>
+              {showPreview && previewUrl ? (
+                <img src={previewUrl} alt="" className={styles.imagePreviewImg} />
+              ) : showEditingImage && editingRecord?.imageId ? (
+                <EditingImageThumb imageId={editingRecord.imageId} />
+              ) : null}
+              <button
+                type="button"
+                className={styles.imagePreviewRemove}
+                onClick={handleRemoveImage}
+                aria-label="移除图片"
+                title="移除图片"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.imageAddBtn}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageStatus === 'compressing'}
+              aria-label="添加图片"
+              title="添加图片"
+            >
+              {imageStatus === 'compressing' ? '…' : '🖼'}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            className={styles.fileInputHidden}
+            aria-hidden
+          />
           <div className={styles.miniAmountCell}>
             <span className={styles.miniAmountCurrency}>¥</span>
             <div className={styles.miniAmountText}>
               {amountStr ? formatAmountDisplay(amountStr) : <span className={styles.amountDisplayPlaceholder}>0.00</span>}
             </div>
-            {/* 隐藏的 input — 阻止 native keyboard */}
             <input
               ref={amountRef}
               type="text"
@@ -355,7 +516,10 @@ export function AddRecordModal({
           </div>
         </div>
 
-        {/* ── 字段行：日期 / 账户（两列并排,池关联移到 Mine 页） ── */}
+        {/* v3.0 TASK-056：图片错误提示 */}
+        {imageError && <div className={styles.error}>{imageError}</div>}
+
+        {/* ── 字段行：日期 / 账户 ── */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldCell}>
             <div className={styles.fieldLabel}>日期</div>
@@ -397,9 +561,8 @@ export function AddRecordModal({
           </button>
         )}
 
-        {/* ── 数字键盘：固定最底部（移动端输入控件） ── */}
+        {/* ── 数字键盘 ── */}
         <div className={styles.numpad} role="group" aria-label="数字键盘">
-          {/* v2.5-patch7 (TASK-051)：顺序调整为 1-2-3 / 4-5-6 / 7-8-9 / 0(常见计算器布局) */}
           <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('1')}>1</button>
           <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('2')}>2</button>
           <button type="button" className={styles.numpadKey} onClick={() => handleNumpadKey('3')}>3</button>
@@ -459,7 +622,6 @@ export function AddRecordModal({
         </div>
       </div>
 
-      {/* v2.5-patch6：自定义添加分类 — 内嵌在弹窗里打开 */}
       {showAddCategory && (
         <AddCategoryModal
           open={showAddCategory}
@@ -475,6 +637,15 @@ export function AddRecordModal({
   );
 }
 
+/** 编辑模式下显示已有图片缩略图（包一层 useImage hook） */
+function EditingImageThumb({ imageId }: { imageId: string }) {
+  const { url, status } = useImage(imageId);
+  if (status === 'ok' && url) {
+    return <img src={url} alt="" className={styles.imagePreviewImg} />;
+  }
+  return <span className={styles.imagePreviewImg} style={{ opacity: 0.2 }} />;
+}
+
 function getTodayKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -482,13 +653,6 @@ function getTodayKey(): string {
 
 /**
  * 处理 numpad 按键
- *
- * 表达式输入：把当前 amountStr 当成「数字 + 运算符 + 数字」的算式缓冲，
- * 支持 `20-10.5` 这类连续运算。规则：
- *  - 数字：追加；前导 0 时替换而非累加
- *  - 小数点：当前数字块只能有一个
- *  - `+` / `−`：数字后追加运算符；末尾已运算符则替换
- *  - 长度上限 16 字符
  */
 export function applyNumpadKey(prev: string, key: string): string {
   if (key === '.') {
@@ -514,13 +678,11 @@ export function applyNumpadKey(prev: string, key: string): string {
   return prev;
 }
 
-/** 取表达式里「最后一个数字块」 */
 function lastNumberBlock(expr: string): string {
   const m = expr.match(/[0-9]+(?:\.[0-9]*)?$/);
   return m ? m[0] : '';
 }
 
-/** 从左到右计算 `a±b±c`（仅 + / −） */
 function evalAmountExpr(expr: string): number {
   let e = expr.replace(/[+\u2212.]+$/, '');
   if (!e) return NaN;
@@ -555,11 +717,6 @@ function evalAmountExpr(expr: string): number {
   return acc;
 }
 
-/**
- * 格式化金额显示。
- *  - 纯数字：千分位 + 保留必要小数（`1234.5` → `"1,234.5"`）
- *  - 表达式：原样显示 + `= 预览结果`（`20-10.5` → `"20-10.5 = 9.5"`）
- */
 export function formatAmountDisplay(raw: string): string {
   if (!raw) return '';
   const hasOp = /[+\u2212]/.test(raw);
@@ -579,9 +736,6 @@ export function formatAmountDisplay(raw: string): string {
   return `${raw} = ${resultStr}`;
 }
 
-/**
- * 把 amountStr 解析成可保存的数字（仅数字部分走表达式求值）。
- */
 export function parseAmountToNumber(raw: string): number {
   if (!raw) return NaN;
   if (/[+\u2212]/.test(raw)) return evalAmountExpr(raw);

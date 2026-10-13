@@ -478,6 +478,8 @@ export interface AccountRecord {
   // 'salary-time-mode' 表示「time 模式日历页当天已赚」联动过来；
   // 编辑 / 删除会由联动 hook 重新插入。手动记账的记录留空 / undefined。
   linkageSource?: 'salary-time-mode';
+  // ── v3.0 TASK-056：附图（IndexedDB 存 Blob，localStorage 不放图片）
+  imageId?: string;
 }
 
 /**

@@ -5,16 +5,19 @@
  * 每行显示：
  * - 分类图标 + 名称
  * - 备注
+ * - 缩略图（v3.0 TASK-056）
  * - 金额（绿=收入，红=支出）
  *
  * 点击记录 → 打开编辑弹窗
  * 长按记录 → 显示操作菜单
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
+import { RecordThumb } from '../RecordThumb';
+import { ImagePreview } from '../ImagePreview';
 import styles from './TodayRecordsList.module.css';
 
 interface TodayRecordsListProps {
@@ -49,6 +52,9 @@ export function TodayRecordsList({
 
   const income = useMemo(() => sumIncome(todayRecords), [todayRecords]);
   const expense = useMemo(() => sumExpense(todayRecords), [todayRecords]);
+
+  // v3.0 TASK-056：缩略图预览
+  const [previewImageId, setPreviewImageId] = useState<string | null>(null);
 
   if (todayRecords.length === 0) {
     return (
@@ -88,10 +94,13 @@ export function TodayRecordsList({
               categoryName={cat?.name ?? '未知'}
               onPick={onPickRecord}
               onLongPress={onLongPressRecord}
+              onPreviewImage={setPreviewImageId}
             />
           );
         })}
       </div>
+
+      <ImagePreview imageId={previewImageId} onClose={() => setPreviewImageId(null)} />
     </div>
   );
 }
@@ -102,9 +111,10 @@ interface RecordRowProps {
   categoryName: string;
   onPick?: (id: string) => void;
   onLongPress?: (id: string) => void;
+  onPreviewImage?: (id: string) => void;
 }
 
-function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress }: RecordRowProps) {
+function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress, onPreviewImage }: RecordRowProps) {
   const handleTouchStart = () => {
     const id = setTimeout(() => onLongPress?.(record.id), 500);
     (window as { __longPressTimer?: ReturnType<typeof setTimeout> }).__longPressTimer = id;
@@ -138,6 +148,12 @@ function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress }: 
           {categoryName} · {formatTime(record.createdAt)}
         </span>
       </div>
+      {record.imageId && (
+        <RecordThumb
+          imageId={record.imageId}
+          onPreview={onPreviewImage ? () => onPreviewImage(record.imageId!) : undefined}
+        />
+      )}
       <span className={`${styles.amount} ${record.type === 'income' ? styles.income : styles.expense}`}>
         {record.type === 'income' ? '+' : '-'}¥{formatAmount(Math.abs(record.amount))}
       </span>

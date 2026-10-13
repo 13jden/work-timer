@@ -61,3 +61,72 @@
 - 单测全过（`groupByDay` / `groupByMonth` 新增覆盖）
 - `npm run build` 成功
 - 用户浏览器验收通过（2026-10-13）
+
+---
+
+## [v3.0] · 2026-10-13 · 记录附图：本地图片 (TASK-056)
+
+基线 v3.0-TASK-055。记账单条记录可关联一张图片（小票 / 截图 / 现场照）。图片全部本地存储，延续「不上云、不注册、不联网」原则；主数据在 localStorage（配额约 5MB），图片走 IndexedDB 避免撑爆。
+
+### A · 图片存储层（IndexedDB）
+
+- `lib/imageStore.ts` 新建：IndexedDB 封装（`salary_timer_images` 库，`imageId → Blob`），单例 db 句柄
+- 全部 API 静默降级：无 `indexedDB`（测试 / 隐私模式）→ put/get/delete/has 返回 `false` / `null` / 静默 noop；IO 失败吞掉不抛
+- 失败不阻塞记账主流程
+- 单测覆盖降级分支（`src/lib/imageStore.test.ts`）
+
+### B · 压缩管线
+
+- `lib/imageCompress.ts` 新建：`compressImage(file, maxEdge=1280, quality=0.8)` → 缩放 + JPEG 重编码
+- 用 `createImageBitmap` 解码（不支持时降级 `Image + ObjectURL`）
+- 原图本就不大（≤1280px 且 ≤300KB）→ 跳过重压缩直接透传
+- HEIC / 浏览器无法解码 → 抛 `ImageCompressError('UNSUPPORTED_FORMAT')` 提示「该图片格式暂不支持」
+- `genImageId()`：与现有 `genId('rec')` 一致的 `img-<ts>-<rand>` 风格
+
+### C · `useImage` hook
+
+- `src/hooks/useImage.ts` 新建：`useImage(imageId)` → `{ url, status: 'idle' | 'loading' | 'ok' | 'missing' }`
+- 挂载时 `getImage` → `URL.createObjectURL`，imageId 变化或组件卸载时 `revokeObjectURL` 避免内存泄漏
+- 缺失 / 不支持时返回 `status='missing'`，UI 兜底渲染空
+
+### D · 记录数据扩展 + 级联清理
+
+- `AccountRecord.imageId?: string`（`src/lib/types.ts`）
+- `addRecord` / `updateRecord` / `deleteRecord` / `deleteRecordCascade` 支持 imageId 读写
+- 换图 / 删图时自动检测孤儿 imageId 并从 IndexedDB 清理（`lib/accounting/images.ts` 纯函数 + 10 条单测）
+- 编辑模式：换图不需手动调清理；删图走原 deleteRecord 流程
+
+### E · UI 接入
+
+- **新增 `RecordThumb`**：36px 圆角缩略图（点击 stopPropagation 触发预览，不打开编辑）
+- **新增 `ImagePreview`**：全屏黑色蒙层（rgba 0.92）+ 图片居中 + ESC / 点遮罩关闭 + 锁定背景滚动
+- `RecordRow`（共用记录行）：有图时在「备注右侧、金额左侧」插入缩略图
+- `TodayRecordsList` / `DayDetailSheet` / `GroupedRecordList`（月 / 年视图）：列表行同步接入缩略图 + 预览
+- `AddRecordModal`：
+  - 备注行右侧加图片按钮（虚线小方块 🖼，压缩中显示 `…`）
+  - 选中后改为 40px 缩略图 + 右上角黑色 ✕ 移除按钮
+  - 编辑模式直接渲染原图（useImage hook），移除走 `removeExisting` 标志
+  - 取消弹窗 → pendingBlob 未入库，无副作用
+  - 分类区改成 4 列 × 2.5 行（200px 限高）内部可滚动，按用户「分类选择只占 2.5 行、可上下滑动」要求
+
+### F · 失败 / 边界
+
+- 无 IndexedDB 环境：put 失败 → 提示「图片保存失败，请重试」，不写入 record
+- HEIC 等格式：弹窗内显示「该图片格式暂不支持」
+- 取消弹窗不触发 IndexedDB 写入
+- 删 / 换孤儿图片在后台静默执行，不阻塞 UI
+
+### 不做的事
+
+- ❌ 多图（一条记录一张，控制存储与 UI 复杂度）
+- ❌ 图片编辑 / 滤镜 / 捏合缩放预览
+- ❌ 独立「相册」页（删图级联即可，见 PRD §09 Q3）
+- ❌ 图片云端同步（与「本地优先」原则冲突）
+
+### 验证
+
+- `npm run typecheck` 通过
+- 单测 436/438 通过（+16 新增：`imageStore.test.ts` 6 条 + `images.test.ts` 10 条；2 个 v2.3 池测试为基线遗留失败，与本次无关）
+- `npm run build` 成功
+- 用户浏览器验收通过（2026-10-13）
+

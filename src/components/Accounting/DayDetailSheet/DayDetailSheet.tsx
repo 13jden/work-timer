@@ -1,9 +1,9 @@
 /**
- * @fileoverview DayDetailSheet — 记账日历日详情弹窗（v2.2 · TASK-038）
+ * @fileoverview DayDetailSheet — 记账日历日详情弹窗（v2.2 · TASK-038 / v3.0 · TASK-056）
  *
  * 底部半屏 sheet（结构对齐 AddRecordModal）：
  * - 头部：日期 + 当日总支出/收入
- * - 记录列表：分类图标 + 名称 + 备注 + 金额；点击经 RecordActionSheet 编辑/删除
+ * - 记录列表：分类图标 + 名称 + 备注 + 缩略图 + 金额；点击经 RecordActionSheet 编辑/删除
  * - 底部「+ 记一笔」→ 打开 AddRecordModal 并预填该日期
  */
 import { useState } from 'react';
@@ -14,6 +14,8 @@ import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import { AddRecordModal } from '../AddRecordModal';
 import { RecordActionSheet } from '../RecordActionSheet';
+import { RecordThumb } from '../RecordThumb';
+import { ImagePreview } from '../ImagePreview';
 import styles from './DayDetailSheet.module.css';
 
 interface DayDetailSheetProps {
@@ -29,6 +31,8 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
   const [actionRecord, setActionRecord] = useState<AccountRecord | null>(null);
   const [editing, setEditing] = useState<AccountRecord | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  // v3.0 TASK-056：缩略图预览
+  const [previewImageId, setPreviewImageId] = useState<string | null>(null);
 
   if (!dateKey) return null;
 
@@ -81,6 +85,12 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
                       <span className={styles.rowSub}>{record.note}</span>
                     ) : null}
                   </span>
+                  {record.imageId && (
+                    <RecordThumb
+                      imageId={record.imageId}
+                      onPreview={() => setPreviewImageId(record.imageId!)}
+                    />
+                  )}
                   <span
                     className={`${styles.rowAmt} ${
                       isExpense ? styles.amtExpense : styles.amtIncome
@@ -115,6 +125,9 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
         defaultDate={dateKey}
         onClose={closeEditor}
       />
+
+      {/* v3.0 TASK-056：全屏图片预览 */}
+      <ImagePreview imageId={previewImageId} onClose={() => setPreviewImageId(null)} />
     </div>
   );
 }

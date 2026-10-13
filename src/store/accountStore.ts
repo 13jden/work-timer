@@ -44,8 +44,32 @@ import {
 } from '../lib/accounting/pool';
 import { getCurrentMonthKey, getTodayKey, recordAffectsBalance } from '../lib/accounting';
 import { shiftMonth } from '../lib/accounting/stats';
+import { findOrphanedImageIds } from '../lib/accounting/images';
+import { deleteImage } from '../lib/imageStore';
 
 // ── Store 形状 ──────────────────────────────────────────────
+
+/**
+ * v3.0 TASK-056 T-567：级联清理孤儿图片。
+ * 在 records 数组更新后调用，根据「刚被删 / 换图的记录」找孤儿 imageId 删掉。
+ *
+ * - `removedIds` / `changes` 与 `findOrphanedImageIds` 的入参同义
+ * - 内部会先 `get().records` 拿到最新数组（set 后）
+ * - 异步 fire-and-forget：UI 不阻塞
+ */
+function cleanupOrphanedImages(
+  get: () => AccountStore,
+  removedIds: string[],
+  changes: Array<[string, string | undefined, string | undefined]>,
+): void {
+  if (removedIds.length === 0 && changes.length === 0) return;
+  const records = get().records;
+  const orphans = findOrphanedImageIds(records, removedIds, changes);
+  for (const id of orphans) {
+    // 不 await —— IndexedDB 清理失败也不影响主流程
+    void deleteImage(id);
+  }
+}
 interface AccountStore {
   // 账户
   accounts: Account[];
@@ -546,6 +570,12 @@ export const useAccountStore = create<AccountStore>()(
         const oldAccountId = oldRecord.accountId;
         const newAccountId = patch.accountId ?? oldAccountId;
 
+        // v3.0 TASK-056：捕获「换图」用于级联清理
+        // 'imageId' in patch = 显式传键（赋值或解除）→ 视为换图
+        const imageIdChanged = 'imageId' in patch && patch.imageId !== oldRecord.imageId;
+        const oldImageId = oldRecord.imageId;
+        const newImageId = imageIdChanged ? patch.imageId : undefined;
+
         set((s) => ({
           records: s.records.map((r) =>
             r.id === id ? { ...r, ...patch, updatedAt: Date.now() } : r,
@@ -580,6 +610,11 @@ export const useAccountStore = create<AccountStore>()(
         }
         if (newGoalId) {
           applyGoalDelta(set, newGoalId, newAmount);
+        }
+
+        // v3.0 TASK-056：换图后清理孤儿图片
+        if (imageIdChanged && oldImageId) {
+          cleanupOrphanedImages(get, [], [[id, oldImageId, newImageId]]);
         }
       },
 
@@ -647,6 +682,9 @@ export const useAccountStore = create<AccountStore>()(
         set((s) => ({
           records: s.records.filter((r) => r.id !== id),
         }));
+
+        // v3.0 TASK-056：清理孤儿图片
+        cleanupOrphanedImages(get, [id], []);
       },
 
       // v2.5-patch8：级联删除 — 用于"池已退休"的入账记录
@@ -671,9 +709,12 @@ export const useAccountStore = create<AccountStore>()(
           }
         }
         deletedCount = poolRecords.length;
+        const removedIds = poolRecords.map((r) => r.id);
         set((s) => ({
           records: s.records.filter((r) => r.poolId !== poolId),
         }));
+        // v3.0 TASK-056：清理孤儿图片
+        cleanupOrphanedImages(get, removedIds, []);
         return { deletedCount };
       },
 

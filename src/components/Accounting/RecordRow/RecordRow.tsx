@@ -1,20 +1,23 @@
 /**
- * @fileoverview RecordRow — 记账记录行共用组件（v3.0 TASK-055 T-555）
+ * @fileoverview RecordRow — 记账记录行共用组件（v3.0 TASK-055 T-555 + TASK-056）
  *
  * 日视图 / 月视图列表 / 年视图列表共用的记录行。
- * 展示：分类图标 + 分类名/池名 + 备注 + 账户标签 + 金额。
+ * 展示：分类图标 + 分类名/池名 + 备注 + 账户标签 + 缩略图（v3.0）+ 金额。
  * 不含拖拽逻辑（拖拽由调用方在 StatsPage 层通过 dnd-kit 包装）。
  */
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
+import { RecordThumb } from '../RecordThumb';
 import styles from './RecordRow.module.css';
 
 export interface RecordRowProps {
   record: AccountRecord;
   /** 点击打开编辑弹窗 */
   onOpen: () => void;
+  /** v3.0 TASK-056：点击缩略图预览图片 */
+  onPreviewImage?: (imageId: string) => void;
 }
 
 /** 结算时间戳 → "M月D日"（同年省略年份） */
@@ -32,8 +35,9 @@ function formatSettledDate(ts: number): string {
  * - 认领付款（poolStatus='claimed'）保留展示，金额不计入统计
  * - 关联池记录显示池名（保留分类图标）
  * - 虚拟预扣记录不出现于此组件（已在 listableRecords 层过滤）
+ * - v3.0：有图时在「备注右侧、金额左侧」显示 36px 缩略图；点击缩略图触发预览（不打开编辑）
  */
-export function RecordRow({ record, onOpen }: RecordRowProps) {
+export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
   const category = categories.find((c) => c.id === record.categoryId);
@@ -85,6 +89,13 @@ export function RecordRow({ record, onOpen }: RecordRowProps) {
         </span>
       ) : (
         <span className={`${styles.acct} ${styles.acctNone}`}>未归入</span>
+      )}
+      {/* v3.0 TASK-056：附图缩略图，备注右侧、金额左侧 */}
+      {record.imageId && (
+        <RecordThumb
+          imageId={record.imageId}
+          onPreview={onPreviewImage ? () => onPreviewImage(record.imageId!) : undefined}
+        />
       )}
       <span className={`${styles.amt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
         {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
