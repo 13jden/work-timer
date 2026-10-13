@@ -1,0 +1,181 @@
+/* GroupedRecordList — 月/年分组记录列表（v3.0 TASK-055 T-552/T-553） */
+
+.groupedList {
+  background: var(--paper-3);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 0;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--paper-3);
+  border-radius: 14px;
+}
+
+/* ── 天头（吸顶） ─────────────────────────────────────── */
+.dayGroup {
+  /* 让 sticky 相对定位有效 */
+}
+
+.dayHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px 6px;
+  background: var(--paper-3);
+  border-bottom: 1px solid var(--line-soft);
+  cursor: default;
+}
+
+.dayHeadActive {
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper-3));
+}
+
+.dayLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+[role='button'].dayLabel {
+  cursor: pointer;
+}
+
+[role='button'].dayLabel:hover {
+  opacity: 0.7;
+}
+
+.weekday {
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.daySummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.summaryExpense {
+  color: var(--danger);
+}
+
+.summaryIncome {
+  color: var(--income);
+}
+
+/* ── 月头（可折叠） ───────────────────────────────────── */
+.monthGroup {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.monthGroup:last-child {
+  border-bottom: none;
+}
+
+.monthHead {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--paper-2);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  gap: 8px;
+}
+
+.monthHeadActive {
+  background: color-mix(in srgb, var(--accent) 6%, var(--paper-2));
+}
+
+.monthTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+}
+
+.currentBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--accent-deep) 15%, transparent);
+  color: var(--accent-deep);
+  flex-shrink: 0;
+}
+
+.monthSummary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.summaryExpense {
+  color: var(--danger);
+}
+
+.summaryIncome {
+  color: var(--income);
+}
+
+/* 折叠箭头按钮 */
+.collapseIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--paper-3);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  /* 展开时：箭头向左（‹）；折叠时：箭头旋转 180° 向下 */
+  transition: transform 0.22s var(--ease), background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.collapseIcon.collapsed {
+  transform: rotate(180deg);
+}
+
+/* 悬停到整个月头时箭头变深色，提示可点击 */
+.monthHead:hover .collapseIcon {
+  background: var(--line);
+  color: var(--ink);
+}
+
+/* ── 月内日列表 ─────────────────────────────────────── */
+.days {
+  /* 使用 content-visibility 优化性能（折叠态不渲染） */
+}

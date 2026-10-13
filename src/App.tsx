@@ -115,6 +115,22 @@ export function App() {
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   // v2.5-patch10：只在页面滚到顶部时才允许下滑切换（防止页面中间误触）
   const atTopRef = useRef(true);
+  // [DEV] 连续点击 3 次快速切换模式（方便开发测试）
+  const devClickCountRef = useRef(0);
+  const devClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function handleDevTripleClick() {
+    if (!import.meta.env.DEV) return;
+    devClickCountRef.current++;
+    if (devClickTimerRef.current) clearTimeout(devClickTimerRef.current);
+    devClickTimerRef.current = setTimeout(() => {
+      devClickCountRef.current = 0;
+    }, 600);
+    if (devClickCountRef.current >= 3) {
+      devClickCountRef.current = 0;
+      if (devClickTimerRef.current) clearTimeout(devClickTimerRef.current);
+      setMode(mode === 'timer' ? 'accounting' : 'timer');
+    }
+  }
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     atTopRef.current = e.currentTarget.scrollTop === 0;
   }
@@ -225,6 +241,7 @@ export function App() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onScroll={handleScroll}
+      onClick={handleDevTripleClick}
     >
       <SalaryLinkageSync />
       {mobileOverlay === 'convert' ? (

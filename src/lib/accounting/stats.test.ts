@@ -10,6 +10,8 @@ import {
   aggregateByDay,
   aggregateByMonth,
   aggregateByCategory,
+  groupByDay,
+  groupByMonth,
   sumRecords,
   shiftDay,
   shiftMonth,
@@ -196,5 +198,84 @@ describe('recordAffectsBalance（v2.4 T-410）', () => {
     expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' }))).toBe(true);
     expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' }))).toBe(true);
     expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -2000, type: 'expense', poolId: 'pool-2', poolStatus: 'confirmed' }))).toBe(true);
+  });
+});
+
+describe('groupByDay（v3.0 TASK-055 T-552）', () => {
+  it('按天分组,日期降序,组内记录按 createdAt 降序', () => {
+    const a = makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense', createdAt: 1 });
+    const b = makeRecord({ dateKey: '2026-09-01', amount: -20, type: 'expense', createdAt: 2 });
+    const c = makeRecord({ dateKey: '2026-09-02', amount: 100, type: 'income', createdAt: 3 });
+    const groups = groupByDay([a, c, b]);
+    expect(groups).toHaveLength(2);
+    // 9/2 在前(降序)
+    expect(groups[0]?.dateKey).toBe('2026-09-02');
+    expect(groups[0]?.income).toBe(100);
+    expect(groups[0]?.expense).toBe(0);
+    expect(groups[1]?.dateKey).toBe('2026-09-01');
+    // 组内按 createdAt 降序:b (2) 在 a (1) 之前
+    expect(groups[1]?.records.map((r) => r.id)).toEqual([b.id, a.id]);
+    expect(groups[1]?.expense).toBe(30);
+  });
+
+  it('虚拟预扣不计入小计(但仍出现在 records 中),认领付款展示但不计金额', () => {
+    const manual = makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' });
+    const virtual = makeRecord({ dateKey: '2026-09-01', amount: -100, type: 'expense', poolStatus: 'virtual' });
+    const claimed = makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' });
+    const groups = groupByDay([manual, virtual, claimed]);
+    expect(groups).toHaveLength(1);
+    // records 全展示
+    expect(groups[0]?.records).toHaveLength(3);
+    // 金额小计只算 manual = 10
+    expect(groups[0]?.expense).toBe(10);
+  });
+
+  it('空列表返回空数组', () => {
+    expect(groupByDay([])).toEqual([]);
+  });
+});
+
+describe('groupByMonth（v3.0 TASK-055 T-553）', () => {
+  it('按月分组,月份降序,组内 days 也降序', () => {
+    const a = makeRecord({ dateKey: '2026-08-30', amount: -10, type: 'expense' });
+    const b = makeRecord({ dateKey: '2026-09-15', amount: 100, type: 'income' });
+    const c = makeRecord({ dateKey: '2026-09-01', amount: -20, type: 'expense' });
+    const groups = groupByMonth([a, b, c]);
+    expect(groups).toHaveLength(2);
+    // 9月在前
+    expect(groups[0]?.monthKey).toBe('2026-09');
+    expect(groups[0]?.days).toHaveLength(2);
+    expect(groups[0]?.days[0]?.dateKey).toBe('2026-09-15');
+    expect(groups[0]?.days[1]?.dateKey).toBe('2026-09-01');
+    expect(groups[0]?.income).toBe(100);
+    expect(groups[0]?.expense).toBe(20);
+    // 8月在后
+    expect(groups[1]?.monthKey).toBe('2026-08');
+    expect(groups[1]?.expense).toBe(10);
+  });
+
+  it('跨年分组正确', () => {
+    const a = makeRecord({ dateKey: '2025-12-31', amount: -1, type: 'expense' });
+    const b = makeRecord({ dateKey: '2026-01-01', amount: -2, type: 'expense' });
+    const groups = groupByMonth([a, b]);
+    expect(groups.map((g) => g.monthKey)).toEqual(['2026-01', '2025-12']);
+  });
+
+  it('月份小计 = 各天小计之和', () => {
+    const r1 = makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' });
+    const r2 = makeRecord({ dateKey: '2026-09-01', amount: -20, type: 'expense' });
+    const r3 = makeRecord({ dateKey: '2026-09-15', amount: 100, type: 'income' });
+    const groups = groupByMonth([r1, r2, r3]);
+    expect(groups[0]?.expense).toBe(30);
+    expect(groups[0]?.income).toBe(100);
+    // 与 sumRecords 输出一致
+    const monthGroup = groups[0]!;
+    expect(monthGroup.expense + monthGroup.income).toBe(
+      sumRecords([r1, r2, r3]).income + sumRecords([r1, r2, r3]).expense,
+    );
+  });
+
+  it('空列表返回空数组', () => {
+    expect(groupByMonth([])).toEqual([]);
   });
 });

@@ -1,0 +1,141 @@
+/* RecordRow — 记账记录行共用组件（v3.0 TASK-055 T-555） */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+/* 图标 */
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 信息 */
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.sub {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 池标记 */
+.tagClaimed,
+.tagSettled {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: 1px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--accent-deep) 12%, transparent);
+  color: var(--accent-deep);
+  font-weight: 400;
+}
+
+.tagSettled {
+  background: color-mix(in srgb, var(--accent-deep) 12%, transparent);
+  color: var(--accent-deep);
+}
+
+.tagVirtualIn,
+.tagVirtualOut {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.tagVirtualIn {
+  border: 1px solid color-mix(in srgb, var(--accent-deep) 45%, transparent);
+  color: var(--accent-deep);
+}
+
+.tagVirtualOut {
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+
+/* 账户标签 */
+.acct {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 92px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.acctDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.acctNone {
+  background: transparent;
+  border: 1px dashed var(--danger);
+  color: var(--danger);
+}
+
+/* 金额 */
+.amt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.amtExpense {
+  color: var(--danger);
+}
+
+.amtIncome {
+  color: var(--income);
+}

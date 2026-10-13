@@ -10,3 +10,4 @@ export { TodayRecordsList } from './TodayRecordsList';
 export { UncategorizedArea } from './UncategorizedArea';
 export { CategoryFolderGrid } from './CategoryFolderGrid';
 export { RecordActionSheet } from './RecordActionSheet';
+export { RecordRow } from './RecordRow';

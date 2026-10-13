@@ -1,76 +1,210 @@
-﻿/* StatsPage — 统计页三视图（v2.2 TASK-038） */
+﻿/* StatsPage — 统计页三视图（v3.0 TASK-055） */
 
 .page {
   padding: 16px 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* ── 顶部切换 ─────────────────────────────── */
-.controls {
+/* 顶部日/月/年 segmented 满宽（页面级控件，不放进卡片） */
+.viewSwitcher {
+  width: 100%;
+}
+
+/* ── v3.0 账本头条汇总卡片：极简版 ─────────────────────────── */
+.summaryCard {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px 18px 12px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 0 var(--line-soft);
+}
+
+/* 卡片左侧 accent 条 — 单色细条，主题色 */
+.summaryCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--ink-2);
+  border-radius: 0 1px 1px 0;
+  opacity: 0.4;
+}
+
+/* 头牌：期间标签左 + 范围右（单色 mono） */
+.summaryPeriod {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-/* v2.3 T-307：虚拟/实际筛选开关 */
-.virtualToggle {
+.periodLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.periodRange {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* 双块大数字（display 衬线） */
+.summaryNumbers {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.summaryBlock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px 0 6px;
+  min-width: 0;
+}
+
+.summaryBlock + .summaryBlock {
+  padding: 0 6px 0 10px;
+}
+
+/* 中央分隔：实心细线 */
+.summaryDivider {
+  width: 1px;
+  background: var(--line);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.summaryLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* 大号数字：衬线体（App 已有字重），tabular-nums 保证数字不抖动 */
+.summaryValue {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+}
+
+/* 符号（−/＋）：小一号 + 色相区分支出/收入 */
+.summarySign {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-right: 2px;
+  letter-spacing: 0;
+}
+
+.summaryValue.expense .summarySign {
+  color: var(--danger);
+}
+
+.summaryValue.income .summarySign {
+  color: var(--income);
+}
+
+/* 环比：箭头 + 数字 + 副文字 */
+.summaryDelta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.deltaArrow {
+  font-size: 9px;
+  line-height: 1;
+  font-family: var(--font-body);
+}
+
+.deltaPct {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.deltaNote {
+  font-size: 10px;
+  color: var(--muted-2);
+  letter-spacing: 0.04em;
+}
+
+.deltaBad .deltaArrow,
+.deltaBad .deltaPct {
+  color: var(--danger);
+}
+
+.deltaGood .deltaArrow,
+.deltaGood .deltaPct {
+  color: var(--income);
+}
+
+/* 列表/统计切换（右对齐） */
+.summaryToggle {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+/* 图表模式：分类排行口径切换（支出/收入） */
+.chartTypeRow {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  font-size: 12px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 0;
+}
+
+.chartTypeLabel {
+  font-size: 11px;
   color: var(--muted);
-  cursor: pointer;
+  letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
-.virtualToggle input {
-  accent-color: var(--accent-deep);
-}
-
-/* ── 汇总条 ─────────────────────────────── */
+/* ── 旧样式保留兼容性 ─────────────────────────────── */
+/* summaryTopRow / summaryBlock / summaryValue 已重构，保留旧类名防其他组件误用 */
 .summary {
   display: flex;
   gap: 10px;
 }
 
-.summaryBlock {
-  flex: 1;
-  background: var(--paper-3);
-  border-radius: 14px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summaryLabel {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.summaryValue {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.summaryDelta {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.deltaBad {
-  color: var(--danger);
-}
-
-.deltaGood {
-  color: var(--accent-deep);
-}
-
-/* ── 期切换（‹ 2026年9月 ›，复用日视图日期切换尺寸） ── */
+/* ── 期切换 ─────────────────────────────────────────── */
 .periodNav {
   display: flex;
   align-items: center;
@@ -101,7 +235,7 @@
   text-align: center;
 }
 
-/* ── 柱状图 ─────────────────────────────── */
+/* ── 柱状图 ──────────────────────────────────────────── */
 .chartCard {
   background: var(--paper-3);
   border-radius: 14px;
@@ -202,7 +336,7 @@
   color: var(--muted);
 }
 
-/* ── 分类排行 ─────────────────────────────── */
+/* ── 分类排行 ─────────────────────────────────────────── */
 .rankCard {
   background: var(--paper-3);
   border-radius: 14px;
@@ -290,103 +424,11 @@
   flex-shrink: 0;
 }
 
-/* ── 日视图记录列表 ─────────────────────────── */
+/* ── 日视图记录列表 ──────────────────────────────────── */
 .dayList {
   background: var(--paper-3);
   border-radius: 14px;
   padding: 6px 14px;
-}
-
-.dayRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.dayRow:last-child {
-  border-bottom: none;
-}
-
-.dayRowIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.dayRowInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.dayRowName {
-  font-size: 13px;
-  color: var(--ink);
-}
-
-/* v2.4 T-409：池虚拟记录标记（收入=虚拟到账 / 支出=虚拟均摊） */
-.virtualTagIn,
-.virtualTagOut {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 16px;
-  vertical-align: 1px;
-  white-space: nowrap;
-}
-
-.virtualTagIn {
-  border: 1px solid color-mix(in srgb, var(--accent-deep) 45%, transparent);
-  color: var(--accent-deep);
-}
-
-.virtualTagOut {
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-  color: var(--danger);
-}
-
-/* v2.4 T-410：已关联池标记（认领付款 / 均摊记录虚拟变实际） */
-.linkedTag {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 16px;
-  vertical-align: 1px;
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--accent-deep) 12%, transparent);
-  color: var(--accent-deep);
-}
-
-.dayRowSub {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dayRowAmt {
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.amtExpense {
-  color: var(--danger);
-}
-
-.amtIncome {
-  color: var(--income);
 }
 
 .empty {
@@ -397,11 +439,11 @@
   padding: 40px 0;
   color: var(--muted);
   font-size: 13px;
+  background: var(--paper-3);
+  border-radius: 14px;
 }
 
-/* ── v2.4：拖拽归入账户（dnd-kit） ─────────────── */
-
-/* 可拖拽行：整行抓取；触摸端长按触发（TouchSensor delay），保留滚动 */
+/* ── 可拖拽记录行（dnd-kit 包裹层） ─────────────────── */
 .dayRowDraggable {
   touch-action: manipulation;
   cursor: grab;
@@ -411,37 +453,7 @@
   opacity: 0.35;
 }
 
-/* 行内账户标签 */
-.dayRowAcct {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 92px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--paper-2);
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
-}
-
-.dayRowAcctDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.dayRowAcctNone {
-  background: transparent;
-  border: 1px dashed var(--danger);
-  color: var(--danger);
-}
-
-/* 拖拽浮动卡片（DragOverlay） */
+/* ── 拖拽浮动卡片 ──────────────────────────────────── */
 .dragCard {
   display: flex;
   align-items: center;
@@ -452,7 +464,42 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 
-/* 底部账户 dock */
+.dragCardIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dragCardName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dragCardAmt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.amtExpense {
+  color: var(--danger);
+}
+
+.amtIncome {
+  color: var(--income);
+}
+
+/* ── 底部账户 dock ─────────────────────────────────── */
 .dockWrap {
   position: fixed;
   left: 0;

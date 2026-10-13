@@ -1,11 +1,18 @@
 /**
- * @fileoverview StatsPage — 记账统计页三视图（v2.2 · TASK-038）
+ * @fileoverview StatsPage — 记账统计页三视图（v3.0 · TASK-055）
  *
- * 日 / 月 / 年三视图 + 支出 / 收入切换：
- * - 日：选中日记录列表（纯列表，无图表）
- * - 月：当月每日收/支双柱图 + 分类排行；点柱下钻到日
- * - 年：全年 12 月收/支双柱图 + 分类排行；点柱下钻到月
- * 汇总条显示本期总支出/收入与环比上期 ±%。
+ * v3.0 变更：
+ * - 日视图：默认列表（现状不变）
+ * - 月视图：默认列表（月/天分组），可选切换统计（柱图+分类排行）
+ * - 年视图：默认列表（月分组折叠），可选切换统计（柱图+分类排行）
+ *
+ * 视图结构（v3.0）：
+ * - 汇总卡片：日/月/年 segmented + 汇总双块 + 列表/统计 segmented
+ * - 日：选中日记录列表（DndContext 拖拽归入账户）
+ * - 月/列表：MonthGroupedList（天头吸顶）
+ * - 年/列表：YearGroupedList（月头折叠）
+ * - 月/统计：双柱图 + 分类排行（点柱下钻到日→切列表模式）
+ * - 年/统计：双柱图 + 分类排行（点柱下钻到月→切列表模式）
  */
 import { useMemo, useRef, useState } from 'react';
 import {
@@ -37,12 +44,15 @@ import { formatAmount, getTodayKey, getCurrentMonthKey, visibleRecords } from '.
 import { IconByKey } from '../../IconByKey';
 import { StatsBarChart, type BarChartItem } from './StatsBarChart';
 import { CategoryRankList } from './CategoryRankList';
+import { MonthGroupedList, YearGroupedList } from './GroupedRecordList';
 import { CategoryRecordsPage } from '../CategoryRecordsPage';
 import { AddRecordModal } from '../AddRecordModal';
 import { PageTopbar } from '../../PageTopbar';
+import { RecordRow } from '../RecordRow';
 import styles from './StatsPage.module.css';
 
 type StatsView = 'day' | 'month' | 'year';
+type ListOrChart = 'list' | 'chart';
 
 const VIEW_OPTIONS: Array<{ value: StatsView; label: string }> = [
   { value: 'day', label: '日' },
@@ -53,6 +63,11 @@ const VIEW_OPTIONS: Array<{ value: StatsView; label: string }> = [
 const TYPE_OPTIONS: Array<{ value: RecordType; label: string }> = [
   { value: 'expense', label: '支出' },
   { value: 'income', label: '收入' },
+];
+
+const LIST_CHART_OPTIONS: Array<{ value: ListOrChart; label: string }> = [
+  { value: 'list', label: '列表' },
+  { value: 'chart', label: '统计' },
 ];
 
 /** 统计页（记账主题 tab 1）。 */
@@ -81,9 +96,7 @@ export function StatsPage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDragRecord(null);
-    window.setTimeout(() => {
-      suppressClickRef.current = false;
-    }, 0);
+    window.setTimeout(() => { suppressClickRef.current = false; }, 0);
     const targetAccountId = event.over ? String(event.over.id) : null;
     if (!targetAccountId) return;
     const rec = records.find((r) => r.id === event.active.id);
@@ -96,8 +109,11 @@ export function StatsPage() {
     setEditingRecord(record);
   };
 
-  // v2.5 T-411：默认打开「日」视图（与计时侧 fish 对应「日统计」）
+  // v3.0 TASK-055：默认「日」视图 + 列表模式（会话内状态，不持久化）
   const [view, setView] = useState<StatsView>('day');
+  /** 列表 / 统计 切换（仅月/年视图生效；日视图只有列表） */
+  const [listOrChart, setListOrChart] = useState<ListOrChart>('list');
+  /** 分类排行所用类型（仅图表模式可见切换器） */
   const [type, setType] = useState<RecordType>('expense');
   const [dayKey, setDayKey] = useState(getTodayKey());
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
@@ -110,6 +126,13 @@ export function StatsPage() {
     () => (includeVirtual ? records : visibleRecords(records)),
     [records, includeVirtual],
   );
+
+  // 视图切换时自动切到列表模式
+  const handleViewChange = (v: StatsView) => {
+    setView(v);
+    // 月/年 切换时回到列表；日视图强制列表
+    if (v !== 'day') setListOrChart('list');
+  };
 
   // ── 本期 / 上期范围 ─────────────────────────────────────
   const ranges = useMemo(() => {
@@ -168,9 +191,7 @@ export function StatsPage() {
     return aggregateByCategory(currentRecords, type, statsOptions);
   }, [view, currentRecords, type, statsOptions]);
 
-  // ── 日视图：记录列表 ────────────────────────────────────
-  // v2.4 T-410：列表用 listableRecords —— 认领付款记录保留展示（标「已关联池」），
-  // 仅排除存量虚拟预扣；汇总/图表仍走 baseRecords（visibleRecords）避免重复计算
+  // ── 日视图：记录列表（listableRecords） ─────────────────
   const listBaseRecords = useMemo(
     () => (includeVirtual ? records : listableRecords(records)),
     [records, includeVirtual],
@@ -183,38 +204,85 @@ export function StatsPage() {
     [listBaseRecords, ranges],
   );
 
+  // ── 月/年列表用数据（listableRecords） ─────────────────
+  const monthListRecords = useMemo(
+    () => filterByRange(listBaseRecords, ranges.start, ranges.end),
+    [listBaseRecords, ranges],
+  );
+  const yearListRecords = useMemo(
+    () => filterByRange(listBaseRecords, ranges.start, ranges.end),
+    [listBaseRecords, ranges],
+  );
+
+  // 统计模式点柱 → 切列表并下钻
+  const handleBarClickMonth = (key: string) => {
+    setDayKey(key);
+    setView('day');
+  };
+
+  const handleBarClickYear = (key: string) => {
+    setMonthKey(key);
+    setView('month');
+  };
+
   const todayKey = getTodayKey();
   const typeLabel = type === 'expense' ? '支出' : '收入';
   const nowDate = new Date();
 
+  // 列表/统计切换器仅月/年显示
+  const showListChartToggle = view !== 'day';
+
   return (
     <div className={styles.page}>
-      {/* v2.5 T-415：与计时侧 FISH 页位置对应的标题栏 */}
       <PageTopbar
         eyebrow="stats"
         english="Where it all goes"
         right={`${nowDate.getMonth() + 1}/${nowDate.getDate()}`}
         title="日统计"
       />
-      <div className={styles.controls}>
-        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} />
-        <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
 
+      {/* v3.0 TASK-055：「账本头条」汇总卡片 — 顶部日/月/年满宽 segmented（页面级控件） + 卡片内：期间标签 + 本期双块大数字 + 列表/统计切换 */}
+      <div className={styles.viewSwitcher}>
+        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleViewChange} />
       </div>
 
-      <div className={styles.summary}>
-        <div className={styles.summaryBlock}>
-          <span className={styles.summaryLabel}>本期支出</span>
-          <span className={styles.summaryValue}>¥{formatAmount(summary.expense)}</span>
-          <DeltaText current={summary.expense} prev={prevSummary.expense} badWhenUp />
+      <div className={styles.summaryCard}>
+        {/* 头牌：期间标签 + 范围 */}
+        <div className={styles.summaryPeriod}>
+          <span className={styles.periodLabel}>{periodLabel(view, dayKey, monthKey, year)}</span>
+          <span className={styles.periodRange}>{rangeLabel(view, ranges.start, ranges.end)}</span>
         </div>
-        <div className={styles.summaryBlock}>
-          <span className={styles.summaryLabel}>本期收入</span>
-          <span className={styles.summaryValue}>¥{formatAmount(summary.income)}</span>
-          <DeltaText current={summary.income} prev={prevSummary.income} />
+
+        {/* 双块大数字（display 衬线） */}
+        <div className={styles.summaryNumbers}>
+          <div className={styles.summaryBlock}>
+            <span className={styles.summaryLabel}>支出</span>
+            <span className={`${styles.summaryValue} ${styles.expense}`}>
+              <span className={styles.summarySign} aria-hidden="true">−</span>
+              {formatAmount(summary.expense)}
+            </span>
+            <DeltaText current={summary.expense} prev={prevSummary.expense} badWhenUp />
+          </div>
+          <div className={styles.summaryDivider} />
+          <div className={styles.summaryBlock}>
+            <span className={styles.summaryLabel}>收入</span>
+            <span className={`${styles.summaryValue} ${styles.income}`}>
+              <span className={styles.summarySign} aria-hidden="true">+</span>
+              {formatAmount(summary.income)}
+            </span>
+            <DeltaText current={summary.income} prev={prevSummary.income} />
+          </div>
         </div>
+
+        {/* 列表/统计切换（仅月/年） */}
+        {showListChartToggle && (
+          <div className={styles.summaryToggle}>
+            <SegmentedControl options={LIST_CHART_OPTIONS} value={listOrChart} onChange={setListOrChart} />
+          </div>
+        )}
       </div>
 
+      {/* ── 日视图（始终列表） ─────────────────────────────────── */}
       {view === 'day' && (
         <DndContext
           sensors={sensors}
@@ -233,7 +301,7 @@ export function StatsPage() {
           ) : (
             <div className={styles.dayList}>
               {dayRecords.map((record) => (
-                <DayRecordRow
+                <DraggableRecordRow
                   key={record.id}
                   record={record}
                   isDragging={dragRecord?.id === record.id}
@@ -242,16 +310,31 @@ export function StatsPage() {
               ))}
             </div>
           )}
-          {dragRecord && (
-            <AccountDock accounts={accounts} currentAccountId={dragRecord.accountId} />
-          )}
+          {dragRecord && <AccountDock accounts={accounts} currentAccountId={dragRecord.accountId} />}
           <DragOverlay dropAnimation={null}>
             {dragRecord ? <DragRecordCard record={dragRecord} /> : null}
           </DragOverlay>
         </DndContext>
       )}
 
-      {view === 'month' && (
+      {/* ── 月视图：列表模式 ─────────────────────────────────── */}
+      {view === 'month' && listOrChart === 'list' && (
+        <>
+          <PeriodNav
+            title={formatMonthTitle(monthKey)}
+            onPrev={() => setMonthKey(shiftMonth(monthKey, -1))}
+            onNext={() => setMonthKey(shiftMonth(monthKey, 1))}
+          />
+          <MonthGroupedList
+            records={monthListRecords}
+            activeDayKey={dayKey.startsWith(monthKey) ? todayKey : undefined}
+            onOpenRecord={handleOpenRecord}
+          />
+        </>
+      )}
+
+      {/* ── 月视图：统计模式 ─────────────────────────────────── */}
+      {view === 'month' && listOrChart === 'chart' && (
         <>
           <PeriodNav
             title={formatMonthTitle(monthKey)}
@@ -264,8 +347,8 @@ export function StatsPage() {
               items={monthChartItems}
               activeKey={dayKey.startsWith(monthKey) ? todayKey : undefined}
               onBarClick={(key) => {
-                setDayKey(key);
-                setView('day');
+                handleBarClickMonth(key);
+                setListOrChart('list');
               }}
             />
           </div>
@@ -275,10 +358,36 @@ export function StatsPage() {
             typeLabel={typeLabel}
             onSelect={setRankCategoryId}
           />
+          <div className={styles.chartTypeRow}>
+            <span className={styles.chartTypeLabel}>排行口径</span>
+            <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
+          </div>
         </>
       )}
 
-      {view === 'year' && (
+      {/* ── 年视图：列表模式 ─────────────────────────────────── */}
+      {view === 'year' && listOrChart === 'list' && (
+        <>
+          <PeriodNav
+            title={`${year}年`}
+            onPrev={() => setYear((v) => v - 1)}
+            onNext={() => setYear((v) => v + 1)}
+          />
+          <YearGroupedList
+            records={yearListRecords}
+            activeMonthKey={monthKey}
+            activeDayKey={dayKey}
+            onOpenRecord={handleOpenRecord}
+            onNavigateMonth={(mk) => {
+              setMonthKey(mk);
+              setView('month');
+            }}
+          />
+        </>
+      )}
+
+      {/* ── 年视图：统计模式 ─────────────────────────────────── */}
+      {view === 'year' && listOrChart === 'chart' && (
         <>
           <PeriodNav
             title={`${year}年`}
@@ -290,8 +399,8 @@ export function StatsPage() {
             <StatsBarChart
               items={yearChartItems}
               onBarClick={(key) => {
-                setMonthKey(key);
-                setView('month');
+                handleBarClickYear(key);
+                setListOrChart('list');
               }}
             />
           </div>
@@ -301,6 +410,10 @@ export function StatsPage() {
             typeLabel={typeLabel}
             onSelect={setRankCategoryId}
           />
+          <div className={styles.chartTypeRow}>
+            <span className={styles.chartTypeLabel}>排行口径</span>
+            <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
+          </div>
         </>
       )}
 
@@ -312,7 +425,6 @@ export function StatsPage() {
         />
       )}
 
-      {/* v2.4 T-410：点开记录查看详情、修改金额与分类 */}
       <AddRecordModal
         open={editingRecord !== null}
         editingRecord={editingRecord}
@@ -330,7 +442,6 @@ interface PeriodNavProps {
   onNext: () => void;
 }
 
-/** ‹ 期 › 切换器（尺寸复用日视图日期切换样式） */
 function PeriodNav({ title, onPrev, onNext }: PeriodNavProps) {
   return (
     <div className={styles.periodNav}>
@@ -363,108 +474,47 @@ function ChartLegend() {
 interface DeltaTextProps {
   current: number;
   prev: number;
-  /** 数值上升是否为坏事（支出上升=坏，收入上升=好） */
   badWhenUp?: boolean;
 }
 
-/** 环比上期 ±%；上期为 0 时显示「上期无」 */
 function DeltaText({ current, prev, badWhenUp }: DeltaTextProps) {
   if (prev <= 0) {
     return <span className={styles.summaryDelta}>{current > 0 ? '上期无记录' : '较上期 —'}</span>;
   }
   const pct = Math.round(((current - prev) / prev) * 100);
   const up = pct > 0;
-  const bad = badWhenUp ? up : !up;
+  const down = pct < 0;
+  const bad = badWhenUp ? up : down;
   const cls = pct === 0 ? styles.summaryDelta : `${styles.summaryDelta} ${bad ? styles.deltaBad : styles.deltaGood}`;
+  const arrow = up ? '▲' : down ? '▼' : '—';
   return (
     <span className={cls}>
-      较上期 {pct > 0 ? '+' : ''}
-      {pct}%
+      <span className={styles.deltaArrow} aria-hidden="true">{arrow}</span>
+      <span className={styles.deltaPct}>{Math.abs(pct)}%</span>
+      <span className={styles.deltaNote}>较上期</span>
     </span>
   );
 }
 
-interface DayRecordRowProps {
+interface DraggableRecordRowProps {
   record: AccountRecord;
   isDragging: boolean;
-  /** v2.4 T-410：点击打开详情编辑 */
   onOpen: () => void;
 }
 
-/** 日视图记录行：分类图标 + 分类名/池名 + 备注 + 账户标签 + 金额（v2.4：整行可拖拽归入账户，点击编辑）
- * v2.5 TASK-046 T-504：关联池记录显示池名而非分类名（图标保持分类图标）
- */
-function DayRecordRow({ record, isDragging, onOpen }: DayRecordRowProps) {
-  const categories = useAccountStore((s) => s.categories);
-  const accounts = useAccountStore((s) => s.accounts);
+/** 日视图记录行（整行可拖拽归入账户，点击编辑），复用 RecordRow 共用组件 */
+function DraggableRecordRow({ record, isDragging, onOpen }: DraggableRecordRowProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: record.id });
-  const category = categories.find((c) => c.id === record.categoryId);
-  const account = accounts.find((a) => a.id === record.accountId);
-  // v2.5 TASK-046 T-504：关联池的记录显示池名（保留分类图标），未关联显示分类名
-  const name = record.isUncategorized
-    ? '未分类'
-    : record.poolId
-      ? (record.poolName ?? '关联池')
-      : (category?.name ?? '未知分类');
-  const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
-  const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
-  const isExpense = record.type === 'expense';
-  // v2.4 T-409：池逐日生成的均摊记录（收入=虚拟到账 / 支出=虚拟均摊）
-  const isPoolDaily = !!record.poolId && !record.poolStatus;
-  // v2.4 T-410：均摊记录已关联实际入账/支出（虚拟变实际）
-  const isSettled = isPoolDaily && !!record.poolSettledAt;
-  // v2.4 T-410：认领付款记录（真实流水，已关联池，不参与统计）
-  const isClaimed = record.poolStatus === 'claimed';
-  const cls = [
-    styles.dayRow,
-    styles.dayRowDraggable,
-    isDragging ? styles.dayRowDragging : '',
-  ].filter(Boolean).join(' ');
-  // 副标题优先级：已关联结算信息 > 备注
-  const sub = isSettled
-    ? `已关联 · ${formatSettledDate(record.poolSettledAt!)} · ¥${formatAmount(record.poolSettledAmount ?? Math.abs(record.amount))}`
-    : record.note?.trim() || null;
   return (
-    <div ref={setNodeRef} className={cls} onClick={onOpen} {...listeners} {...attributes}>
-      <span className={styles.dayRowIcon} style={{ background: color }}>
-        <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
-      </span>
-      <span className={styles.dayRowInfo}>
-        <span className={styles.dayRowName}>
-          {name}
-          {isClaimed && <span className={styles.linkedTag}>已关联池 · 不计统计</span>}
-          {isSettled && <span className={styles.linkedTag}>已关联池</span>}
-          {isPoolDaily && !isSettled && (
-            <span
-              className={record.poolDirection === 'in' ? styles.virtualTagIn : styles.virtualTagOut}
-            >
-              {record.poolDirection === 'in' ? '虚拟到账' : '虚拟均摊'}
-            </span>
-          )}
-        </span>
-        {sub ? <span className={styles.dayRowSub}>{sub}</span> : null}
-      </span>
-      {account ? (
-        <span className={styles.dayRowAcct}>
-          <span className={styles.dayRowAcctDot} style={{ background: account.color }} />
-          {account.name}
-        </span>
-      ) : (
-        <span className={`${styles.dayRowAcct} ${styles.dayRowAcctNone}`}>未归入</span>
-      )}
-      <span className={`${styles.dayRowAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
-        {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
-      </span>
+    <div
+      ref={setNodeRef}
+      className={`${styles.dayRowDraggable} ${isDragging ? styles.dayRowDragging : ''}`}
+      {...listeners}
+      {...attributes}
+    >
+      <RecordRow record={record} onOpen={onOpen} />
     </div>
   );
-}
-
-/** 结算时间戳 → "M月D日"（同年省略年份） */
-function formatSettledDate(ts: number): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const md = `${d.getMonth() + 1}月${d.getDate()}日`;
-  return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}年${md}`;
 }
 
 /** v2.4：拖拽时的浮动记录卡（DragOverlay 内容） */
@@ -477,11 +527,11 @@ function DragRecordCard({ record }: { record: AccountRecord }) {
   const isExpense = record.type === 'expense';
   return (
     <div className={styles.dragCard}>
-      <span className={styles.dayRowIcon} style={{ background: color }}>
+      <span className={styles.dragCardIcon} style={{ background: color }}>
         <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
       </span>
-      <span className={styles.dayRowName}>{name}</span>
-      <span className={`${styles.dayRowAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
+      <span className={styles.dragCardName}>{name}</span>
+      <span className={`${styles.dragCardAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
         {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
       </span>
     </div>
@@ -545,4 +595,22 @@ function formatDayTitle(dateKey: string): string {
 function formatMonthTitle(monthKey: string): string {
   const [y, m] = monthKey.split('-');
   return `${y}年${parseInt(m ?? '1', 10)}月`;
+}
+
+/** 期号主标签（日/月/年 + 期间标识） */
+function periodLabel(view: StatsView, dayKey: string, monthKey: string, year: number): string {
+  if (view === 'day') return dayKey.replace(/-/g, ' · ');
+  if (view === 'month') return monthKey.replace(/-/g, ' · ');
+  return `${year} · ANNUAL`;
+}
+
+/** 期号次标签（区间） */
+function rangeLabel(view: StatsView, start: string, end: string): string {
+  if (view === 'day') return 'ONE DAY';
+  if (view === 'month') {
+    const [, sm] = start.split('-');
+    const [, em] = end.split('-');
+    return sm === em ? `${sm}月 整月` : `${sm}月 — ${em}月`;
+  }
+  return 'JAN — DEC';
 }

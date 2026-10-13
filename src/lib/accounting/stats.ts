@@ -141,6 +141,96 @@ export function aggregateByMonth(
   return map;
 }
 
+/** 按天分组后的单日数据（v3.0 TASK-055 T-552/T-553）。
+ *  - dateKey: YYYY-MM-DD
+ *  - records: 当日记录（已按 createdAt 降序）
+ *  - expense / income: 当日收支小计（支出为正数）
+ *
+ * 小计口径与 visibleRecords 一致：剔除池虚拟预扣（poolStatus='virtual'）；
+ * 认领付款（poolStatus='claimed'）虽参与分组展示但不计金额，与既有日视图逻辑对齐。
+ */
+export interface DayGroup {
+  dateKey: string;
+  records: AccountRecord[];
+  expense: number;
+  income: number;
+}
+
+/** 按月分组后的单月数据（v3.0 TASK-055 T-553）。
+ *  - monthKey: YYYY-MM
+ *  - days: 当月按天二级分组（日期降序,内部记录按 createdAt 降序）
+ *  - expense / income: 当月收支小计
+ */
+export interface MonthGroup {
+  monthKey: string;
+  days: DayGroup[];
+  expense: number;
+  income: number;
+}
+
+/**
+ * 按天分组并保持日期降序；每组内记录按 createdAt 降序。
+ *
+ * 调用方建议先 listableRecords() 排除虚拟预扣,这样行内展示与天头小计
+ * 口径保持一致(认领付款保留展示,金额不计入统计)。
+ *
+ * 空组（当日无记录）不会出现在结果中。
+ */
+export function groupByDay(records: AccountRecord[]): DayGroup[] {
+  const map = new Map<string, AccountRecord[]>();
+  for (const r of records) {
+    const bucket = map.get(r.dateKey);
+    if (bucket) bucket.push(r);
+    else map.set(r.dateKey, [r]);
+  }
+  const groups: DayGroup[] = [];
+  for (const [dateKey, dayRecords] of map) {
+    dayRecords.sort((a, b) => b.createdAt - a.createdAt);
+    let expense = 0;
+    let income = 0;
+    for (const r of dayRecords) {
+      // 与 visibleRecords 口径一致：剔除虚拟预扣和认领付款
+      // （listableRecords 层保留 claimed 展示，但 groupByDay 小计口径必须用 visibleRecords）
+      if (r.poolStatus === 'virtual' || r.poolStatus === 'claimed') continue;
+      if (r.type === 'income') income += r.amount;
+      else expense += Math.abs(r.amount);
+    }
+    groups.push({ dateKey, records: dayRecords, expense, income });
+  }
+  // 日期降序（YYYY-MM-DD 字符串可直接比较）
+  groups.sort((a, b) => (a.dateKey < b.dateKey ? 1 : a.dateKey > b.dateKey ? -1 : 0));
+  return groups;
+}
+
+/**
+ * 按月分组（月键降序）；组内含按天二级分组与小计。
+ *
+ * 同 groupByDay,内部小计口径与 visibleRecords 一致(剔除虚拟预扣与认领付款)。
+ */
+export function groupByMonth(records: AccountRecord[]): MonthGroup[] {
+  const monthMap = new Map<string, AccountRecord[]>();
+  for (const r of records) {
+    const monthKey = r.dateKey.slice(0, 7);
+    const bucket = monthMap.get(monthKey);
+    if (bucket) bucket.push(r);
+    else monthMap.set(monthKey, [r]);
+  }
+  const groups: MonthGroup[] = [];
+  for (const [monthKey, monthRecords] of monthMap) {
+    const days = groupByDay(monthRecords);
+    let expense = 0;
+    let income = 0;
+    for (const d of days) {
+      expense += d.expense;
+      income += d.income;
+    }
+    groups.push({ monthKey, days, expense, income });
+  }
+  // 月份降序
+  groups.sort((a, b) => (a.monthKey < b.monthKey ? 1 : a.monthKey > b.monthKey ? -1 : 0));
+  return groups;
+}
+
 /**
  * 按分类聚合指定类型的记录，总额降序。
  *
@@ -219,3 +309,4 @@ export function sumRecords(
   }
   return { income, expense, net: income - expense };
 }
+
