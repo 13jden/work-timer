@@ -118,16 +118,20 @@ describe('accountStore · 存钱目标 + 钱包（v2.4）', () => {
     const acc2 = useAccountStore.getState().addAccount({
       name: '银行卡2', balance: 0, color: '#2D2D2D', type: 'card', order: 1,
     });
-    const rec = useAccountStore.getState().addRecord({
+    useAccountStore.getState().addRecord({
       dateKey: getTodayKey(), amount: 500, type: 'income',
       categoryId: salaryCatId, accountId,
     });
-    useAccountStore.getState().updateRecord(rec.id, { accountId: acc2.id });
+    // v3.0 TASK-057 T-576：账户余额不再随记账变化；换账户只换 record.accountId
+    useAccountStore.getState().updateRecord(
+      useAccountStore.getState().records[0]!.id,
+      { accountId: acc2.id },
+    );
 
-    // 旧账户回退到记账前（10000+500-500），新账户承接 +500
     const state = useAccountStore.getState();
+    // 两个账户余额都保持 setupBase 时的初始值
     expect(state.getAccountBalance(accountId)).toBe(10000);
-    expect(state.getAccountBalance(acc2.id)).toBe(500);
+    expect(state.getAccountBalance(acc2.id)).toBe(0);
   });
 
   // ── 删目标 / 删账户 ──────────────────────────────────────
@@ -145,8 +149,8 @@ describe('accountStore · 存钱目标 + 钱包（v2.4）', () => {
     const kept = state.records.find((r) => r.id === rec.id);
     expect(kept).toBeDefined();
     expect(kept?.goalId).toBeUndefined();
-    // 账户余额不受删目标影响
-    expect(state.getAccountBalance(accountId)).toBe(10800);
+    // v3.0 TASK-057 T-576：账户余额不受记账影响,保持 setupBase 初始值
+    expect(state.getAccountBalance(accountId)).toBe(10000);
   });
 
   it('删除账户：连带删除记录并回退目标进度', () => {
@@ -169,12 +173,14 @@ describe('accountStore · 存钱目标 + 钱包（v2.4）', () => {
   it('总资产 = 各账户余额合计，随记账联动', () => {
     const { accountId, salaryCatId } = setupBase();
     useAccountStore.getState().addAccount({ name: '微信', balance: 200, color: '#07C160', type: 'wechat', order: 1 });
+    // v3.0 TASK-057 T-576：getTotalBalance 只反映账户余额求和,不再被记账 record 改变
     expect(useAccountStore.getState().getTotalBalance()).toBe(10200);
 
     useAccountStore.getState().addRecord({
       dateKey: getTodayKey(), amount: 300, type: 'income',
       categoryId: salaryCatId, accountId,
     });
-    expect(useAccountStore.getState().getTotalBalance()).toBe(10500);
+    // 记账不影响账户余额 → 仍是 10200
+    expect(useAccountStore.getState().getTotalBalance()).toBe(10200);
   });
 });

@@ -17,8 +17,13 @@ import type {
 export { visibleRecords, listableRecords, recordAffectsBalance } from './stats';
 
 // v2.4：虚拟资产分解（实际 + 预付未消耗 + 已赚未到账）
+// v3.0 TASK-057：actualTotal 改读 totalAssets（用户手动维护），pendingAdjust 移除
 export { calcVirtualAssets, isPoolDailyRecord } from './virtual';
 export type { VirtualAssetsBreakdown } from './virtual';
+
+// v3.0 TASK-057 T-572：资产计算器表达式解析
+export { parseAssetExpression, previewAsset } from './assetExpr';
+export type { AssetExprResult } from './assetExpr';
 
 // ── 金额计算 ────────────────────────────────────────────────
 

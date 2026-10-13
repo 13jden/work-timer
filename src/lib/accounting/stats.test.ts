@@ -195,9 +195,10 @@ describe('recordAffectsBalance（v2.4 T-410）', () => {
   });
 
   it('手动记录 / 认领付款 / 存池存取动余额', () => {
-    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' }))).toBe(true);
-    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' }))).toBe(true);
-    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -2000, type: 'expense', poolId: 'pool-2', poolStatus: 'confirmed' }))).toBe(true);
+    // v3.0 TASK-057 T-576：记录不再影响任何余额，recordAffectsBalance 恒 false
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -10, type: 'expense' }))).toBe(false);
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -3000, type: 'expense', poolId: 'pool-1', poolStatus: 'claimed' }))).toBe(false);
+    expect(recordAffectsBalance(makeRecord({ dateKey: '2026-09-01', amount: -2000, type: 'expense', poolId: 'pool-2', poolStatus: 'confirmed' }))).toBe(false);
   });
 });
 

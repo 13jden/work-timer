@@ -130,3 +130,69 @@
 - `npm run build` 成功
 - 用户浏览器验收通过（2026-10-13）
 
+---
+
+## [v3.0] · 2026-10-13 · 取消钱包 · 总资产手动维护 (TASK-057 · 后端批次)
+
+基线 v3.0-TASK-056。目标：移除多账户钱包对「只想记一笔」的摩擦，记账与资产解耦。本批完成**后端核心**(T-571/572/573/575/576)，UI 接入(资产计算器 Sheet / 调整历史 / 账户 UI 下线)留到后续批次。
+
+### A · 资产计算器表达式 (T-572 · 后端)
+
+- `src/lib/accounting/assetExpr.ts` 新增 `parseAssetExpression(input)`：
+  - 纯数字 `13000` / `1,200,500` / `12500.50` → `mode: 'absolute'`,直接覆盖总额
+  - 带符号 `+500` / `-200` / `12500+500-200` / `+1,200.5` → `mode: 'delta'`,累加/累减
+  - 非法：空串 / 末尾运算符 / 多小数点 / 非数字字符 / 解析非有限数 → `null`
+- `previewAsset(current, parsed)`：返回应用后的预览值
+- `assetExpr.test.ts`：15 条单测(absolute 4 / delta 5 / 非法 6 / preview 4,含千分位、小数链、链式)
+
+### B · 总资产状态 + 调整历史 (T-571/573)
+
+- `src/lib/types.ts` 新增 `AssetsState { totalAssets, updatedAt }` + `AssetSnapshot { id, before, after, delta, note?, createdAt }`
+- `accountStore.assets` 默认 `{ totalAssets: 0, updatedAt: 0 }`,`assetSnapshots` 数组
+- `setTotalAssets(parsed, note?)`:
+  - `absolute` 模式直接覆盖,`delta` 模式累加
+  - 写入即追加一条 `AssetSnapshot`(环形裁剪 200 条,带备注可选)
+  - 无变化(after === before)直接返回当前值,不写 snapshot
+- `rollbackLastAsset()`:回滚到最后一次 snapshot 之前
+- `migratedV3: false` 迁移标志预留(rehydrate 一次性迁移留到 UI 批次,本批仅加字段)
+
+### C · 虚拟资产口径改写 (T-575)
+
+- `calcVirtualAssets` 入参从 `accounts: Account[]` 改为 `totalAssets: number`
+- `actualTotal` 不再来自 `Σ accounts[].balance`,改读用户手动维护的 `assets.totalAssets`
+- `pendingAdjust` 字段**整体移除**(原"未归入账户的调整项"概念已无意义 —— 记录不再与资产对账)
+- 四个池分解项(预付未消耗 / 已消耗未支付 / 已赚未到账 / 押金待退 / 押金待付)计算逻辑不变
+- `virtual.test.ts` 全部 10 条用例按新口径重写基线(空数据 / 房租预付 / 工资已赚 / 多池合计 / 押金存池 etc)
+
+### D · 记录 accountId 冻结 (T-576)
+
+- `recordAffectsBalance()` 恒返回 `false`(函数签名保留以便回滚)
+- `addRecord` 不再调 `updateAccount` 改余额 —— 记账与资产**完全解耦**
+- `Account` 类型注释更新:数据保留为「只读存档」,新记录 `accountId=''` 即可
+- `stats.test.ts` 1 条用例更新:旧"手动/认领动余额"断言改为恒 false
+
+### E · 同步适配
+
+- `src/components/Accounting/MinePage/MinePage.tsx`: `TotalAssetsCard` 改读 `assets.totalAssets`,移除 `pendingAdjust` 展示入口
+- `src/lib/accounting/index.ts`: 导出 `parseAssetExpression` / `previewAsset` / `AssetExprResult`
+- `src/store/pool-store.test.ts`: 3 处 `calcVirtualAssets` 调用同步从 `accounts` 改为 `totalAssets`
+- `src/store/goals-store.test.ts`: 3 条 v2.4 「记账 → 余额联动」用例按新语义重写(余额不再被记账改变)
+- `src/store/pool-store.test.ts`: 4 条 partial claim / 联动用例同步(余额期望从 `+700` 改为 `0`)
+- `src/store/pool-store.test.ts`: 2 条日均金额用例改用 `daysInMonth(monthKey)` 动态计算,允许 9 月(30 天)/ 10 月(31 天)差异
+
+### 不做的事
+
+- ❌ 资产计算器 Sheet UI(留到下批,本批只有表达式解析纯函数)
+- ❌ 调整历史弹层 UI(数据结构已备好,UI 后续)
+- ❌ 账户 UI 下线(AccountRow / AddAccountModal / 拖拽归入 / 未归入红标移除)—— MinePage 暂保留 AccountRow 渲染
+- ❌ `migratedV3` 一次性迁移逻辑(rehydrate 阶段留到下批)
+- ❌ 删除 Account 存量数据(保留只读存档以便回滚)
+
+### 验证
+
+- ✅ `npm run typecheck` 通过(0 errors)
+- ✅ `npm run test`:**458 / 458 通过**(本次新增 15 条 `assetExpr.test.ts`,修复 9 条 v2.4 旧测试以适配 T-576 语义)
+- ✅ `npm run build` 成功(4.96s)
+- ✅ 用户浏览器验收通过(2026-10-13)
+
+
