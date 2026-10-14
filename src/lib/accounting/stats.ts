@@ -81,14 +81,11 @@ export function listableRecords(records: AccountRecord[]): AccountRecord[] {
  * 从未走过 addRecord、未真实影响余额,删除 / 解绑时也不能反向扣减,
  * 否则会从 0 余额账户里凭空扣钱。
  */
-/**
- * v3.0 TASK-057 T-576：记录不再影响任何余额，恒返回 false。
- *
- * 函数保留（签名稳定）以便回滚 —— 旧版本对池逐日虚拟 / 存量虚拟 / 联动 record 返回 false，
- * 手动 / 认领 / 存池确认 record 返回 true。v3.0 起任何 record 都不再影响总资产。
- */
-export function recordAffectsBalance(_record: AccountRecord): boolean {
-  return false;
+export function recordAffectsBalance(record: AccountRecord): boolean {
+  if (record.poolStatus === 'virtual') return false;
+  if (record.poolId && !record.poolStatus) return false;
+  if (record.linkageSource === 'salary-time-mode') return false;
+  return true;
 }
 
 /**

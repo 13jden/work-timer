@@ -418,10 +418,6 @@ export type AccountType = 'alipay' | 'wechat' | 'card' | 'cash';
 
 /**
  * 账户
- *
- * v3.0 TASK-057：账户 UI 全部下线（账户选择 / 拖拽归入 / 未归入红标），
- * 但数据模型保留「只读存档」—— 新记录恒 `accountId=''`，
- * `recordAffectsBalance` 恒 false，旧字段不删除以便回滚。
  */
 export interface Account {
   id: string;
@@ -484,32 +480,6 @@ export interface AccountRecord {
   linkageSource?: 'salary-time-mode';
   // ── v3.0 TASK-056：附图（IndexedDB 存 Blob，localStorage 不放图片）
   imageId?: string;
-  // v3.0 TASK-057：accountId 冻结 — 新记录恒写 ''，不再参与任何逻辑
-  // （旧记录保留原值用于历史展示 / 回滚，但 store 不会据此改动任何余额）
-}
-
-// ── Assets (v3.0 TASK-057) ─────────────────────────────────────
-
-/**
- * 总资产状态（v3.0 TASK-057 T-571）
- * - 由用户手动维护；v3.0 取消多账户，账户余额被一次性迁移到此字段
- * - 不再被记账记录影响（流水与资产解耦）
- */
-export interface AssetsState {
-  totalAssets: number;
-  updatedAt: number;
-}
-
-/**
- * 总资产调整快照（手动修改留痕，上限 200 条环形裁剪）
- */
-export interface AssetSnapshot {
-  id: string;
-  before: number;
-  after: number;
-  delta: number;          // after - before
-  note?: string;
-  createdAt: number;
 }
 
 /**

@@ -22,17 +22,14 @@ import {
 } from '../lib/constants';
 import type {
   Account,
-  AccountRecord,
-  AssetSnapshot,
-  AssetsState,
   Category,
   Folder,
+  AccountRecord,
   PoolConfig,
   PoolCycle,
   PoolTransaction,
   SavingsGoal,
 } from '../lib/types';
-import type { AssetExprResult } from '../lib/accounting/assetExpr';
 import {
   buildEqualizeCycleDraft,
   buildDepositCycleDraft,
@@ -74,7 +71,7 @@ function cleanupOrphanedImages(
   }
 }
 interface AccountStore {
-  // 账户（v3.0 TASK-057：保留为只读存档，新记录不再关联 / 改动余额）
+  // 账户
   accounts: Account[];
   // 分类（收入 + 支出）
   categories: Category[];
@@ -88,12 +85,6 @@ interface AccountStore {
   cycles: PoolCycle[];
   // 存钱目标
   savingsGoals: SavingsGoal[];
-  // v3.0 TASK-057：手动维护的总资产（迁移后由用户通过 AssetSheet 调整）
-  assets: AssetsState;
-  // v3.0 TASK-057：总资产调整历史（环形裁剪 200 条）
-  assetSnapshots: AssetSnapshot[];
-  // v3.0 TASK-057：一次性迁移标志（accounts[].balance → assets.totalAssets）
-  migratedV3: boolean;
 
   // ── Account 操作 ──
   addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => Account;
@@ -253,18 +244,6 @@ interface AccountStore {
    * 仅触发 UI 重新渲染，所有订阅 accounts 的组件同步刷新到 0。
    */
   resetAssets: () => void;
-
-  // ── v3.0 TASK-057 T-571/T-572/T-573：总资产（手动维护） ──
-  /**
-   * 应用「资产计算器」表达式结果到总资产：
-   *  - absolute 模式：直接覆盖 totalAssets
-   *  - delta 模式：totalAssets += value
-   * 同时追加一条 snapshot（环形裁剪 200 条）。
-   * @returns 写入后的新总资产；非法 / 0 变化时返回当前值且不写 snapshot
-   */
-  setTotalAssets: (parsed: AssetExprResult, note?: string) => number;
-  /** v3.0 TASK-057 T-573：从快照历史「撤销到最后一次」前的总资产（按最后一条 snapshot 回滚） */
-  rollbackLastAsset: () => number;
 }
 
 // ── ID 生成器 ──────────────────────────────────────────────
@@ -429,10 +408,6 @@ function buildInitialState() {
     pools: [],
     cycles: [],
     savingsGoals: [],
-    // v3.0 TASK-057：默认总资产 0，迁移标志 false（rehydrate 时一次性迁移）
-    assets: { totalAssets: 0, updatedAt: 0 },
-    assetSnapshots: [],
-    migratedV3: false,
   };
 }
 
@@ -574,7 +549,10 @@ export const useAccountStore = create<AccountStore>()(
           updatedAt: now,
         };
         set((s) => ({ records: [...s.records, newRecord] }));
-        // v3.0 TASK-057：记账记录不再改动账户余额（账户已冻结为只读存档）
+        // 更新账户余额
+        get().updateAccount(record.accountId, {
+          balance: get().getAccountBalance(record.accountId) + record.amount,
+        });
         // v2.4：关联目标的记录自动累计进度（带符号：收入+ / 支出−）
         if (record.goalId) {
           applyGoalDelta(set, record.goalId, record.amount);
@@ -1775,47 +1753,6 @@ export const useAccountStore = create<AccountStore>()(
         set((s) => ({
           accounts: s.accounts.map((a) => ({ ...a, balance: 0 })),
         }));
-      },
-
-      // ── v3.0 TASK-057 T-572/T-573：总资产（手动维护） ──
-      setTotalAssets: (parsed, note) => {
-        const state = get();
-        const before = state.assets.totalAssets;
-        const after = parsed.mode === 'absolute'
-          ? Math.round(parsed.value * 100) / 100
-          : Math.round((before + parsed.value) * 100) / 100;
-        if (after === before) return before;
-        const delta = Math.round((after - before) * 100) / 100;
-        const now = Date.now();
-        const snapshot: AssetSnapshot = {
-          id: genId('snap'),
-          before,
-          after,
-          delta,
-          note: note?.trim() || undefined,
-          createdAt: now,
-        };
-        set((s) => {
-          // 环形裁剪 200 条
-          const next = [...s.assetSnapshots, snapshot];
-          if (next.length > 200) next.splice(0, next.length - 200);
-          return {
-            assets: { totalAssets: after, updatedAt: now },
-            assetSnapshots: next,
-          };
-        });
-        return after;
-      },
-
-      rollbackLastAsset: () => {
-        const state = get();
-        const last = state.assetSnapshots[state.assetSnapshots.length - 1];
-        if (!last) return state.assets.totalAssets;
-        set((s) => ({
-          assets: { totalAssets: last.before, updatedAt: Date.now() },
-          assetSnapshots: s.assetSnapshots.slice(0, -1),
-        }));
-        return last.before;
       },
     }),
     {

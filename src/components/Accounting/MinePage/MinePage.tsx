@@ -7,10 +7,6 @@
  * v2.5-patch4：
  * - N-481：移除 LinkageSection 整块（time → accounting 联动展示取消）。
  * - N-484：TotalAssetsCard 右上角增加「重置资产」图标，二次确认后调 accountStore.resetAssets。
- *
- * v3.0 TASK-057：本批后端口径切换 (T-575) 同步 —— TotalAssetsCard 改读 `assets.totalAssets`，
- * 移除 `pendingAdjust` 展示入口。T-574 完整账户 UI 下线（AccountRow 移除、拖拽归入下线等）
- * 留到后续批次。
  */
 import { useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -46,32 +42,27 @@ export function MinePage() {
 
 /**
  * 总资产卡（T-402 / T-409）：虚拟总额 + 分解行 + 横向账户卡片行。
- * 分解行：实际（手动总资产）· 预付未消耗（淡红）· 已赚未到账（淡绿）。
- *
- * v3.0 TASK-057：actualTotal 改读 `assets.totalAssets`（用户手动维护），
- * pendingAdjust 概念移除（记录不再与资产对账）。
+ * 分解行：实际（含未归入调整项）· 预付未消耗（淡红）· 已赚未到账（淡绿）。
  */
 function TotalAssetsCard() {
-  const totalAssets = useAccountStore((s) => s.assets.totalAssets);
+  const accounts = useAccountStore((s) => s.accounts);
   const records = useAccountStore((s) => s.records);
   const pools = useAccountStore((s) => s.pools);
   const resetAssets = useAccountStore((s) => s.resetAssets);
 
   const {
     actualTotal,
+    pendingAdjust,
     prepaidUnconsumed,
     unpaidConsumed,
     earnedUnarrived,
     depositRefundable,
     depositPending,
     virtualTotal,
-  } = useMemo(
-    () => calcVirtualAssets({ totalAssets, records, pools }),
-    [totalAssets, records, pools],
-  );
+  } = useMemo(() => calcVirtualAssets({ accounts, records, pools }), [accounts, records, pools]);
 
   const hasVirtual = prepaidUnconsumed > 0 || earnedUnarrived > 0 || depositRefundable > 0;
-  const hasPending = unpaidConsumed > 0 || depositPending > 0;
+  const hasPending = pendingAdjust !== 0 || unpaidConsumed > 0 || depositPending > 0;
   const hasBreakdown = hasVirtual || hasPending;
 
   // v2.5-patch4 N-484：二次确认后调 resetAssets（仅余额归零，记录保留）。
@@ -105,6 +96,11 @@ function TotalAssetsCard() {
           <span className={styles.virtualActual}>实际 ¥{formatAmount(actualTotal, true)}</span>
           {hasPending && (
             <span className={styles.pendingBox}>
+              {pendingAdjust !== 0 && (
+                <span className={pendingAdjust < 0 ? styles.pendingNeg : styles.pendingPos}>
+                  {pendingAdjust < 0 ? '-' : '+'}¥{formatAmount(Math.abs(pendingAdjust))} 未分类
+                </span>
+              )}
               {unpaidConsumed > 0 && (
                 <span className={styles.pendingNeg}>-¥{formatAmount(unpaidConsumed)} 未支付</span>
               )}

@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useAccountStore } from './accountStore';
 import { depositBalance } from '../lib/accounting/pool';
 import { getCurrentMonthKey, getTodayKey, visibleRecords, calcVirtualAssets } from '../lib/accounting';
-import { daysInMonth } from '../lib/accounting/pool';
 import { shiftMonth as shiftMonthForTest } from '../lib/accounting/stats';
 
 describe('accountStore · 池业务（v2.3 重设计）', () => {
@@ -48,20 +47,14 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     );
     expect(dailyRecords).toHaveLength(todayDay);
     expect(dailyRecords[0]?.dateKey).toBe(`${getCurrentMonthKey()}-01`);
-    // 日均 = 3000 / 当月天数（动态算,9 月 → 100,10 月 → 96.77,等）
-    // 注：splitDailyAmount 对每天 floor + 尾差补最后一天,所以前 todayDay-1 天的 daily 总额
-    //     不严格等于 todayDay × 日均,要用 dailyRecords 自身求和
-    const monthKey = getCurrentMonthKey();
-    const dailySum = dailyRecords.reduce((s, r) => s + Math.abs(r.amount), 0);
-    const expectedDaily = 3000 / daysInMonth(monthKey);
-    expect(Math.abs(dailyRecords[0]!.amount)).toBeCloseTo(expectedDaily, 2);
+    expect(dailyRecords[0]?.amount).toBe(-100); // 3000/30
     // 普通消费记录：无池状态标记 → 计入统计、可编辑删除
     expect(dailyRecords[0]?.poolStatus).toBeUndefined();
 
     // 均摊池的逐日记录只表示消耗，不应立即增减账户或虚拟资产；
     // 只有实际付款记录 claimToPool 后，才进入已付/已认领分解。
     const breakdown = calcVirtualAssets({
-      totalAssets: state.getAccountBalance(accountId),
+      accounts: state.accounts,
       records: state.records,
       pools: state.pools,
     });
@@ -69,8 +62,7 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     expect(breakdown.actualTotal).toBe(10000);
     expect(breakdown.virtualTotal).toBe(10000);
     expect(breakdown.prepaidUnconsumed).toBe(0);
-    // v3.0：unpaidConsumed = todayDay 内所有 daily amount 求和（精确）
-    expect(breakdown.unpaidConsumed).toBeCloseTo(dailySum, 2);
+    expect(breakdown.unpaidConsumed).toBeCloseTo(todayDay * 100, 2);
   });
 
   it('按日模式：完整日期范围内每天一条，范围外不生成', () => {
@@ -483,10 +475,7 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
       .records.find((r) => r.poolId === pool.id && !r.poolStatus);
     expect(daily).toBeDefined();
 
-    // 日均 = 3000 / 当月天数,unclaimToPool 返回该金额（绝对值）
-    const monthKey = getCurrentMonthKey();
-    const expectedDaily = 3000 / daysInMonth(monthKey);
-    expect(useAccountStore.getState().unclaimToPool(daily!.id)).toBeCloseTo(expectedDaily, 2);
+    expect(useAccountStore.getState().unclaimToPool(daily!.id)).toBe(100);
 
     // 对应 transaction 保留但 recordId 清空（防 sync 重新生成）
     const cycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);
@@ -703,8 +692,8 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     );
     expect(txIn.reduce((sum, t) => sum + t.amount, 0)).toBe(700 + 1500);
 
-    // v3.0 TASK-057 T-576：账户余额不再随记账变化,保持初始 0
-    expect(state.getAccountBalance(account.id)).toBe(0);
+    // 账户余额 += 700(真实到账)
+    expect(state.getAccountBalance(account.id)).toBe(700);
   });
 
   it('partial claim 超过未到账剩余 → 自动夹到 remaining,返回实际写入', () => {
@@ -739,7 +728,7 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
 
     const state = useAccountStore.getState();
     const breakdown = calcVirtualAssets({
-      totalAssets: state.getTotalBalance(),
+      accounts: state.accounts,
       records: state.records,
       pools: state.pools,
     });
@@ -747,9 +736,8 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     // earnedUnarrived = 3000 - 1000 = 2000
     expect(breakdown.earnedUnarrived).toBe(2000);
 
-    // v3.0 TASK-057 T-575：actualTotal 改读手动总资产(账户余额 0),不再含 1000
-    // virtualTotal = actualTotal(0) + earnedUnarrived(2000) + depositRefundable(0) = 2000
-    expect(breakdown.virtualTotal).toBe(2000);
+    // virtualTotal = actualTotal(账户余额 1000)+ earnedUnarrived(2000)+ depositRefundable(0)= 3000
+    expect(breakdown.virtualTotal).toBe(3000);
   });
 
   it('v2.5-patch8:支出 equalize 池付款 → 创建 claimed expense record', () => {
@@ -826,8 +814,8 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     expect(linkage).toHaveLength(1);
     expect(linkage[0]?.amount).toBe(1000);
 
-    // v3.0 TASK-057 T-576：账户余额不再随记账变化,保持初始 0
-    expect(state.getAccountBalance(state.accounts[0]?.id ?? '')).toBe(0);
+    // 账户余额 = 500
+    expect(state.getAccountBalance(state.accounts[0]?.id ?? '')).toBe(500);
   });
 
   it('没有联动记录时 partial claim 不写新 record', () => {
@@ -875,11 +863,10 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     s.upsertSalaryLinkageForDate('2026-08-01', 1000);
     s.upsertSalaryLinkageForDate('2026-08-02', 1000);
     s.upsertSalaryLinkageForDate('2026-08-03', 1000);
-    // partial claim 700(走 addRecord)
+    // partial claim 700(走 addRecord,余额 +700)
     s.partialClaimToPool(poolId, 700, { accountId: account.id });
 
-    // v3.0 TASK-057 T-576：账户余额不再随记账变化,保持初始 0
-    expect(useAccountStore.getState().getAccountBalance(account.id)).toBe(0);
+    expect(useAccountStore.getState().getAccountBalance(account.id)).toBe(700);
 
     // 删工资池
     s.deletePool(poolId);
@@ -888,7 +875,7 @@ describe('accountStore · partialClaimToPool (T-505)', () => {
     expect(state.pools.some((p) => p.id === poolId)).toBe(false);
     // 联动 records 和 partial claim record 全部删除
     expect(state.records.filter((r) => r.poolId === poolId)).toHaveLength(0);
-    // 账户余额保持初始 0
+    // 账户余额：partial claim 部分 700 被回退,联动 records 不扣
     expect(state.getAccountBalance(account.id)).toBe(0);
   });
 });
@@ -1116,10 +1103,9 @@ describe('accountStore · resetAssets (N-484)', () => {
     const acc2 = s.addAccount({ name: '微信', balance: 500, color: '#888', type: 'wechat', order: 1 });
     const cat = s.addCategory({ name: '午饭', icon: 'fork', color: '#FFA', type: 'expense', order: 0 });
 
-    // 记一笔支出
+    // 记一笔支出，让余额变
     s.addRecord({ dateKey: getTodayKey(), amount: -200, type: 'expense', categoryId: cat.id, accountId: acc1.id });
-    // v3.0 TASK-057 T-576：账户余额不再随记账变化,仍是初始 1000
-    expect(useAccountStore.getState().getAccountBalance(acc1.id)).toBe(1000);
+    expect(useAccountStore.getState().getAccountBalance(acc1.id)).toBe(800);
     expect(useAccountStore.getState().getAccountBalance(acc2.id)).toBe(500);
 
     // 加一个池
@@ -1151,7 +1137,7 @@ describe('accountStore · resetAssets (N-484)', () => {
 
     const after = useAccountStore.getState();
     const breakdown = calcVirtualAssets({
-      totalAssets: after.getTotalBalance(),
+      accounts: after.accounts,
       records: after.records,
       pools: after.pools,
     });
