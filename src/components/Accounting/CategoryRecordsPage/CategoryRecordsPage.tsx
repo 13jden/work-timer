@@ -7,6 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
+import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
 import { UNCATEGORIZED_ID } from '../../../lib/accounting/stats';
 import { formatAmount } from '../../../lib/accounting';
@@ -27,6 +28,8 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
   const records = useAccountStore((s) => s.records);
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
+  // v3.0 TASK-057：钱包模式开关。关闭时不展示账户副标题
+  const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [editing, setEditing] = useState<AccountRecord | null>(null);
 
@@ -135,7 +138,8 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
                       <span className={styles.rowInfo}>
                         <span className={styles.rowName}>{record.note?.trim() || name}</span>
                         <span className={styles.rowSub}>
-                          {formatDayLabel(record.dateKey)} · {account?.name ?? '未知账户'}
+                          {formatDayLabel(record.dateKey)}
+                          {walletEnabled && account ? ` · ${account.name}` : ''}
                         </span>
                       </span>
                       <span

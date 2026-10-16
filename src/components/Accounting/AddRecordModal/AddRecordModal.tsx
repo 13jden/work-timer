@@ -16,6 +16,7 @@
  */
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
+import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
 import { IconByKey } from '../../IconByKey';
 import { AddCategoryModal } from '../AddCategoryModal';
@@ -32,6 +33,8 @@ interface AddRecordModalProps {
   defaultDate?: string;
   /** 默认类型 */
   defaultType?: RecordType;
+  /** v3.0 TASK-057：钱包详情页快捷添加时预填账户 ID（开启钱包时生效） */
+  defaultAccountId?: string;
   onClose: () => void;
   /** 保存成功 */
   onSaved?: (recordId: string) => void;
@@ -42,6 +45,7 @@ export function AddRecordModal({
   editingRecord,
   defaultDate,
   defaultType,
+  defaultAccountId,
   onClose,
   onSaved,
 }: AddRecordModalProps) {
@@ -53,6 +57,8 @@ export function AddRecordModal({
   const updateRecord = useAccountStore((s) => s.updateRecord);
   const deleteRecord = useAccountStore((s) => s.deleteRecord);
   const deleteRecordCascade = useAccountStore((s) => s.deleteRecordCascade);
+  // v3.0 TASK-057：钱包模式开关。关闭时不展示账户选择器
+  const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
 
   // 表单状态
   const [amountStr, setAmountStr] = useState('');
@@ -97,7 +103,15 @@ export function AddRecordModal({
       setCategoryId('');
       setNote('');
       setDateKey(defaultDate ?? getTodayKey());
-      setAccountId(accounts[0]?.id ?? '');
+      // v3.0 TASK-057：钱包关闭时 accountId 恒为 ''（不展示账户选择器）；
+      // 但若从 AccountDetailPage 显式传入了 defaultAccountId，优先使用（保持账户归属）
+      if (defaultAccountId) {
+        setAccountId(defaultAccountId);
+      } else if (!walletEnabled) {
+        setAccountId('');
+      } else {
+        setAccountId(accounts[0]?.id ?? '');
+      }
     }
     // 打开 modal 时：清空上一轮的图片状态
     setPendingBlob(null);
@@ -519,7 +533,7 @@ export function AddRecordModal({
         {/* v3.0 TASK-056：图片错误提示 */}
         {imageError && <div className={styles.error}>{imageError}</div>}
 
-        {/* ── 字段行：日期 / 账户 ── */}
+        {/* ── 字段行：日期 / 账户(v3.0 TASK-057：钱包关闭时仅日期) ── */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldCell}>
             <div className={styles.fieldLabel}>日期</div>
@@ -531,23 +545,27 @@ export function AddRecordModal({
               aria-label="日期"
             />
           </div>
-          <span className={styles.fieldDivider} aria-hidden />
-          <div className={styles.fieldCell}>
-            <div className={styles.fieldLabel}>账户</div>
-            <select
-              className={styles.fieldInput}
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              aria-label="账户"
-            >
-              <option value="">未归入</option>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {walletEnabled && (
+            <>
+              <span className={styles.fieldDivider} aria-hidden />
+              <div className={styles.fieldCell}>
+                <div className={styles.fieldLabel}>账户</div>
+                <select
+                  className={styles.fieldInput}
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  aria-label="账户"
+                >
+                  <option value="">未归入</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         {error && <div className={styles.error}>{error}</div>}

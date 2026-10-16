@@ -29,6 +29,7 @@ import {
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { SegmentedControl } from '../../SegmentedControl';
 import { useAccountStore } from '../../../store/accountStore';
+import { useConfigStore } from '../../../store/configStore';
 import type { Account, AccountRecord, RecordType } from '../../../lib/types';
 import {
   filterByRange,
@@ -77,6 +78,8 @@ export function StatsPage() {
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
   const updateRecord = useAccountStore((s) => s.updateRecord);
+  // v3.0 TASK-057：钱包模式开关。关闭时禁用 DndContext + AccountDock（拖拽归入账户）
+  const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
 
   /** v2.4：拖拽归入账户 — 当前拖动的记录 */
   const [dragRecord, setDragRecord] = useState<AccountRecord | null>(null);
@@ -285,8 +288,8 @@ export function StatsPage() {
         )}
       </div>
 
-      {/* ── 日视图（始终列表） ─────────────────────────────────── */}
-      {view === 'day' && (
+      {/* ── 日视图(始终列表) ─────────────────────────────────── */}
+      {view === 'day' && walletEnabled && (
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
@@ -319,6 +322,31 @@ export function StatsPage() {
             {dragRecord ? <DragRecordCard record={dragRecord} /> : null}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {/* v3.0 TASK-057：钱包关闭时的日视图(无拖拽归入) */}
+      {view === 'day' && !walletEnabled && (
+        <>
+          <PeriodNav
+            title={formatDayTitle(dayKey)}
+            onPrev={() => setDayKey(shiftDay(dayKey, -1))}
+            onNext={() => setDayKey(shiftDay(dayKey, 1))}
+          />
+          {dayRecords.length === 0 ? (
+            <div className={styles.empty}>当日暂无记录</div>
+          ) : (
+            <div className={styles.dayList}>
+              {dayRecords.map((record) => (
+                <RecordRow
+                  key={record.id}
+                  record={record}
+                  onOpen={() => handleOpenRecord(record)}
+                  onPreviewImage={setPreviewImageId}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* ── 月视图：列表模式 ─────────────────────────────────── */}

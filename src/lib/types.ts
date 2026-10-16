@@ -159,6 +159,14 @@ export interface Config {
    * v2.5-patch4 N-481：默认改 false（用户取消联动展示与写入）。
    */
   salaryLinkageEnabled?: boolean;
+  /**
+   * v3.0 TASK-057：钱包模式开关。
+   * - `false`(默认):关闭钱包。UI 不展示账户(账户选择器 / 拖拽归入 / 账户标签 / MinePage AccountRow 全部隐藏);
+   *   MinePage 顶部改为「总支出」(累计支出);记录 `accountId` 字段保留以便回滚 / 切回开启。
+   * - `true`:开启钱包。沿用 v2.4 行为 + 新增每账户详情页(AccountDetailPage)。
+   * 切换实时生效,不 reload。
+   */
+  walletEnabled?: boolean;
 }
 
 // ── Day Overrides(手动调休 / 加班 / 请假) ───────────────────

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
+import { useConfigStore } from '../../../store/configStore';
 import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
 import type { AccountRecord } from '../../../lib/types';
 import { X } from '@phosphor-icons/react';
@@ -34,6 +35,8 @@ export function CategoryDetailPanel({
   const folders = useAccountStore((s) => s.folders);
   const accounts = useAccountStore((s) => s.accounts);
   const updateRecord = useAccountStore((s) => s.updateRecord);
+  // v3.0 TASK-057：钱包模式开关。关闭时不展示账户副标题
+  const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
   const [dragRecordId, setDragRecordId] = useState<string | null>(null);
   const [dragOverDateKey, setDragOverDateKey] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -234,7 +237,10 @@ export function CategoryDetailPanel({
                       </div>
                       <div className={styles.cardInfo}>
                         <div className={styles.cardName}>{record.note?.trim() || category.name}</div>
-                        <div className={styles.cardSub}>{formatTime(record.createdAt)} · {account?.name ?? '未知账户'}</div>
+                        <div className={styles.cardSub}>
+                          {formatTime(record.createdAt)}
+                          {walletEnabled && account ? ` · ${account.name}` : ''}
+                        </div>
                       </div>
                       <div className={styles.cardAmt}>{sign}¥{formatAmount(Math.abs(record.amount))}</div>
                     </button>

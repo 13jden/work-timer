@@ -1,0 +1,189 @@
+/* AccountDetailPage — 每账户详情页（v3.0 TASK-057 T-576） */
+
+.page {
+  position: fixed;
+  inset: 0;
+  /* 需高于 AccountingPage detailOverlay(150)，低于弹窗(200) */
+  z-index: 160;
+  background: var(--paper-4);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 72px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 8px;
+}
+
+.backBtn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: var(--paper-3);
+  border-radius: 9px;
+  font-size: 16px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* 顶部余额卡(对齐 MinePage 的 totalCard 视觉,墨黑大卡) */
+.balanceCard {
+  background: var(--ink);
+  border-radius: 16px;
+  padding: 18px 20px 14px;
+  margin: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.balanceLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--paper) 62%, transparent);
+  letter-spacing: 1px;
+}
+
+.balanceAmount {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.balanceMeta {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--paper) 62%, transparent);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* ── 记录列表(按月分组) ─────────────────── */
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.monthGroup {
+  background: var(--paper-3);
+  border-radius: 14px;
+  padding: 4px 14px;
+}
+
+.monthHead {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  border-top: 1px solid var(--line-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.rowIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rowInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.rowAmt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amtExpense {
+  color: var(--danger);
+}
+
+.amtIncome {
+  color: var(--income);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ── 底部快捷添加按钮 ─────────────────── */
+.addBtnWrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--paper-4) 90%, transparent);
+  backdrop-filter: blur(8px);
+  z-index: 161;
+  display: flex;
+  justify-content: center;
+}
+
+.addBtn {
+  border: none;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 160px;
+}

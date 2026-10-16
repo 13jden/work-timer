@@ -81,6 +81,9 @@ export const DEFAULT_CONFIG: Config = {
   // migrateToV3 已用 ?? DEFAULT_CONFIG.salaryLinkageEnabled 兜底;
   // 真要关掉,用户走设置页 toggle(改动后才写到 localStorage)。
   salaryLinkageEnabled: true,
+  // v3.0 TASK-057:钱包模式开关。false=关闭(默认,UI 不展示账户 / 账户选择器 / 拖拽归入);
+  // true=开启(沿用 v2.4 行为 + 新增每账户详情页)。切换实时生效,无 reload。
+  walletEnabled: false,
 };
 
 // ── 静态数据 ────────────────────────────────────────────────

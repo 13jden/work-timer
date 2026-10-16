@@ -6,6 +6,7 @@
  * 不含拖拽逻辑（拖拽由调用方在 StatsPage 层通过 dnd-kit 包装）。
  */
 import { useAccountStore } from '../../../store/accountStore';
+import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
@@ -40,6 +41,8 @@ function formatSettledDate(ts: number): string {
 export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
+  // v3.0 TASK-057：钱包模式开关。关闭时不展示账户标签(包含"未归入"红标)
+  const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
   const category = categories.find((c) => c.id === record.categoryId);
   const account = accounts.find((a) => a.id === record.accountId);
 
@@ -82,14 +85,14 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
         </span>
         {sub ? <span className={styles.sub}>{sub}</span> : null}
       </span>
-      {account ? (
+      {walletEnabled && (account ? (
         <span className={styles.acct}>
           <span className={styles.acctDot} style={{ background: account.color }} />
           {account.name}
         </span>
       ) : (
         <span className={`${styles.acct} ${styles.acctNone}`}>未归入</span>
-      )}
+      ))}
       {/* v3.0 TASK-056：附图缩略图，备注右侧、金额左侧 */}
       {record.imageId && (
         <RecordThumb
