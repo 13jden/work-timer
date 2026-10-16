@@ -1,10 +1,11 @@
-## [Unreleased] · 2026-08-30
+## [Unreleased] · 2026-10-16
 
 ### 版本索引
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
-| v3.0 | 2026-10-13 | 回归简单记账 · 统计页列表优先 (TASK-055) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |
+| v3.0 | 2026-10-16 | 取消钱包·总资产直接改 (TASK-057) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |
+| v3.0 | 2026-10-13 | 回归简单记账·统计页列表优先 (TASK-055) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |
 | v2.5-patch17 | 2026-09-10 | 薪资联动、已赚统计与跨天记录修正 (TASK-053) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-patch18 | 2026-09-11 | T-532 跨天守卫回归覆盖(同月跨日 + 跨月跨午夜两条专门用例) | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |
 | v2.5-infra3 | 2026-09-08 | 夺回 80/443:部署自动停掉建站产品容器 | [`docs/CHANGELOG-v2.5.md`](./CHANGELOG-v2.5.md) |

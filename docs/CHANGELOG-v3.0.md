@@ -8,6 +8,34 @@
 
 ---
 
+## [v3.0] · 2026-10-16 · 取消钱包·总资产直接改 (TASK-057)
+
+钱包（账户体系）从「记账入口筛选工具」降级为「可关闭的展示层开关」。关闭钱包仅影响总资产卡的账户行显示，不影响底层数据逻辑。
+
+### A · 展示层双形态（数据逻辑不变）
+
+- **关闭钱包**：总资产卡始终显示「总资产」大数字 + 虚拟分解 chip（已赚未到账、预付未消耗、待退），不过钱包筛选；AccountRow 账户行不渲染
+- **开启钱包**：总资产卡显示「总资产」+ 虚拟分解 chip + AccountRow 账户行
+
+### B · 总资产卡交互
+
+- ⚙ 按钮 → `WalletSwitchSheet` 切换钱包开 / 关
+- 开启钱包时：点击账户小卡 → `AccountDetailPage` 每账户详情页
+- 关闭钱包时：账户行不渲染，无详情入口
+
+### C · 新增组件
+
+- `src/components/Accounting/MinePage/WalletSwitchSheet.tsx`：钱包开关 Sheet（TASK-057）
+- `src/components/Accounting/MinePage/AccountDetailPage.tsx`：账户详情页（TASK-057）
+- `src/components/Accounting/MinePage/AccountDetailPage.module.css`
+
+### 验证
+
+- `npm run typecheck` 通过
+- `npm run test -- src/lib/accounting/stats.test.ts` 24 tests 全绿
+
+---
+
 ## [v3.0] · 2026-10-13 · 统计页列表优先 (TASK-055)
 
 基线 v2.5-patch18。现状：统计页月 / 年视图默认柱状图 + 分类排行，用户想翻一翻这个月的账反而被图表挡住。本轮把「列表」扶正为默认视图，图表降级为可切换模式。

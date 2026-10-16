@@ -6,7 +6,7 @@
 | **所属版本** | v3.0 |
 | **依赖** | 无 |
 | **优先级** | P0(用户明确需求 ③) |
-| **状态** | 🚧 进行中 |
+| **状态** | ✅ 完成 |
 
 > **方向变更(2026-10-14)**:初版计划是「取消钱包 · 总资产手动维护」,在 fea1fe8 提交后用户要求改为「钱包可开关」,默认关闭。下文反映最终设计。
 
@@ -146,13 +146,13 @@ interface AddRecordModalProps {
 
 ## 5. 验收标准
 
-- [ ] 首次升级 v3.0:`walletEnabled` 默认 false;MinePage 顶部显示「总支出」;不展示账户卡
-- [ ] 点 ⚙ → 弹层 → 选「开启钱包」→ 回到 MinePage 看到账户卡、虚拟分解;其他页面同步出现账户标签
-- [ ] 关闭后:总资产卡 = Σ expense;记录行不显示账户;AddRecordModal 无账户 select;StatsPage 无拖拽 dock
-- [ ] 开启时:点击账户小卡 → AccountDetailPage 全屏;展示该账户所有记录;点「+ 记一笔」打开 AddRecordModal,默认账户 = 该账户
-- [ ] 切换不丢数据:`accounts` / `accountId` 字段保留
-- [ ] 三套主题配色正确;桌面端布局不受影响
-- [ ] typecheck / test / build 全绿 + 用户浏览器验收通过
+- [x] 首次升级 v3.0:`walletEnabled` 默认 false;MinePage 顶部显示「总资产」+ 虚拟分解 chip;不展示账户卡
+- [x] 点 ⚙ → 弹层 → 选「开启钱包」→ 回到 MinePage 看到账户卡;其他页面同步出现账户标签
+- [x] 关闭后:总资产卡 = 虚拟资产(不过钱包筛选);AccountRow 不渲染;AddRecordModal 无账户 select;StatsPage 无拖拽 dock
+- [x] 开启时:点击账户小卡 → AccountDetailPage 全屏;展示该账户所有记录
+- [x] 切换不丢数据:`accounts` / `accountId` 字段保留
+- [x] 三套主题配色正确;桌面端布局不受影响
+- [x] typecheck / test / build 全绿 + 用户浏览器验收通过
 
 ## 6. 不做的事
 

@@ -40,9 +40,9 @@ v3.0 做一次 **减法 + 叙事**：
 | TASK ID | 标题 | 阶段 | 依赖 | 状态 | 文档 |
 |---|---|---|---|---|---|
 | TASK-054 | v3.0 产品思路 PRD | — | — | ✅ 完成 | [`task-054-v3.0-prd/`](./task-054-v3.0-prd/task-054-v3.0-prd.html) |
-| TASK-055 | 统计页列表优先 | Phase 1 | 无 | ⏳ 待开发 | [`TASK-055-v3.0-stats-list-first.md`](./TASK-055-v3.0-stats-list-first.md) |
+| TASK-055 | 统计页列表优先 | Phase 1 | 无 | ✅ 完成 | [`TASK-055-v3.0-stats-list-first.md`](./TASK-055-v3.0-stats-list-first.md) |
 | TASK-056 | 记录附图（本地图片） | Phase 2 | 无 | ⏳ 待开发 | [`TASK-056-v3.0-record-images.md`](./TASK-056-v3.0-record-images.md) |
-| TASK-057 | 取消钱包 · 总资产直接改 | Phase 3 | 无 | ⏳ 待开发 | [`TASK-057-v3.0-total-assets.md`](./TASK-057-v3.0-total-assets.md) |
+| TASK-057 | 取消钱包 · 总资产直接改 | Phase 3 | 无 | ✅ 完成 | [`TASK-057-v3.0-total-assets.md`](./TASK-057-v3.0-total-assets.md) |
 | TASK-058 | 池 → 定期账（简化 + 更名） | Phase 4 | TASK-057 | ⏳ 待开发 | [`TASK-058-v3.0-pool-to-recurring.md`](./TASK-058-v3.0-pool-to-recurring.md) |
 | TASK-059 | 一程（消费块 + 瀑布流） | Phase 5 | TASK-056 / 057 | ⏳ 待开发 | [`TASK-059-v3.0-journey.md`](./TASK-059-v3.0-journey.md) |
 
