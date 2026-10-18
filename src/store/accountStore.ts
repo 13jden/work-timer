@@ -29,6 +29,7 @@ import type {
   PoolCycle,
   PoolTransaction,
   SavingsGoal,
+  Journey,
 } from '../lib/types';
 import {
   buildEqualizeCycleDraft,
@@ -85,6 +86,8 @@ interface AccountStore {
   cycles: PoolCycle[];
   // 存钱目标
   savingsGoals: SavingsGoal[];
+  // 一程（v3.0 TASK-059）
+  journeys: Journey[];
 
   // ── Account 操作 ──
   addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => Account;
@@ -195,6 +198,13 @@ interface AccountStore {
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => SavingsGoal;
   updateSavingsGoal: (id: string, patch: Partial<Omit<SavingsGoal, 'id' | 'createdAt'>>) => void;
   deleteSavingsGoal: (id: string) => void;
+
+  // ── v3.0 TASK-059：一程 CRUD ──
+  addJourney: (journey: Omit<Journey, 'id' | 'createdAt' | 'updatedAt'>) => Journey;
+  updateJourney: (id: string, patch: Partial<Omit<Journey, 'id' | 'createdAt'>>) => void;
+  deleteJourney: (id: string) => void;
+  /** 获取一程关联的记录（按 dateKey 降序） */
+  getJourneyRecords: (journeyId: string) => AccountRecord[];
 
   // ── v2.5 TASK-046 T-501：time → accounting 联动 ──
   /**
@@ -408,6 +418,7 @@ function buildInitialState() {
     pools: [],
     cycles: [],
     savingsGoals: [],
+    journeys: [],
   };
 }
 
@@ -1526,6 +1537,68 @@ export const useAccountStore = create<AccountStore>()(
             r.goalId === id ? { ...r, goalId: undefined } : r,
           ),
         }));
+      },
+
+      // ── v3.0 TASK-059：一程 CRUD ──
+      addJourney: (journey) => {
+        const now = Date.now();
+        const newJourney: Journey = { ...journey, id: genId('journey'), createdAt: now, updatedAt: now };
+        set((s) => ({ journeys: [...s.journeys, newJourney] }));
+        return newJourney;
+      },
+
+      updateJourney: (id, patch) => {
+        const oldJourney = get().journeys.find((j) => j.id === id);
+        if (!oldJourney) return;
+
+        // coverImageId 换图 → 级联清理旧封面孤儿
+        const coverChanged = 'coverImageId' in patch && patch.coverImageId !== oldJourney.coverImageId;
+        if (coverChanged && oldJourney.coverImageId) {
+          // 检查是否还有其他 journey 或 record 在用这张图
+          const stillUsed =
+            get().journeys.some((j) => j.id !== id && j.coverImageId === oldJourney.coverImageId) ||
+            get().records.some((r) => r.imageId === oldJourney.coverImageId);
+          if (!stillUsed) {
+            void deleteImage(oldJourney.coverImageId);
+          }
+        }
+
+        set((s) => ({
+          journeys: s.journeys.map((j) =>
+            j.id === id ? { ...j, ...patch, updatedAt: Date.now() } : j,
+          ),
+        }));
+      },
+
+      deleteJourney: (id) => {
+        const journey = get().journeys.find((j) => j.id === id);
+        if (!journey) return;
+
+        // 封面图片是否还有其他引用
+        const coverUsed =
+          get().journeys.some((j) => j.id !== id && j.coverImageId === journey.coverImageId) ||
+          get().records.some((r) => r.imageId === journey.coverImageId);
+
+        // 清除所有关联记录的 journeyId（记录保留）
+        const updatedRecords = get().records.map((r) =>
+          r.journeyId === id ? { ...r, journeyId: undefined, updatedAt: Date.now() } : r,
+        );
+
+        set((s) => ({
+          journeys: s.journeys.filter((j) => j.id !== id),
+          records: updatedRecords,
+        }));
+
+        // 封面孤儿清理
+        if (journey.coverImageId && !coverUsed) {
+          void deleteImage(journey.coverImageId);
+        }
+      },
+
+      getJourneyRecords: (journeyId) => {
+        return get()
+          .records.filter((r) => r.journeyId === journeyId)
+          .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
       },
 
       // ── 聚合查询 ──

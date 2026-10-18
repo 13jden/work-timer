@@ -488,6 +488,8 @@ export interface AccountRecord {
   linkageSource?: 'salary-time-mode';
   // ── v3.0 TASK-056：附图（IndexedDB 存 Blob，localStorage 不放图片）
   imageId?: string;
+  // ── v3.0 TASK-059：一程关联
+  journeyId?: string;
 }
 
 /**
@@ -616,6 +618,32 @@ export interface SavingsGoal {
   targetAccountId?: string;
   deadline?: string;       // YYYY-MM-DD
   createdAt: number;
+}
+
+// ── Journey (一程) ──────────────────────────────────────────
+
+/**
+ * 一程（v3.0 TASK-059）
+ *
+ * 围绕一件事的记录集合：可以是支出程（旅行），也可以是收入程（兼职）。
+ * 带封面图，在「我的」页以小红书式瀑布流陈列。
+ */
+export interface Journey {
+  id: string;
+  /** 标题，≤ 20 字 */
+  title: string;
+  /** 支出程 / 收入程，与关联记录 type 必须一致 */
+  type: RecordType;
+  /** 封面图（IndexedDB imageId），无封面则用渐变占位卡 */
+  coverImageId?: string;
+  /** 备注 */
+  note?: string;
+  /** 起始日期（展示用，默认取关联记录 min dateKey） */
+  startKey?: string;        // YYYY-MM-DD
+  /** 结束日期（展示用，默认取关联记录 max dateKey） */
+  endKey?: string;          // YYYY-MM-DD
+  createdAt: number;
+  updatedAt: number;
 }
 
 // ── Accounting Store State ───────────────────────────────────

@@ -1,0 +1,182 @@
+/**
+ * JourneyListPage — 瀑布流样式（v3.0 TASK-059 T-593）
+ */
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+  padding-bottom: 80px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  z-index: 10;
+}
+
+.backBtn {
+  background: var(--paper-2);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms;
+}
+.backBtn:hover { background: var(--paper-3); }
+
+.title {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.addBtn {
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+.addBtn:hover { opacity: 0.85; }
+
+/* ── 瀑布流 ── */
+.masonry {
+  columns: 2;
+  column-gap: 12px;
+  padding: 14px 14px 0;
+}
+
+.card {
+  break-inside: avoid;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: transform 150ms, box-shadow 150ms;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.card:active { transform: scale(0.98); }
+
+.coverImgWrap {
+  width: 100%;
+  overflow: hidden;
+}
+.coverImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.coverPlaceholder {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+}
+.coverPlaceholder.expense {
+  background: linear-gradient(135deg, #ff9b8e 0%, #ff6b6b 100%);
+}
+.coverPlaceholder.income {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+
+.coverAmount {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.cardBody {
+  padding: 10px 12px 12px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.cardEmpty {
+  color: var(--muted-2);
+  font-style: italic;
+}
+
+/* ── 空态 ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.emptyHint {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.emptyAddBtn {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+.emptyAddBtn:hover { opacity: 0.85; }

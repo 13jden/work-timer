@@ -20,6 +20,8 @@ import { WalletSwitchSheet } from './WalletSwitchSheet';
 import { GoalsSection } from './GoalsSection';
 // v3.0 TASK-058：PoolSection → RecurringSection（去池化）
 import { RecurringSection } from '../PoolPage/RecurringSection';
+// v3.0 TASK-059：MINE 页「我一程」入口
+import { JourneySection } from '../Journey/JourneySection';
 import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
@@ -41,6 +43,8 @@ export function MinePage() {
           默认开关=false，CalendarPage 不再写入联动 record。
           未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
       <RecurringSection />
+      {/* v3.0 TASK-059：MINE 页「我一程」入口 */}
+      <JourneySection />
     </div>
   );
 }

@@ -1,0 +1,106 @@
+/**
+ * @fileoverview journeyTotals 单测（v3.0 TASK-059 T-592）
+ */
+import { describe, it, expect } from 'vitest';
+import { journeyTotals, availableJourneys, canAttachToJourney } from './journey';
+import type { AccountRecord, Journey } from '../types';
+
+const mkRecord = (
+  id: string,
+  journeyId: string,
+  amount: number,
+  type: 'income' | 'expense',
+  dateKey: string,
+  poolStatus?: 'claimed',
+): AccountRecord => ({
+  id, journeyId, amount, type, dateKey,
+  categoryId: 'cat-food',
+  accountId: 'acc-1',
+  createdAt: 0, updatedAt: 0,
+  ...(poolStatus ? { poolStatus } : {}),
+});
+
+const mkJourney = (id: string, title: string, type: 'income' | 'expense'): Journey => ({
+  id, title, type,
+  createdAt: 0, updatedAt: 0,
+});
+
+describe('journeyTotals', () => {
+  it('空记录返回零值', () => {
+    const journeys = [mkJourney('j1', '旅行', 'expense')];
+    const totals = journeyTotals(journeys, []);
+    expect(totals.get('j1')).toEqual({
+      journeyId: 'j1', count: 0, total: 0,
+      firstKey: '', lastKey: '',
+      claimedCount: 0, claimedTotal: 0,
+    });
+  });
+
+  it('总额 = Σ|amount|，claimed 单独累计', () => {
+    const journeys = [mkJourney('j1', '旅行', 'expense')];
+    const records = [
+      mkRecord('r1', 'j1', 500, 'expense', '2026-10-01'),
+      mkRecord('r2', 'j1', 300, 'expense', '2026-10-03'),
+      mkRecord('r3', 'j1', 200, 'expense', '2026-10-05', 'claimed'),
+    ];
+    const totals = journeyTotals(journeys, records);
+    expect(totals.get('j1')).toMatchObject({
+      count: 3,
+      total: 1000,
+      firstKey: '2026-10-01',
+      lastKey: '2026-10-05',
+      claimedCount: 1,
+      claimedTotal: 200,
+    });
+  });
+
+  it('firstKey/lastKey 取关联记录的 min/max dateKey', () => {
+    const journeys = [mkJourney('j1', '旅行', 'expense')];
+    const records = [
+      mkRecord('r1', 'j1', 100, 'expense', '2026-10-10'),
+      mkRecord('r2', 'j1', 200, 'expense', '2026-10-05'),
+    ];
+    const totals = journeyTotals(journeys, records);
+    expect(totals.get('j1')?.firstKey).toBe('2026-10-05');
+    expect(totals.get('j1')?.lastKey).toBe('2026-10-10');
+  });
+
+  it('不关联任何记录的一程返回 startKey/endKey', () => {
+    const journey: Journey = {
+      id: 'j1', title: '兼职', type: 'income',
+      startKey: '2026-10-01', endKey: '2026-10-15',
+      createdAt: 0, updatedAt: 0,
+    };
+    const totals = journeyTotals([journey], []);
+    expect(totals.get('j1')).toMatchObject({
+      firstKey: '2026-10-01',
+      lastKey: '2026-10-15',
+    });
+  });
+});
+
+describe('availableJourneys', () => {
+  it('按类型过滤并按 updatedAt 降序', () => {
+    const journeys: Journey[] = [
+      { id: 'j1', title: '旅行', type: 'expense', createdAt: 0, updatedAt: 100 },
+      { id: 'j2', title: '兼职', type: 'income', createdAt: 0, updatedAt: 200 },
+      { id: 'j3', title: '周末游', type: 'expense', createdAt: 0, updatedAt: 50 },
+    ];
+    const result = availableJourneys(journeys, 'expense');
+    expect(result.map((j) => j.id)).toEqual(['j1', 'j3']);
+  });
+});
+
+describe('canAttachToJourney', () => {
+  it('同 type 可以挂', () => {
+    const journey = mkJourney('j1', '旅行', 'expense');
+    const record = mkRecord('r1', '', 100, 'expense', '2026-10-01');
+    expect(canAttachToJourney(record, journey)).toBe(true);
+  });
+
+  it('不同 type 不可以挂', () => {
+    const journey = mkJourney('j1', '兼职', 'income');
+    const record = mkRecord('r1', '', 100, 'expense', '2026-10-01');
+    expect(canAttachToJourney(record, journey)).toBe(false);
+  });
+});

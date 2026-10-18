@@ -1,0 +1,235 @@
+/* JourneyDetailPage 样式 */
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+  padding-bottom: 80px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  z-index: 10;
+}
+.backBtn {
+  background: var(--paper-2);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms;
+}
+.backBtn:hover { background: var(--paper-3); }
+.headerTitle {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.editBtn {
+  background: var(--paper-2);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 150ms;
+}
+.editBtn:hover { background: var(--paper-3); color: var(--ink); }
+
+/* 封面 */
+.cover {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.coverPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.expenseBg {
+  background: linear-gradient(135deg, #ff9b8e 0%, #ff6b6b 100%);
+}
+.incomeBg {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+.coverType {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+/* 信息区 */
+.info {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.badgeExpense {
+  background: color-mix(in srgb, var(--expense) 15%, transparent);
+  color: var(--expense);
+}
+.badgeIncome {
+  background: color-mix(in srgb, var(--income) 15%, transparent);
+  color: var(--income);
+}
+.dateRange {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* 总账条 */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.summaryMain { display: flex; flex-direction: column; gap: 2px; }
+.summaryAmount {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+}
+.summaryLabel { font-size: 12px; color: var(--muted); }
+.summaryStats {
+  display: flex;
+  gap: 16px;
+}
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.statLabel {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.claimedNote {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--paper-2);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-style: italic;
+}
+
+/* 记录清单 */
+.recordsSection {
+  padding: 0 0 16px;
+}
+.sectionHeader {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px 16px 8px;
+}
+.recordsEmpty {
+  text-align: center;
+  color: var(--muted-2);
+  font-size: 14px;
+  padding: 24px 0;
+  font-style: italic;
+}
+.recordRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.recordLeft { display: flex; flex-direction: column; gap: 2px; }
+.recordDate {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.recordNote {
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.recordRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.incomeAmt { font-size: 15px; font-weight: 600; color: var(--income); }
+.expenseAmt { font-size: 15px; font-weight: 600; color: var(--expense); }
+.claimedTag {
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--paper-3);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.addRecordHint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 12px 16px;
+}

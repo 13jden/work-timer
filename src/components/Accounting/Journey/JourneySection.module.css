@@ -1,0 +1,121 @@
+/* JourneySection 样式 */
+.section {
+  padding: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.viewAllBtn {
+  background: none;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.viewAllBtn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.emptyHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 12px;
+  background: var(--paper-2);
+  border-radius: 10px;
+}
+
+.previewRow {
+  display: flex;
+  gap: 10px;
+}
+
+.previewCard {
+  flex: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+}
+
+.previewCover {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.previewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.expenseBg {
+  background: linear-gradient(135deg, #ff9b8e 0%, #ff6b6b 100%);
+}
+.incomeBg {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+.previewAmount {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+}
+
+.previewBody {
+  padding: 8px 10px;
+}
+.previewTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.previewMeta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.addCard {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--line);
+  background: var(--paper-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 150ms;
+  flex-shrink: 0;
+}
+.addCard:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
