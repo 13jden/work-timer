@@ -738,8 +738,12 @@ export const useAccountStore = create<AccountStore>()(
         const isStructural =
           beforeAny &&
           structuralKeys.some((k) => patchAny[k] !== undefined && patchAny[k] !== beforeAny[k]);
+        // v2.5 TASK-046 T-505/T-507：工资池的 noDailyVirtual 标记不得在编辑时丢失
+        const noDailyVirtual = (beforeAny?.['noDailyVirtual'] as boolean | undefined) ?? false;
         set((s) => ({
-          pools: s.pools.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+          pools: s.pools.map((p) =>
+            p.id === id ? { ...p, ...patch, noDailyVirtual: noDailyVirtual || p.noDailyVirtual } : p,
+          ),
         }));
         if (isStructural) {
           get().rebuildPoolCycles(id);
@@ -1564,10 +1568,36 @@ export const useAccountStore = create<AccountStore>()(
 
       ensureSalaryPool: () => {
         const state = get();
-        const existing = state.pools.find(
-          (p) => p.type === 'equalize' && p.direction === 'income' && p.name === '工资池',
+        // v3.0 TASK-058 T-507：不再依赖 name === '工资池' 查找；
+        // 改为以 noDailyVirtual === true 标记识别工资池，避免用户改名后联动断开。
+        const candidates = state.pools.filter(
+          (p) => p.noDailyVirtual === true && p.type === 'equalize' && p.direction === 'income',
         );
-        if (existing) return existing.id;
+        if (candidates.length === 1) return candidates[0]!.id;
+        if (candidates.length > 1) {
+          // v3.0 TASK-058 T-507 兜底：v2.5 旧版因 name 改名后 ensureSalaryPool 找不到,
+          // 会重复创建空池,导致 [老池有 records] + [新池空] 共存。优先选有 records 的池,
+          // 并把空池(0 联动 record)清掉,让 auto-link 不再误写到空池。
+          const recordsByPool = new Map<string, number>();
+          for (const r of state.records) {
+            if (r.linkageSource === 'salary-time-mode' && r.poolId) {
+              recordsByPool.set(r.poolId, (recordsByPool.get(r.poolId) ?? 0) + 1);
+            }
+          }
+          const sorted = [...candidates].sort(
+            (a, b) => (recordsByPool.get(b.id) ?? 0) - (recordsByPool.get(a.id) ?? 0),
+          );
+          const keeper = sorted[0]!;
+          const empties = sorted.slice(1).filter((p) => (recordsByPool.get(p.id) ?? 0) === 0);
+          if (empties.length > 0) {
+            const emptyIds = new Set(empties.map((p) => p.id));
+            set((s) => ({
+              pools: s.pools.filter((p) => !emptyIds.has(p.id)),
+              cycles: s.cycles.filter((c) => !emptyIds.has(c.poolId)),
+            }));
+          }
+          return keeper.id;
+        }
         const created = get().addPool({
           type: 'equalize',
           name: '工资池',
@@ -1609,6 +1639,7 @@ export const useAccountStore = create<AccountStore>()(
 
         const state = get();
         const poolId = get().ensureSalaryPool();
+        const poolName = state.pools.find((p) => p.id === poolId)?.name ?? '工资池';
         const accountId = state.accounts[0]?.id ?? '';
 
         // 找当天已存在的联动 record
@@ -1648,7 +1679,7 @@ export const useAccountStore = create<AccountStore>()(
           set((s) => ({
             records: s.records.map((r) =>
               r.id === linkage.id
-                ? { ...r, amount: abs, updatedAt: now, poolId }
+                ? { ...r, amount: abs, updatedAt: now, poolId, poolName }
                 : r,
             ),
             cycles: s.cycles.map((c) =>
@@ -1675,7 +1706,7 @@ export const useAccountStore = create<AccountStore>()(
           poolId,
           poolDirection: 'in',
           poolStatus: 'confirmed',
-          poolName: '工资池',
+          poolName,
           linkageSource: 'salary-time-mode',
         };
 

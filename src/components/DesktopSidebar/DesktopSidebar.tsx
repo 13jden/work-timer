@@ -14,13 +14,14 @@ import {
   CalendarBlank,
   FishSimple,
   BookOpenText,
+  Gear,
   CaretLeft,
   CaretRight,
 } from '@phosphor-icons/react';
 import { MonthIncomeProgress } from '../MonthIncomeProgress';
 import styles from './DesktopSidebar.module.css';
 
-export type DesktopTabId = 'today' | 'accounting' | 'calendar' | 'fish';
+export type DesktopTabId = 'today' | 'accounting' | 'calendar' | 'fish' | 'mine';
 
 interface DesktopSidebarProps {
   activeTab: DesktopTabId;
@@ -34,6 +35,7 @@ const TABS: Array<{ id: DesktopTabId; label: string; Icon: typeof ClockCounterCl
   { id: 'accounting', label: '记账',  Icon: BookOpenText },
   { id: 'calendar',   label: '日历',  Icon: CalendarBlank },
   { id: 'fish',       label: 'Fish',  Icon: FishSimple },
+  { id: 'mine',       label: '我的',  Icon: Gear },
 ];
 
 export function DesktopSidebar({ activeTab, onTabChange, onOpenSettings }: DesktopSidebarProps) {

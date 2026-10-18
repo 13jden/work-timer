@@ -18,7 +18,8 @@ import { AccountRow } from './AccountRow';
 import { AccountDetailPage } from './AccountDetailPage';
 import { WalletSwitchSheet } from './WalletSwitchSheet';
 import { GoalsSection } from './GoalsSection';
-import { PoolSection } from '../PoolPage/PoolSection';
+// v3.0 TASK-058：PoolSection → RecurringSection（去池化）
+import { RecurringSection } from '../PoolPage/RecurringSection';
 import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
@@ -39,7 +40,7 @@ export function MinePage() {
           联动功能本身保留在 store（ensureSalaryPool / upsertSalaryLinkageForDate），
           默认开关=false，CalendarPage 不再写入联动 record。
           未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
-      <PoolSection />
+      <RecurringSection />
     </div>
   );
 }

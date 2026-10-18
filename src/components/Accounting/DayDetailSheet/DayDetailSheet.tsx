@@ -37,7 +37,7 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
   if (!dateKey) return null;
 
   const dayRecords = records
-    .filter((r) => r.dateKey === dateKey && r.poolStatus !== 'virtual')
+    .filter((r) => r.dateKey === dateKey && r.poolStatus !== 'virtual') // 虚拟预扣不展示
     .sort((a, b) => b.createdAt - a.createdAt);
   const summary = sumRecords(dayRecords);
 

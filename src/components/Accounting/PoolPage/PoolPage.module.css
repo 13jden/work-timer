@@ -88,6 +88,16 @@
   color: var(--danger);
 }
 
+.badgeIncome {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-deep);
+}
+
+.badgePostpay {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
 .statusGenerating {
   background: color-mix(in srgb, var(--accent-deep) 14%, transparent);
   color: var(--accent-deep);
@@ -764,6 +774,102 @@
   font-size: 11px;
   color: var(--accent-deep);
   text-align: center;
+}
+
+/* ── 步骤指示器（TASK-058） ─────────────── */
+.stepIndicator {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stepDot {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.stepDotActive {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ── 步骤导航行 ────────────────────────── */
+.stepNavRow {
+  display: flex;
+  gap: 10px;
+}
+
+.stepBackBtn {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── 实时预览（TASK-058） ─────────────── */
+.recurringPreview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--accent-deep) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-deep) 20%, transparent);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.recurringPreviewLabel {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.recurringPreviewAmount {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* ── 高级选项折叠（TASK-058） ─────────────── */
+.advancedToggle {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.advancedToggle:hover {
+  color: var(--ink);
+}
+
+.advancedToggleArrow {
+  font-size: 10px;
+}
+
+.advancedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
 }
 
 .clearRangeBtn {

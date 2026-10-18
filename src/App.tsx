@@ -46,6 +46,7 @@ function DesktopContent({
   if (activeTab === 'today') {
     return <TodayPage onOpenConvert={() => {}} />;
   }
+  if (activeTab === 'mine') return <MinePage />;
   if (activeTab === 'accounting') return <AccountingPage />;
   if (activeTab === 'fish') return <FishPage />;
   return <CalendarPage isDesktopInline onPickDate={onPickedDate} selectedDate={selectedDate} />;

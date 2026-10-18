@@ -1,20 +1,14 @@
 /**
- * @fileoverview EditPoolModal — 编辑池弹窗（v2.5-patch4 N-483）
+ * @fileoverview EditPoolModal — 编辑定期账弹窗（TASK-058 T-586）
  *
- * 复用 AddPoolModal 的表单结构与样式，按现有 pool 数据预填：
- * - name
- * - direction（equalize）
- * - amount（deposit 直接编辑 / equalize 按 dailyAmount × days 或总额）
- * - dateRange（equalize + cycleMode='daily'）
- * - categoryId（equalize）
- * - settleMode（deposit）
+ * 简化重排（替代原来的复杂表单）：
+ * - 常用字段外露：名称、日期范围 / 押金金额、结算方式
+ * - 高级选项折叠：分类、日均金额
  *
- * 保存调 accountStore.updatePool（结构性字段变化自动触发 rebuildPoolCycles）。
- * 已生成的均摊 record 保留 poolCycleStart/End 快照（不二次调整金额）。
+ * 机制红线：不动 lib/accounting/pool.ts 任何生成 / 认领 / 回滚逻辑。
  */
 import { useEffect, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
-import type { PoolConfig, PoolType } from '../../../lib/types';
 import {
   eachMonthInRange,
   buildDateRangeKeys,
@@ -28,10 +22,6 @@ interface EditPoolModalProps {
   onClose: () => void;
 }
 
-/**
- * 编辑池弹窗。
- * poolId 为 null 时返回 null（不渲染）。
- */
 export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
   const pool = useAccountStore((s) =>
     poolId ? s.pools.find((p) => p.id === poolId) ?? null : null,
@@ -40,46 +30,34 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
   const updatePool = useAccountStore((s) => s.updatePool);
 
   const [name, setName] = useState('');
-  const [direction, setDirection] = useState<'expense' | 'income'>('expense');
-  const [settleMode, setSettleMode] = useState<'prepay' | 'postpay'>('prepay');
   const [amountStr, setAmountStr] = useState('');
   const [dailyStr, setDailyStr] = useState('');
   const [pickStart, setPickStart] = useState<string | null>(null);
   const [pickEnd, setPickEnd] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState('');
+  const [settleMode, setSettleMode] = useState<'prepay' | 'postpay'>('prepay');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** 池类型（编辑时锁定，不允许切换） */
-  const [type] = useState<PoolType>('equalize');
-
-  // 每次 open 或 poolId 变化时，用 pool 当前值重置所有字段
   useEffect(() => {
     if (!open || !pool) return;
     setName(pool.name);
-    setDirection(pool.direction ?? 'expense');
-    setSettleMode(pool.settleMode ?? 'prepay');
     setAmountStr(String(pool.amount ?? ''));
-    if (pool.dailyAmount != null) {
-      setDailyStr(String(pool.dailyAmount));
-    } else {
-      setDailyStr('');
-    }
-    if (pool.dateRange) {
-      setPickStart(pool.dateRange.start);
-      setPickEnd(pool.dateRange.end);
-    } else {
-      setPickStart(null);
-      setPickEnd(null);
-    }
+    setDailyStr(pool.dailyAmount != null ? String(pool.dailyAmount) : '');
+    setPickStart(pool.dateRange?.start ?? null);
+    setPickEnd(pool.dateRange?.end ?? null);
     setCategoryId(pool.categoryId ?? '');
+    setSettleMode(pool.settleMode ?? 'prepay');
+    setAdvancedOpen(false);
     setError(null);
   }, [open, pool]);
 
   if (!open || !pool) return null;
 
-  const directionCategories = categories.filter((c) => c.type === direction);
+  const isEqualize = pool.type === 'equalize';
+  const isIncome = pool.direction === 'income';
+  const directionCategories = categories.filter((c) => c.type === (isIncome ? 'income' : 'expense'));
 
-  // 范围 + 天数
   let days = 0;
   let dateRange: { start: string; end: string } | undefined;
   if (pickStart && pickEnd) {
@@ -105,30 +83,26 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      setError('请输入池名称');
+      setError('请输入名称');
       return;
     }
 
-    if (pool.type === 'deposit') {
+    if (!isEqualize) {
       if (!hasAmount) {
         setError('请输入押金金额');
-        return;
-      }
-      if (!categoryId) {
-        setError('请选择挂载分类');
         return;
       }
       updatePool(pool.id, {
         name: name.trim(),
         settleMode,
         amount: amountVal,
-        categoryId,
+        categoryId: categoryId || undefined,
       });
       onClose();
       return;
     }
 
-    // 均摊型：必须有日期范围 + 金额
+    // 均摊型
     if (!pickStart || !pickEnd || !dateRange) {
       setError('请在日历上选择日期范围');
       return;
@@ -144,7 +118,7 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
 
     const total = hasDaily ? Math.round(dailyVal * days * 100) / 100 : amountVal;
 
-    // v2.5 TASK-046 T-504：若已认领金额 > 新总额，阻止修改
+    // 若已认领金额 > 新总额，阻止修改
     const poolCycles = useAccountStore.getState().cycles.filter((c) => c.poolId === pool.id);
     const claimedTotal = poolCycles.reduce((sum, c) => sum + (c.paidAmount ?? 0), 0);
     if (claimedTotal > total + 1e-9) {
@@ -152,61 +126,41 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
       return;
     }
 
-    const patch: Partial<PoolConfig> = {
+    updatePool(pool.id, {
       name: name.trim(),
-      direction,
       amount: total,
       cycleMode: 'daily',
       dateRange,
       dailyAmount: hasDaily ? dailyVal : undefined,
       categoryId: categoryId || undefined,
-      // 与 AddPoolModal 一致：cycleMonths = 跨自然月数
       cycleMonths: eachMonthInRange(dateRange).length,
-    };
-    updatePool(pool.id, patch);
+    });
     onClose();
   };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalTitle}>编辑池「{pool.name}」</div>
+        <div className={styles.modalTitle}>编辑定期账「{pool.name}」</div>
 
-        {/* 类型锁定：编辑不可切换类型，仅展示 */}
+        {/* 类型锁定提示 */}
         <div className={styles.field}>
-          <label className={styles.fieldLabel}>类型（不可修改）</label>
+          <label className={styles.fieldLabel}>类型</label>
           <div className={styles.typeRow}>
             <div
-              className={`${styles.typeOpt} ${pool.type === 'equalize' ? styles.typeOptActive : ''}`}
+              className={`${styles.typeOpt} ${styles.typeOptActive}`}
               style={{ cursor: 'default' }}
             >
-              <span className={styles.typeOptName}>{pool.type === 'equalize' ? '均摊型' : '存池型'}</span>
-              <span className={styles.typeOptDesc}>
-                {pool.type === 'equalize' ? '逐日均摊' : '押金池'}
+              <span className={styles.typeOptName}>
+                {isEqualize
+                  ? isIncome ? '均摊·收入' : '均摊·支出'
+                  : (pool.settleMode ?? 'prepay') === 'postpay' ? '押金·未付' : '押金·已付'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* v2.5-patch5 N-485：方向 ± 大按钮（与 AddPoolModal 同规格） */}
-        {/* v2.5 TASK-046 T-504：编辑池方向锁定，不展示 ± 按钮行与方向文字
-           catHeader 已显示当前方向 chip；此处直接进入表单 */}
-
-        {/* v2.5-patch5 N-485：顶部分类（均摊型 + 存池型都按当前 direction 过滤） */}
-        <div className={styles.catGrid}>
-          {directionCategories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`${styles.catChipPool} ${categoryId === cat.id ? styles.catChipActive : ''}`}
-              onClick={() => setCategoryId(cat.id)}
-              style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
-            >
-              <span className={styles.catName}>{cat.name}</span>
-            </button>
-          ))}
-        </div>
-
+        {/* 名称 */}
         <div className={styles.field}>
           <label className={styles.fieldLabel}>名称</label>
           <input
@@ -219,10 +173,11 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
           />
         </div>
 
-        {type === 'equalize' && pool.type === 'equalize' && (
+        {/* 均摊：日期范围 */}
+        {isEqualize && (
           <>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>日期范围（日历点选，可跨月）</label>
+              <label className={styles.fieldLabel}>日期范围</label>
               <DateRangePicker start={pickStart} end={pickEnd} onPick={handlePick} />
             </div>
 
@@ -255,22 +210,18 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
               </div>
               {days > 0 && <div className={styles.hint}>共 {days} 天</div>}
               {derivedTotal !== null && (
-                <div className={styles.hint}>
-                  日均 ¥{dailyVal} × {days} 天 = 总额 ¥{derivedTotal}
-                </div>
+                <div className={styles.hint}>日均 ¥{dailyVal} × {days} 天 = 总额 ¥{derivedTotal}</div>
               )}
               {derivedDaily !== null && (
-                <div className={styles.hint}>
-                  总额 ¥{amountVal} ÷ {days} 天 = 日均 ¥{derivedDaily}
-                </div>
+                <div className={styles.hint}>总额 ¥{amountVal} ÷ {days} 天 = 日均 ¥{derivedDaily}</div>
               )}
             </div>
           </>
         )}
 
-        {pool.type === 'deposit' && (
+        {/* 押金：结算方式 + 金额 */}
+        {!isEqualize && (
           <>
-            {/* v2.5 T-416：存池结算方式 */}
             <div className={styles.field}>
               <label className={styles.fieldLabel}>结算方式</label>
               <div className={styles.typeRow}>
@@ -279,7 +230,7 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
                   className={`${styles.typeOpt} ${settleMode === 'prepay' ? styles.typeOptActive : ''}`}
                   onClick={() => setSettleMode('prepay')}
                 >
-                  <span className={styles.typeOptName}>押金 · 先付</span>
+                  <span className={styles.typeOptName}>押金·先付</span>
                   <span className={styles.typeOptDesc}>钱已付出，可退 · 计入绿色资产</span>
                 </button>
                 <button
@@ -292,6 +243,7 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
                 </button>
               </div>
             </div>
+
             <div className={styles.field}>
               <label className={styles.fieldLabel}>押金金额（¥）</label>
               <input
@@ -306,6 +258,40 @@ export function EditPoolModal({ open, poolId, onClose }: EditPoolModalProps) {
               />
             </div>
           </>
+        )}
+
+        {/* 高级选项折叠 */}
+        <button
+          type="button"
+          className={styles.advancedToggle}
+          onClick={() => setAdvancedOpen((v) => !v)}
+        >
+          {advancedOpen ? '收起' : '高级选项'}
+          <span className={styles.advancedToggleArrow}>{advancedOpen ? ' ▲' : ' ▼'}</span>
+        </button>
+
+        {advancedOpen && (
+          <div className={styles.advancedSection}>
+            {/* 分类 */}
+            {isEqualize && (
+              <div className={styles.field}>
+                <label className={styles.fieldLabel}>挂载分类</label>
+                <div className={styles.catGrid}>
+                  {directionCategories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`${styles.catChipPool} ${categoryId === cat.id ? styles.catChipActive : ''}`}
+                      onClick={() => setCategoryId(cat.id)}
+                      style={{ backgroundColor: categoryId === cat.id ? cat.color : undefined }}
+                    >
+                      <span className={styles.catName}>{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {error && <div className={styles.error}>{error}</div>}

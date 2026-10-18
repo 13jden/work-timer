@@ -165,4 +165,93 @@ describe('SalaryLinkageSync', () => {
     );
     expect(todayRecords.length).toBeLessThanOrEqual(1);
   });
+
+  /**
+   * v3.0 TASK-058 T-507 回归：用户改名工资池后,ensureSalaryPool 仍应找到它,
+   * 而不是再创建空池导致联动 record 写到新空池。
+   *
+   * 模拟 v2.5 旧版损坏状态:[改名后有 records 的旧池] + [broken code 创建的空池]
+   * 共存,新版 ensureSalaryPool 必须:
+   *   1) 选有 records 的池作为 keeper
+   *   2) 把空池 + 它的 cycle 清掉
+   *   3) 返回 keeper.id,后续联动 record 仍写到旧池
+   */
+  it('ensureSalaryPool:多个候选池时优先选有 records 的并清理空池', () => {
+    const store = useAccountStore.getState();
+    // 手动建一个「改名后有 records 的旧池」
+    const oldPool = store.addPool({
+      name: '我的工资',
+      type: 'equalize',
+      amount: 0,
+      cycleMonths: 12,
+      cycleMode: 'monthly',
+      dayRange: { start: 1, end: 31 },
+      direction: 'income',
+      noDailyVirtual: true,
+      settleMode: 'prepay',
+      categoryId: 'cat-salary',
+    });
+    // 给旧池加 2 条联动 record
+    const oldId = oldPool.id;
+    useAccountStore.setState((s) => ({
+      records: [
+        ...s.records,
+        {
+          id: 'rec-old-1',
+          dateKey: '2026-08-30',
+          amount: 100,
+          type: 'income' as const,
+          categoryId: 'cat-salary',
+          note: 'time 模式联动',
+          accountId: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          poolId: oldId,
+          poolDirection: 'in' as const,
+          poolStatus: 'confirmed' as const,
+          poolName: '我的工资',
+          linkageSource: 'salary-time-mode' as const,
+        },
+        {
+          id: 'rec-old-2',
+          dateKey: '2026-08-31',
+          amount: 200,
+          type: 'income' as const,
+          categoryId: 'cat-salary',
+          note: 'time 模式联动',
+          accountId: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          poolId: oldId,
+          poolDirection: 'in' as const,
+          poolStatus: 'confirmed' as const,
+          poolName: '我的工资',
+          linkageSource: 'salary-time-mode' as const,
+        },
+      ],
+    }));
+
+    // 模拟 v2.5 broken code 已经创建了空池 + 空 cycle
+    const emptyPool = useAccountStore.getState().addPool({
+      name: '工资池',
+      type: 'equalize',
+      amount: 0,
+      cycleMonths: 12,
+      cycleMode: 'monthly',
+      dayRange: { start: 1, end: 31 },
+      direction: 'income',
+      noDailyVirtual: true,
+      settleMode: 'prepay',
+      categoryId: 'cat-salary',
+    });
+
+    // 调 ensureSalaryPool,期望返回旧池 id 且清掉空池
+    const keeperId = useAccountStore.getState().ensureSalaryPool();
+    expect(keeperId).toBe(oldId);
+    const after = useAccountStore.getState();
+    expect(after.pools.find((p) => p.id === emptyPool.id)).toBeUndefined();
+    expect(after.pools.find((p) => p.id === oldId)).toBeDefined();
+    // 旧池的 records 仍在
+    expect(after.records.filter((r) => r.poolId === oldId).length).toBe(2);
+  });
 });

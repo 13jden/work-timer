@@ -43,7 +43,7 @@ export function TodayRecordsList({
   const today = useMemo(() => dateKey ?? getTodayKey(), [dateKey]);
 
   const todayRecords = useMemo(
-    // v2.3：虚拟池预扣不出现在今日流水
+    // v2.3：虚拟预扣不出现在今日流水
     () => visibleRecords(records)
       .filter((r) => r.dateKey === today)
       .sort((a, b) => b.createdAt - a.createdAt),

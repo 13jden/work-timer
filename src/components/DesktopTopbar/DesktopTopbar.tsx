@@ -21,6 +21,7 @@ const TAB_LABELS: Record<DesktopTabId, { eyebrow: string; title: string }> = {
   accounting: { eyebrow: 'accounting', title: '存钱 · 记一笔' },
   calendar:   { eyebrow: 'calendar',   title: '月度日历' },
   fish:       { eyebrow: 'fish',       title: '摸鱼记录' },
+  mine:       { eyebrow: 'mine',       title: '我的资产' },
 };
 
 export function DesktopTopbar({ activeTab, onOpenSettings }: DesktopTopbarProps) {

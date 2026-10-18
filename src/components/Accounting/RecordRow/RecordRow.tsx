@@ -46,11 +46,11 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
   const category = categories.find((c) => c.id === record.categoryId);
   const account = accounts.find((a) => a.id === record.accountId);
 
-  // 名称：未分类 > 关联池名 > 分类名
+  // 名称：未分类 > 关联定期账名 > 分类名
   const name = record.isUncategorized
     ? '未分类'
     : record.poolId
-      ? (record.poolName ?? '关联池')
+      ? (record.poolName ?? '定期账')
       : (category?.name ?? '未知分类');
 
   const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
@@ -75,11 +75,12 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
       <span className={styles.info}>
         <span className={styles.name}>
           {name}
-          {isClaimed && <span className={styles.tagClaimed}>已关联池 · 不计统计</span>}
-          {isSettled && <span className={styles.tagSettled}>已关联池</span>}
+          {isClaimed && <span className={styles.tagClaimed}>已关联 · 不计统计</span>}
+          {isSettled && <span className={styles.tagSettled}>已关联</span>}
           {isPoolDaily && !isSettled && (
             <span className={record.poolDirection === 'in' ? styles.tagVirtualIn : styles.tagVirtualOut}>
-              {record.poolDirection === 'in' ? '虚拟到账' : '虚拟均摊'}
+              {record.poolDirection === 'in' ? '预计到账' : '均摊'}
+              {record.poolName ? ` · ${record.poolName}` : ''}
             </span>
           )}
         </span>
