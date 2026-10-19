@@ -35,6 +35,8 @@ interface AddRecordModalProps {
   defaultType?: RecordType;
   /** v3.0 TASK-057：钱包详情页快捷添加时预填账户 ID（开启钱包时生效） */
   defaultAccountId?: string;
+  /** v3.0 TASK-059：从一程详情页添加时预填所属一程 */
+  defaultJourneyId?: string;
   onClose: () => void;
   /** 保存成功 */
   onSaved?: (recordId: string) => void;
@@ -46,6 +48,7 @@ export function AddRecordModal({
   defaultDate,
   defaultType,
   defaultAccountId,
+  defaultJourneyId,
   onClose,
   onSaved,
 }: AddRecordModalProps) {
@@ -271,6 +274,8 @@ export function AddRecordModal({
       dateKey,
       accountId,
       isUncategorized: false,
+      // v3.0 TASK-059：从一程详情页添加时预填所属一程
+      ...(defaultJourneyId ? { journeyId: defaultJourneyId } : {}),
     };
 
     if (editingRecord) {
@@ -360,6 +365,8 @@ export function AddRecordModal({
       dateKey,
       accountId,
       isUncategorized: false,
+      // v3.0 TASK-059：从一程详情页添加时预填所属一程
+      ...(defaultJourneyId ? { journeyId: defaultJourneyId } : {}),
     };
     if (editingRecord) {
       updateRecord(editingRecord.id, { ...patchBase, imageId: savedImageId });

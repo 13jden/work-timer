@@ -42,9 +42,9 @@ export function MinePage() {
           联动功能本身保留在 store（ensureSalaryPool / upsertSalaryLinkageForDate），
           默认开关=false，CalendarPage 不再写入联动 record。
           未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
-      <RecurringSection />
-      {/* v3.0 TASK-059：MINE 页「我一程」入口 */}
+      {/* v3.0 TASK-059：MINE 页「我一程」入口（位于定期账单之上） */}
       <JourneySection />
+      <RecurringSection />
     </div>
   );
 }

@@ -1,15 +1,14 @@
 /**
- * @fileoverview JourneySection — MINE 页「我一程」入口区（v3.0 TASK-059 T-596）
+ * @fileoverview JourneySection — MINE 页「我一程」入口区（v3.0 TASK-059 T-596 重设计）
  *
- * 最近 2 程预览卡 + 「查看全部」按钮。
- * 点击「查看全部」→ JourneyListPage（全屏）。
+ * 设计语言：登机牌 / 护照页风格 —— 一张横向卡，左侧是邮戳 + 标题，
+ * 右侧是「查看全部」。点击整张卡打开 JourneyListPage。
  */
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { journeyTotals } from '../../../lib/accounting/journey';
-import { formatAmount } from '../../../lib/accounting';
 import { JourneyListPage } from './JourneyListPage';
-import { Plus } from '@phosphor-icons/react';
+import { ArrowUpRight, AirplaneTilt } from '@phosphor-icons/react';
 import styles from './JourneySection.module.css';
 
 export function JourneySection() {
@@ -19,7 +18,7 @@ export function JourneySection() {
 
   const summaries = useMemo(() => journeyTotals(journeys, records), [journeys, records]);
 
-  // 最近 2 程：按 lastKey 降序取前 2
+  // 最近 1 程的最近日期 + 笔数
   const recent = useMemo(() => {
     return [...journeys]
       .sort((a, b) => {
@@ -29,64 +28,66 @@ export function JourneySection() {
         const keyB = sB?.lastKey ?? String(b.updatedAt);
         return keyB.localeCompare(keyA);
       })
-      .slice(0, 2);
+      .slice(0, 1)[0];
   }, [journeys, summaries]);
 
   if (listOpen) {
     return <JourneyListPage onBack={() => setListOpen(false)} />;
   }
 
+  const totalCount = journeys.length;
+  const recentSummary = recent ? summaries.get(recent.id) : undefined;
+  const recentDate = recentSummary?.lastKey ?? '';
+
   return (
-    <section className={styles.section}>
-      <div className={styles.header}>
-        <div>
-          <div className={styles.title}>我一程</div>
-          <div className={styles.sub}>记录每一次旅行、兼职</div>
+    <section
+      className={styles.card}
+      onClick={() => setListOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && setListOpen(true)}
+      aria-label="打开一程列表"
+    >
+      {/* 左上：邮戳 */}
+      <div className={styles.stamp}>
+        <div className={styles.stampCircle}>
+          <AirplaneTilt size={16} weight="fill" />
         </div>
-        <button type="button" className={styles.viewAllBtn} onClick={() => setListOpen(true)}>
-          查看全部
+        <span className={styles.stampText}>JOURNEY</span>
+      </div>
+
+      {/* 主区 */}
+      <div className={styles.body}>
+        <div className={styles.eyebrow}>
+          <span>我的一程</span>
+          {totalCount > 0 && <span className={styles.eyebrowDot} />}
+          {totalCount > 0 && <span>{totalCount} 段</span>}
+        </div>
+        <div className={styles.title}>
+          {totalCount === 0 ? '把一次旅行、一次兼职记成一程' : recent?.title ?? '一程'}
+        </div>
+        {totalCount > 0 && recentSummary && recentSummary.count > 0 && (
+          <div className={styles.meta}>
+            {recentSummary.count} 笔{recentDate && ` · 截至 ${recentDate.slice(5)}`}
+          </div>
+        )}
+      </div>
+
+      {/* 右上：开口按钮 */}
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.viewBtn}
+          onClick={(e) => { e.stopPropagation(); setListOpen(true); }}
+          aria-label="查看全部一程"
+          title="查看全部"
+        >
+          <ArrowUpRight size={16} weight="bold" />
         </button>
       </div>
 
-      {journeys.length === 0 ? (
-        <div className={styles.emptyHint}>
-          <span>✈</span> 把一次旅行、一次兼职记成一程
-        </div>
-      ) : (
-        <div className={styles.previewRow}>
-          {recent.map((journey) => {
-            const summary = summaries.get(journey.id);
-            return (
-              <div key={journey.id} className={styles.previewCard}>
-                <div className={`${styles.previewCover} ${journey.type === 'income' ? styles.incomeBg : styles.expenseBg}`}>
-                  {journey.coverImageId ? (
-                    <img src={`__image__:${journey.coverImageId}`} alt="封面" className={styles.previewImg} />
-                  ) : (
-                    <span className={styles.previewAmount}>
-                      {journey.type === 'income' ? '+' : '-' }¥{formatAmount(summary?.total ?? 0)}
-                    </span>
-                  )}
-                </div>
-                <div className={styles.previewBody}>
-                  <div className={styles.previewTitle}>{journey.title}</div>
-                  <div className={styles.previewMeta}>
-                    {summary ? `${summary.count} 笔` : '暂无记录'}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          <button
-            type="button"
-            className={styles.addCard}
-            onClick={() => setListOpen(true)}
-            aria-label="新建一程"
-            title="新建一程"
-          >
-            <Plus size={24} />
-          </button>
-        </div>
-      )}
+      {/* 撕角装饰（登机牌风） */}
+      <div className={styles.perforation} aria-hidden />
     </section>
   );
 }
