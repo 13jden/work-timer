@@ -44,7 +44,7 @@ v3.0 做一次 **减法 + 叙事**：
 | TASK-056 | 记录附图（本地图片） | Phase 2 | 无 | ⏳ 待开发 | [`TASK-056-v3.0-record-images.md`](./TASK-056-v3.0-record-images.md) |
 | TASK-057 | 取消钱包 · 总资产直接改 | Phase 3 | 无 | ✅ 完成 | [`TASK-057-v3.0-total-assets.md`](./TASK-057-v3.0-total-assets.md) |
 | TASK-058 | 池 → 定期账（简化 + 更名） | Phase 4 | TASK-057 | ⏳ 待开发 | [`TASK-058-v3.0-pool-to-recurring.md`](./TASK-058-v3.0-pool-to-recurring.md) |
-| TASK-059 | 一程（消费块 + 瀑布流） | Phase 5 | TASK-056 / 057 | ⏳ 待开发 | [`TASK-059-v3.0-journey.md`](./TASK-059-v3.0-journey.md) |
+| TASK-059 | 一程（消费块 + 瀑布流） | Phase 5 | TASK-056 / 057 | ✅ 完成 | [`TASK-059-v3.0-journey.md`](./TASK-059-v3.0-journey.md) |
 
 **推进顺序理由**：055 / 056 是无数据迁移的独立小改，先拿快赢；057 是数据迁移重头，单独一阶段；058 依赖 057 定稿的资产页新布局；059 依赖 056 的图片管线与 057 之后的记录弹窗（账户选择器已移除，避免二次改动）。
 

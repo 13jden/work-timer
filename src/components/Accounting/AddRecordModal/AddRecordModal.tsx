@@ -20,9 +20,11 @@ import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
 import { IconByKey } from '../../IconByKey';
 import { AddCategoryModal } from '../AddCategoryModal';
+import { JourneySelector } from '../Journey/JourneySelector';
 import { compressImage, genImageId, ImageCompressError } from '../../../lib/imageCompress';
 import { putImage, isImageDBSupported } from '../../../lib/imageStore';
 import { useImage } from '../../../hooks/useImage';
+import { AirplaneTilt, X } from '@phosphor-icons/react';
 import styles from './AddRecordModal.module.css';
 
 interface AddRecordModalProps {
@@ -70,6 +72,9 @@ export function AddRecordModal({
   const [note, setNote] = useState('');
   const [dateKey, setDateKey] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
+  // v3.0 TASK-059：「旅游记录」chip 状态
+  const [journeyId, setJourneyId] = useState<string>('');
+  const [showJourneySelector, setShowJourneySelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
 
@@ -100,6 +105,8 @@ export function AddRecordModal({
       setNote(editingRecord.note ?? '');
       setDateKey(editingRecord.dateKey);
       setAccountId(editingRecord.accountId);
+      // v3.0 TASK-059：从编辑记录回填所属一程
+      setJourneyId(editingRecord.journeyId ?? '');
     } else {
       setAmountStr('');
       setType(defaultType ?? 'expense');
@@ -115,6 +122,8 @@ export function AddRecordModal({
       } else {
         setAccountId(accounts[0]?.id ?? '');
       }
+      // v3.0 TASK-059：从一程详情页进入时预填所属一程
+      setJourneyId(defaultJourneyId ?? '');
     }
     // 打开 modal 时：清空上一轮的图片状态
     setPendingBlob(null);
@@ -168,6 +177,14 @@ export function AddRecordModal({
       setCategoryId(filteredCategories[0]?.id ?? '');
     }
   }, [type, filteredCategories, categoryId]);
+
+  // v3.0 TASK-059：类型切换时清空 journeyId（一程类型必须匹配）
+  const journeys = useAccountStore((s) => s.journeys);
+  useEffect(() => {
+    if (journeyId && !journeys.find((j) => j.id === journeyId && j.type === type)) {
+      setJourneyId('');
+    }
+  }, [type, journeyId, journeys]);
 
   // ── v3.0 TASK-056：图片处理 ──────────────────────────────
   const handlePickFile = async (file: File) => {
@@ -275,7 +292,7 @@ export function AddRecordModal({
       accountId,
       isUncategorized: false,
       // v3.0 TASK-059：从一程详情页添加时预填所属一程
-      ...(defaultJourneyId ? { journeyId: defaultJourneyId } : {}),
+      ...(journeyId ? { journeyId } : {}),
     };
 
     if (editingRecord) {
@@ -366,7 +383,7 @@ export function AddRecordModal({
       accountId,
       isUncategorized: false,
       // v3.0 TASK-059：从一程详情页添加时预填所属一程
-      ...(defaultJourneyId ? { journeyId: defaultJourneyId } : {}),
+      ...(journeyId ? { journeyId } : {}),
     };
     if (editingRecord) {
       updateRecord(editingRecord.id, { ...patchBase, imageId: savedImageId });
@@ -540,7 +557,7 @@ export function AddRecordModal({
         {/* v3.0 TASK-056：图片错误提示 */}
         {imageError && <div className={styles.error}>{imageError}</div>}
 
-        {/* ── 字段行：日期 / 账户(v3.0 TASK-057：钱包关闭时仅日期) ── */}
+        {/* ── 字段行：日期 / 账户(v3.0 TASK-057：钱包关闭时仅日期) / 一程(v3.0 TASK-059) ── */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldCell}>
             <div className={styles.fieldLabel}>日期</div>
@@ -573,6 +590,44 @@ export function AddRecordModal({
               </div>
             </>
           )}
+          {/* v3.0 TASK-059：旅游记录 chip
+              - 钱包开启：放在账户右边
+              - 钱包关闭：放在原「账户」位置 */}
+          <span className={styles.fieldDivider} aria-hidden />
+          <div className={styles.fieldCell}>
+            <div className={styles.fieldLabel}>旅游记录</div>
+            {journeyId ? (
+              <button
+                type="button"
+                className={styles.journeyChip}
+                onClick={() => setShowJourneySelector(true)}
+                title="点击更换"
+              >
+                <AirplaneTilt size={12} weight="fill" />
+                <span className={styles.journeyChipText}>
+                  {journeys.find((j) => j.id === journeyId)?.title ?? '已关联'}
+                </span>
+                <span
+                  className={styles.journeyChipRemove}
+                  onClick={(e) => { e.stopPropagation(); setJourneyId(''); }}
+                  role="button"
+                  aria-label="移除旅游记录"
+                  title="移除"
+                >
+                  <X size={12} weight="bold" />
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.journeyChipAdd}
+                onClick={() => setShowJourneySelector(true)}
+              >
+                <span className={styles.journeyChipAddPlus}>+</span>
+                <span>添加</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -658,6 +713,15 @@ export function AddRecordModal({
           }}
         />
       )}
+
+      {/* v3.0 TASK-059：所属一程选择器 */}
+      <JourneySelector
+        open={showJourneySelector}
+        type={type}
+        selectedId={journeyId || undefined}
+        onPick={(id) => setJourneyId(id ?? '')}
+        onClose={() => setShowJourneySelector(false)}
+      />
     </div>
   );
 }

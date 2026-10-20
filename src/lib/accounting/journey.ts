@@ -10,7 +10,11 @@ import type { AccountRecord, Journey, RecordType } from '../types';
 export interface JourneySummary {
   journeyId: string;
   count: number;
+  /** 总额（Σ |amount|） */
   total: number;
+  /** v3.0 TASK-059 fix: 按类型分别汇总，用于详情页推断实际类型 */
+  expenseTotal: number;
+  incomeTotal: number;
   firstKey: string;   // 最早 dateKey
   lastKey: string;    // 最晚 dateKey
   /** 已关联定期账的笔数（详情页标注用） */
@@ -35,6 +39,8 @@ export function journeyTotals(
         journeyId: journey.id,
         count: 0,
         total: 0,
+        expenseTotal: 0,
+        incomeTotal: 0,
         firstKey: journey.startKey ?? '',
         lastKey: journey.endKey ?? '',
         claimedCount: 0,
@@ -48,11 +54,15 @@ export function journeyTotals(
     const lastKey = sorted[sorted.length - 1]!.dateKey;
 
     let total = 0;
+    let expenseTotal = 0;
+    let incomeTotal = 0;
     let claimedCount = 0;
     let claimedTotal = 0;
     for (const r of linked) {
       const abs = Math.abs(r.amount);
       total += abs;
+      if (r.type === 'expense') expenseTotal += abs;
+      else incomeTotal += abs;
       if (r.poolStatus === 'claimed') {
         claimedCount++;
         claimedTotal += abs;
@@ -63,6 +73,8 @@ export function journeyTotals(
       journeyId: journey.id,
       count: linked.length,
       total: Math.round(total * 100) / 100,
+      expenseTotal: Math.round(expenseTotal * 100) / 100,
+      incomeTotal: Math.round(incomeTotal * 100) / 100,
       firstKey,
       lastKey,
       claimedCount,

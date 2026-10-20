@@ -31,12 +31,13 @@ describe('journeyTotals', () => {
     const totals = journeyTotals(journeys, []);
     expect(totals.get('j1')).toEqual({
       journeyId: 'j1', count: 0, total: 0,
+      expenseTotal: 0, incomeTotal: 0,
       firstKey: '', lastKey: '',
       claimedCount: 0, claimedTotal: 0,
     });
   });
 
-  it('总额 = Σ|amount|，claimed 单独累计', () => {
+  it('总额 = Σ|amount|，按类型分组，claimed 单独累计', () => {
     const journeys = [mkJourney('j1', '旅行', 'expense')];
     const records = [
       mkRecord('r1', 'j1', 500, 'expense', '2026-10-01'),
@@ -47,10 +48,27 @@ describe('journeyTotals', () => {
     expect(totals.get('j1')).toMatchObject({
       count: 3,
       total: 1000,
+      expenseTotal: 1000,
+      incomeTotal: 0,
       firstKey: '2026-10-01',
       lastKey: '2026-10-05',
       claimedCount: 1,
       claimedTotal: 200,
+    });
+  });
+
+  it('收入与支出分别累计到 incomeTotal / expenseTotal', () => {
+    const journeys = [mkJourney('j1', '杂项', 'expense')];
+    const records = [
+      mkRecord('r1', 'j1', 500, 'expense', '2026-10-01'),
+      mkRecord('r2', 'j1', 200, 'income', '2026-10-03'),
+    ];
+    const totals = journeyTotals(journeys, records);
+    expect(totals.get('j1')).toMatchObject({
+      count: 2,
+      total: 700,
+      expenseTotal: 500,
+      incomeTotal: 200,
     });
   });
 

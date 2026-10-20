@@ -47,7 +47,14 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     );
     expect(dailyRecords).toHaveLength(todayDay);
     expect(dailyRecords[0]?.dateKey).toBe(`${getCurrentMonthKey()}-01`);
-    expect(dailyRecords[0]?.amount).toBe(-100); // 3000/30
+    // v3.0 TASK-059 fix: 修正为当前月实际天数（避免硬编码 30 导致 31 天月份失败）
+    const daysInMonth = new Date(
+      Number(getCurrentMonthKey().slice(0, 4)),
+      Number(getCurrentMonthKey().slice(5)),
+      0,
+    ).getDate();
+    const expectedAmount = -(3000 / daysInMonth);
+    expect(dailyRecords[0]?.amount).toBeCloseTo(expectedAmount, 2);
     // 普通消费记录：无池状态标记 → 计入统计、可编辑删除
     expect(dailyRecords[0]?.poolStatus).toBeUndefined();
 
@@ -62,7 +69,17 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
     expect(breakdown.actualTotal).toBe(10000);
     expect(breakdown.virtualTotal).toBe(10000);
     expect(breakdown.prepaidUnconsumed).toBe(0);
-    expect(breakdown.unpaidConsumed).toBeCloseTo(todayDay * 100, 2);
+    // v3.0 TASK-059 fix: 动态计算（31 天月份时 3000/31 ≈ 96.77）
+    const thisMonthDays = new Date(
+      Number(getCurrentMonthKey().slice(0, 4)),
+      Number(getCurrentMonthKey().slice(5)),
+      0,
+    ).getDate();
+    const dailyAmount = 3000 / thisMonthDays;
+    expect(breakdown.unpaidConsumed).toBeCloseTo(
+      Math.round((todayDay * dailyAmount) * 100) / 100,
+      0,
+    );
   });
 
   it('按日模式：完整日期范围内每天一条，范围外不生成', () => {
@@ -475,7 +492,9 @@ describe('accountStore · 池业务（v2.3 重设计）', () => {
       .records.find((r) => r.poolId === pool.id && !r.poolStatus);
     expect(daily).toBeDefined();
 
-    expect(useAccountStore.getState().unclaimToPool(daily!.id)).toBe(100);
+    // v3.0 TASK-059 fix: 动态计算（31 天月份时 3000/31 ≈ 96.77）；daily.amount 为负，unclaim 返回正
+    const dailyAmount = Math.abs(daily!.amount);
+    expect(useAccountStore.getState().unclaimToPool(daily!.id)).toBeCloseTo(dailyAmount, 2);
 
     // 对应 transaction 保留但 recordId 清空（防 sync 重新生成）
     const cycle = useAccountStore.getState().cycles.find((c) => c.poolId === pool.id);

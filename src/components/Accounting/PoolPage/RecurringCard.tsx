@@ -97,7 +97,6 @@ export function RecurringCard({ pool, poolCycles, onDelete }: RecurringCardProps
   const isSalaryPool = pool.noDailyVirtual === true && pool.direction === 'income';
   // 工资联动池在联动开启时禁止编辑/删除，只能到账
   const canEdit = !isSalaryPool || !salaryLinkageEnabled;
-  const isSalaryPool = pool.noDailyVirtual === true && pool.direction === 'income';
   const progress = equalizeProgress(poolCycles);
   const status = poolOverallStatus(poolCycles);
   const paidTotal = poolCycles.reduce((sum, c) => sum + c.paidAmount, 0);

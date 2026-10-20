@@ -1,16 +1,22 @@
 /**
- * @fileoverview JourneyDetailPage — 一程详情页（v3.0 TASK-059 T-594 重设计）
+ * @fileoverview JourneyDetailPage — 旅游记录详情页（v3.0 TASK-059 T-594 重设计）
  *
- * 设计：英雄封面 + 邮戳日期 + 大字 serif 标题 + 总账 + 「给这一程记一笔」/「关联其他」CTA。
+ * 设计：英雄封面 + 邮戳日期 + 大字 serif 标题 + 总账 + 「给这段记一笔」/「关联其他」CTA。
+ * v3.0 TASK-059 fix: 封面图可点击更换（原生文件选择 + imageStore）
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { journeyTotals } from '../../../lib/accounting/journey';
 import { formatAmount } from '../../../lib/accounting';
 import { JourneyEditModal } from './JourneyEditModal';
 import { JourneyRecordPicker } from './JourneyRecordPicker';
 import { AddRecordModal } from '../AddRecordModal/AddRecordModal';
-import { ArrowLeft, Plus, Link as LinkIcon, PencilSimple, AirplaneTilt } from '@phosphor-icons/react';
+import { compressImage, genImageId } from '../../../lib/imageCompress';
+import { putImage } from '../../../lib/imageStore';
+import { useImage } from '../../../hooks/useImage';
+import {
+  ArrowLeft, Plus, Link as LinkIcon, PencilSimple, AirplaneTilt, Image as ImageIcon,
+} from '@phosphor-icons/react';
 import styles from './JourneyDetailPage.module.css';
 
 interface JourneyDetailPageProps {
@@ -23,8 +29,32 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
   const records = useAccountStore((s) => s.records);
   const getJourneyRecords = useAccountStore((s) => s.getJourneyRecords);
   const [editOpen, setEditOpen] = useState(false);
+  const updateJourney = useAccountStore((s) => s.updateJourney);
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
   const [addRecordOpen, setAddRecordOpen] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  if (!journey) return null;
+
+  // v3.0 TASK-059 fix: 用 useImage hook 从 IndexedDB 加载封面（支持 ObjectURL 管理）
+  const { url: coverUrl } = useImage(journey.coverImageId);
+
+  // v3.0 TASK-059 fix: 点击封面 → 更换封面图（原生文件选择）
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await compressImage(file);
+      const imageId = genImageId();
+      const ok = await putImage(imageId, result.blob);
+      if (!ok) { return; }
+      updateJourney(journeyId, { coverImageId: imageId });
+    } catch {
+      // 图片处理失败，静默忽略（用户可重试）
+    }
+    // 清空 input，允许重复选同一张
+    e.target.value = '';
+  };
 
   if (!journey) return null;
 
@@ -35,6 +65,13 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
 
   const summaries = useMemo(() => journeyTotals([journey], records), [journey, records]);
   const summary = summaries.get(journeyId);
+
+  // v3.0 TASK-059 fix: 类型由关联记录决定，不依赖新建时的默认值
+  const expenseTotal = summary?.expenseTotal ?? 0;
+  const incomeTotal = summary?.incomeTotal ?? 0;
+  const effectiveType: 'income' | 'expense' =
+    incomeTotal > expenseTotal ? 'income' : 'expense';
+  const effectiveTotal = effectiveType === 'income' ? incomeTotal : expenseTotal;
 
   const spanDays = summary && summary.firstKey && summary.lastKey
     ? Math.round(
@@ -53,19 +90,39 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
         <button type="button" className={styles.backBtn} onClick={onBack} aria-label="返回">
           <ArrowLeft size={18} weight="bold" />
         </button>
-        <div className={styles.headerTitle}>一程</div>
+        <div className={styles.headerTitle}>旅游记录</div>
         <button type="button" className={styles.editBtn} onClick={() => setEditOpen(true)} aria-label="编辑">
           <PencilSimple size={16} />
         </button>
       </div>
 
-      {/* 英雄封面 */}
-      <div className={styles.hero}>
+      {/* 英雄封面（点击可更换） */}
+      {/* v3.0 TASK-059 fix: 点击封面 → 触发文件选择 */}
+      <div className={styles.hero} onClick={() => coverInputRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && coverInputRef.current?.click()} aria-label="点击更换封面">
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          className={styles.hiddenInput}
+          onChange={handleCoverChange}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         {journey.coverImageId ? (
-          <img src={`__image__:${journey.coverImageId}`} alt="封面" className={styles.heroImg} />
+          <>
+            <img src={coverUrl ?? ''} alt="封面" className={styles.heroImg} />
+            {/* 更换图标浮层 */}
+            <div className={styles.coverOverlay} aria-hidden>
+              <ImageIcon size={28} weight="duotone" />
+            </div>
+          </>
         ) : (
-          <div className={`${styles.heroBg} ${journey.type === 'income' ? styles.incomeBg : styles.expenseBg}`}>
+          <div className={`${styles.heroBg} ${effectiveType === 'income' ? styles.incomeBg : styles.expenseBg}`}>
             <AirplaneTilt size={64} weight="duotone" />
+            <div className={styles.coverAddHint}>
+              <ImageIcon size={18} weight="duotone" />
+              <span>设置封面</span>
+            </div>
           </div>
         )}
         {/* 邮戳 */}
@@ -76,7 +133,7 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
                 {(summary.firstKey || summary.lastKey || '').slice(2, 7).replace('-', '/')}
               </span>
               <span className={styles.stampDivider} />
-              <span className={styles.stampType}>{journey.type === 'income' ? '收入' : '支出'}</span>
+              <span className={styles.stampType}>{effectiveType === 'income' ? '收入' : '支出'}</span>
             </div>
           </div>
         )}
@@ -91,10 +148,16 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
 
       {/* 总账条 */}
       <div className={styles.totalBox}>
+        {/* v3.0 TASK-059 fix: 按实际记录展示金额，不依赖 journey.type */}
         <div className={styles.totalMain}>
-          <span className={styles.totalLabel}>{journey.type === 'income' ? '总收入' : '总支出'}</span>
+          <span className={styles.totalLabel}>
+            {effectiveType === 'income' ? '总收入' : '总支出'}
+            {incomeTotal > 0 && expenseTotal > 0 && (
+              <span className={styles.totalMix}>（含两类）</span>
+            )}
+          </span>
           <span className={styles.totalAmount}>
-            {journey.type === 'income' ? '+' : '-'}¥{formatAmount(summary?.total ?? 0, true)}
+            {effectiveType === 'income' ? '+' : '-'}¥{formatAmount(effectiveTotal, true)}
           </span>
         </div>
         <div className={styles.totalStats}>
@@ -129,7 +192,7 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
           onClick={() => setAddRecordOpen(true)}
         >
           <Plus size={16} weight="bold" />
-          <span>给这一程记一笔</span>
+          <span>给这段记一笔</span>
         </button>
         <button
           type="button"
@@ -154,7 +217,7 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
         {linkedRecords.length === 0 ? (
           <div className={styles.recordsEmpty}>
             <span className={styles.recordsEmptyIcon}>📒</span>
-            <span>还没有记录 · 试试「给这一程记一笔」</span>
+            <span>还没有记录 · 试试「给这段记一笔」</span>
           </div>
         ) : (
           <div className={styles.recordsList}>

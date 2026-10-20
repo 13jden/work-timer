@@ -420,6 +420,74 @@
   flex-shrink: 0;
 }
 
+/* v3.0 TASK-059：所属一程 chip（fieldCell 内嵌一个完整 chip） */
+.journeyChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 6px 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 100%;
+  transition: opacity 150ms;
+}
+.journeyChip:hover { opacity: 0.88; }
+.journeyChipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+.journeyChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--paper);
+  margin-left: 2px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.journeyChipRemove:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+.journeyChipAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--paper-2);
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.journeyChipAdd:hover {
+  background: var(--paper-3);
+  color: var(--ink);
+  border-color: var(--ink);
+  border-style: solid;
+}
+.journeyChipAddPlus {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
 /* ── 备注：单行输入（独立样式, 此处为历史遗留, 当前使用上面的 .minimalNote） ── */
 
 /* ── v3.0 TASK-056：分类区 4 列 × 2.5 行可滚动（用户要求） ── */

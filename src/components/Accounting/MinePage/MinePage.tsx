@@ -20,13 +20,43 @@ import { WalletSwitchSheet } from './WalletSwitchSheet';
 import { GoalsSection } from './GoalsSection';
 // v3.0 TASK-058：PoolSection → RecurringSection（去池化）
 import { RecurringSection } from '../PoolPage/RecurringSection';
-// v3.0 TASK-059：MINE 页「我一程」入口
+// v3.0 TASK-059：MINE 页「旅游记录」入口
 import { JourneySection } from '../Journey/JourneySection';
+import { JourneyListPage } from '../Journey/JourneyListPage';
+import { JourneyDetailPage } from '../Journey/JourneyDetailPage';
 import { PageTopbar } from '../../PageTopbar';
 import styles from './MinePage.module.css';
 
 export function MinePage() {
   const accountCount = useAccountStore((s) => s.accounts.length);
+  const [pageMode, setPageMode] = useState<'mine' | 'list' | 'detail'>('mine');
+  const [detailJourneyId, setDetailJourneyId] = useState<string | null>(null);
+
+  // v3.0 TASK-059：旅游记录页面独立全屏（不再内嵌于 MINE）
+  if (pageMode !== 'mine') {
+    if (pageMode === 'list') {
+      return (
+        <JourneyListPage
+          onBack={() => setPageMode('mine')}
+          onPick={(id) => {
+            setDetailJourneyId(id);
+            setPageMode('detail');
+          }}
+        />
+      );
+    }
+    if (detailJourneyId) {
+      return (
+        <JourneyDetailPage
+          journeyId={detailJourneyId}
+          onBack={() => setPageMode('list')}
+        />
+      );
+    }
+    setPageMode('list');
+    return null;
+  }
+
   return (
     <div className={styles.page}>
       {/* v2.5 T-415：与计时侧设置页位置对应的标题栏 */}
@@ -42,8 +72,8 @@ export function MinePage() {
           联动功能本身保留在 store（ensureSalaryPool / upsertSalaryLinkageForDate），
           默认开关=false，CalendarPage 不再写入联动 record。
           未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
-      {/* v3.0 TASK-059：MINE 页「我一程」入口（位于定期账单之上） */}
-      <JourneySection />
+      {/* v3.0 TASK-059：MINE 页「旅游记录」入口（位于定期账单之上） */}
+      <JourneySection onOpen={() => setPageMode('list')} />
       <RecurringSection />
     </div>
   );

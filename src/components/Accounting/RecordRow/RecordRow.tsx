@@ -1,8 +1,8 @@
 /**
- * @fileoverview RecordRow — 记账记录行共用组件（v3.0 TASK-055 T-555 + TASK-056）
+ * @fileoverview RecordRow — 记账记录行共用组件（v3.0 TASK-055 T-555 + TASK-056 + TASK-059 fix）
  *
  * 日视图 / 月视图列表 / 年视图列表共用的记录行。
- * 展示：分类图标 + 分类名/池名 + 备注 + 账户标签 + 缩略图（v3.0）+ 金额。
+ * 展示：分类图标 + 分类名/池名 + 备注 + 账户标签 + 缩略图（v3.0）+ 旅游记录 chip（v3.0）+ 金额。
  * 不含拖拽逻辑（拖拽由调用方在 StatsPage 层通过 dnd-kit 包装）。
  */
 import { useAccountStore } from '../../../store/accountStore';
@@ -11,6 +11,7 @@ import type { AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
 import { IconByKey } from '../../IconByKey';
 import { RecordThumb } from '../RecordThumb';
+import { AirplaneTilt } from '@phosphor-icons/react';
 import styles from './RecordRow.module.css';
 
 export interface RecordRowProps {
@@ -41,10 +42,13 @@ function formatSettledDate(ts: number): string {
 export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
   const categories = useAccountStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
+  // v3.0 TASK-059 fix：行尾展示关联的旅游记录（与钱包标签同位置 — 类似钱包分类）
+  const journeys = useAccountStore((s) => s.journeys);
   // v3.0 TASK-057：钱包模式开关。关闭时不展示账户标签(包含"未归入"红标)
   const walletEnabled = useConfigStore((s) => s.walletEnabled ?? false);
   const category = categories.find((c) => c.id === record.categoryId);
   const account = accounts.find((a) => a.id === record.accountId);
+  const journey = journeys.find((j) => j.id === record.journeyId);
 
   // 名称：未分类 > 关联定期账名 > 分类名
   const name = record.isUncategorized
@@ -100,6 +104,13 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
           imageId={record.imageId}
           onPreview={onPreviewImage ? () => onPreviewImage(record.imageId!) : undefined}
         />
+      )}
+      {/* v3.0 TASK-059 fix：关联旅游记录 chip（始终展示，不受钱包开关影响） */}
+      {journey && (
+        <span className={styles.journeyTag} title={journey.title}>
+          <AirplaneTilt size={11} weight="fill" />
+          <span className={styles.journeyTagText}>{journey.title}</span>
+        </span>
       )}
       <span className={`${styles.amt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
         {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}

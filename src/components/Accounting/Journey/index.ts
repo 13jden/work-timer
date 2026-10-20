@@ -3,3 +3,4 @@ export { JourneyDetailPage } from './JourneyDetailPage';
 export { JourneyEditModal } from './JourneyEditModal';
 export { JourneySection } from './JourneySection';
 export { JourneyRecordPicker } from './JourneyRecordPicker';
+export { JourneySelector } from './JourneySelector';

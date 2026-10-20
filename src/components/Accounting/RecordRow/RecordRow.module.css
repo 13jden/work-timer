@@ -124,6 +124,32 @@
   color: var(--danger);
 }
 
+/* v3.0 TASK-059 fix：旅游记录 chip（行尾，紧邻金额左侧） */
+.journeyTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 110px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 16px;
+}
+
+.journeyTagText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 86px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.2px;
+}
+
 /* 金额 */
 .amt {
   font-size: 14px;

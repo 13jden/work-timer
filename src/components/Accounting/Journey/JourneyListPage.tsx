@@ -1,13 +1,14 @@
 /**
- * @fileoverview JourneyListPage — 一程瀑布流列表页（v3.0 TASK-059 T-593 重设计）
+ * @fileoverview JourneyListPage — 旅游记录瀑布流列表页（v3.0 TASK-059 T-593 重设计）
  *
  * 设计：Polaroid 卡片，每张微旋转（±1.5°），封面有圆形日期邮戳。
- * 新建一程 → 直接进详情页。
+ * 新建旅游记录 → 直接进详情页。
  */
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { journeyTotals } from '../../../lib/accounting/journey';
 import { formatAmount } from '../../../lib/accounting';
+import { useImage } from '../../../hooks/useImage';
 import { JourneyDetailPage } from './JourneyDetailPage';
 import { JourneyEditModal } from './JourneyEditModal';
 import { Plus, ArrowLeft, Stamp } from '@phosphor-icons/react';
@@ -15,14 +16,26 @@ import styles from './JourneyListPage.module.css';
 
 interface JourneyListPageProps {
   onBack: () => void;
+  /** v3.0 TASK-059：选中一程时让父级接管跳转（避免内嵌 MinePage） */
+  onPick?: (id: string) => void;
 }
 
-export function JourneyListPage({ onBack }: JourneyListPageProps) {
+export function JourneyListPage({ onBack, onPick }: JourneyListPageProps) {
   const journeys = useAccountStore((s) => s.journeys);
   const records = useAccountStore((s) => s.records);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [internalDetailId, setInternalDetailId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  const handlePick = (id: string) => {
+    if (onPick) {
+      onPick(id);
+    } else {
+      setInternalDetailId(id);
+    }
+  };
+
+  const detailId = onPick ? null : internalDetailId;
 
   const summaries = useMemo(() => journeyTotals(journeys, records), [journeys, records]);
 
@@ -43,7 +56,7 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
     return (
       <JourneyDetailPage
         journeyId={detailId}
-        onBack={() => setDetailId(null)}
+        onBack={() => setInternalDetailId(null)}
       />
     );
   }
@@ -56,13 +69,13 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
         </button>
         <div className={styles.headerCenter}>
           <div className={styles.headerEyebrow}>PASSPORT</div>
-          <div className={styles.headerTitle}>我的一程</div>
+          <div className={styles.headerTitle}>旅游记录</div>
         </div>
         <button
           type="button"
           className={styles.addBtn}
           onClick={() => setCreateOpen(true)}
-          aria-label="新建一程"
+          aria-label="新建旅游记录"
         >
           <Plus size={18} weight="bold" />
         </button>
@@ -73,12 +86,12 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
           <div className={styles.emptyStamp}>
             <Stamp size={56} weight="duotone" />
           </div>
-          <div className={styles.emptyTitle}>还没有一程</div>
+          <div className={styles.emptyTitle}>还没有旅游记录</div>
           <div className={styles.emptyHint}>
-            把一次旅行、一次兼职<br />串成一个有故事的小册
+            把一次旅行<br />串成一个有故事的小册
           </div>
           <button type="button" className={styles.emptyAddBtn} onClick={() => setCreateOpen(true)}>
-            开始第一程 →
+            开始第一段 →
           </button>
         </div>
       ) : (
@@ -92,10 +105,10 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
                 key={journey.id}
                 className={styles.card}
                 style={{ '--tilt': `${tilt}deg` } as React.CSSProperties}
-                onClick={() => setDetailId(journey.id)}
+                onClick={() => handlePick(journey.id)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setDetailId(journey.id)}
+                onKeyDown={(e) => e.key === 'Enter' && handlePick(journey.id)}
               >
                 <div className={styles.cardInner}>
                   {journey.coverImageId ? (
@@ -145,8 +158,8 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
         onCreated={(id) => {
           setCreateOpen(false);
           setEditId(null);
-          // 直接打开详情页
-          setDetailId(id);
+          // 直接打开详情页：若有 onPick 则交由父级导航，否则自管内部状态
+          handlePick(id);
         }}
       />
     </div>
@@ -155,10 +168,11 @@ export function JourneyListPage({ onBack }: JourneyListPageProps) {
 
 /** 封面图占位组件 */
 function JourneyCoverImage({ imageId }: { imageId: string }) {
+  const { url } = useImage(imageId);
   return (
     <div className={styles.coverImgWrap}>
       <img
-        src={`__image__:${imageId}`}
+        src={url ?? ''}
         alt="封面"
         className={styles.coverImg}
         loading="lazy"

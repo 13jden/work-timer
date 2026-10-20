@@ -1,7 +1,7 @@
 /**
  * @fileoverview JourneyEditModal — 新建/编辑一程（v3.0 TASK-059 T-593 + T-597）
  *
- * 新建：标题 + 类型即可；封面后补。
+ * 新建：标题即可（类型由首条记录决定，不再需要用户选择）；封面后补。
  * 编辑：标题 / 备注 / 封面。
  */
 import { useState, useEffect, useRef } from 'react';
@@ -27,7 +27,7 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
   const isEdit = !!existing;
 
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<'expense' | 'income'>('expense');
+  // v3.0 TASK-059 fix: 新建时不选类型，默认 expense；类型由首条记录决定
   const [note, setNote] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -35,11 +35,9 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
     if (open) {
       if (existing) {
         setTitle(existing.title);
-        setType(existing.type);
         setNote(existing.note ?? '');
       } else {
         setTitle('');
-        setType('expense');
         setNote('');
       }
       setTimeout(() => titleRef.current?.focus(), 100);
@@ -53,7 +51,8 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
       updateJourney(existing.id, { title: trimmed, note: note.trim() || undefined });
       onClose();
     } else {
-      const newJourney = addJourney({ title: trimmed, type, note: note.trim() || undefined });
+      // v3.0 TASK-059 fix: 新建时类型默认为 expense，首条记录会更新它
+      const newJourney = addJourney({ title: trimmed, type: 'expense', note: note.trim() || undefined });
       onCreated?.(newJourney.id);
     }
   };
@@ -71,36 +70,13 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
     <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={styles.sheet}>
         <div className={styles.header}>
-          <span className={styles.headerTitle}>{isEdit ? '编辑一程' : '新建一程'}</span>
+          <span className={styles.headerTitle}>{isEdit ? '编辑旅游记录' : '新建旅游记录'}</span>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
             <X size={20} />
           </button>
         </div>
 
         <div className={styles.body}>
-          {/* 类型选择（仅新建时显示） */}
-          {!isEdit && (
-            <div className={styles.field}>
-              <div className={styles.fieldLabel}>类型</div>
-              <div className={styles.typeRow}>
-                <button
-                  type="button"
-                  className={`${styles.typeBtn} ${type === 'expense' ? styles.typeBtnActiveExpense : ''}`}
-                  onClick={() => setType('expense')}
-                >
-                  💸 支出程
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.typeBtn} ${type === 'income' ? styles.typeBtnActiveIncome : ''}`}
-                  onClick={() => setType('income')}
-                >
-                  💰 收入程
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* 标题 */}
           <div className={styles.field}>
             <div className={styles.fieldLabel}>标题 <em className={styles.required}>*</em></div>
@@ -134,7 +110,7 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
             <div className={styles.fieldLabel}>封面</div>
             <div className={styles.coverHint}>
               {isEdit
-                ? '可在详情页设置封面（从相册选择或使用记录附图）'
+                ? '可在详情页点击封面更换（从相册选择或使用记录附图）'
                 : '创建后可从详情页设置封面'}
             </div>
           </div>
@@ -143,7 +119,7 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
         <div className={styles.footer}>
           {isEdit && (
             <button type="button" className={styles.deleteBtn} onClick={handleDelete}>
-              删除一程
+              删除
             </button>
           )}
           <button type="button" className={styles.cancelBtn} onClick={onClose}>

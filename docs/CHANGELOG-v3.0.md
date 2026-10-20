@@ -158,3 +158,73 @@
 - `npm run build` 成功
 - 用户浏览器验收通过（2026-10-13）
 
+---
+
+## [v3.0] · 2026-10-20 · 一程 · 旅游记录全功能交付 (TASK-059 Phase 3)
+
+基线 v3.0-TASK-058。前置已落地：`e09e9bc` Phase 1（数据层 + 瀑布流骨架）、`8b7e1c8` Phase 2（MINE 入口调整 + 关联其他 + 页面重设计）。本次完成 Phase 3 全部剩余工作,并把 UI 文案统一改为「旅游记录」（用户要求:不解释太复杂、不提兼职）。
+
+### A · 封面图管线（沿用 TASK-056 图片库）
+
+- `JourneyDetailPage` 英雄封面点按 → 原生 `<input type="file">` → `compressImage` 压缩 + `genImageId` 配 ID + `putImage` 入 `salary_timer_images` 库
+- 用 `useImage` hook 加载，`URL.createObjectURL` 在组件卸载 / imageId 变化时自动 `revokeObjectURL`,避免内存泄漏
+- 处理失败（HEIC / IO 错误）静默吞错,input value 重置允许重选同一张
+- 渐变占位卡（支出暖橙 / 收入绿）保留,未设封面时显示 `AirplaneTilt` 大图标 + 「设置封面」提示
+
+### B · JourneySelector 抽出（独立全屏 sheet）
+
+- `src/components/Accounting/Journey/JourneySelector.tsx` + `JourneySelector.module.css` 新建
+- 被 `AddRecordModal` 的「旅游记录」chip 调用,按当前类型过滤 + `updatedAt` 降序
+- 空态：飞机图标 + 「还没有旅游记录」+ 跳转指引「去「我的 → 旅游记录」新建一段」
+- 行内点击 `stopPropagation` 防止冒泡穿透到外层 `AddRecordModal` overlay（修复「选完直接退回主页」)
+
+### C · AddRecordModal 接入「旅游记录」chip
+
+- `fieldLabel`: 「所属一程」→「旅游记录」
+- chip 样式：选中态为 `ink` 反色 ✕ 移除按钮；未选时是 dashed 边框「+ 添加」按钮
+- 类型切换时联动校验：若已挂 chip 与新 type 不匹配 → 自动清空
+- 与钱包开关解耦：钱包关闭时也展示此 chip（归类路径不依赖钱包）
+
+### D · RecordRow 行尾显示关联旅游记录 chip（沿用钱包标签同位置）
+
+- 改动文件: `src/components/Accounting/RecordRow/RecordRow.tsx` + `RecordRow.module.css`
+- 逻辑: `journeys.find(j => j.id === record.journeyId)` 命中时 → 行尾显示 `AirplaneTilt(11px fill) + 行程名`
+- chip 样式: `accent` 22% 半透底色 + ink 色文字 + mono 字体 + 圆角 999px + `max-width:110px` 截断
+- 不受钱包开关影响（始终展示）
+- 适用范围: StatsPage 日 / 月 / 年列表视图（三视图共用同一 RecordRow）
+
+### E · UI 文本「一程」→「旅游记录」全量改名
+
+| 文件 | 旧 | 新 |
+|---|---|---|
+| `JourneySection` | "我的一程" / "JOURNEY" 邮戳 / "把一次旅行、一次兼职记成一程" | "旅游记录" / "TRIP" / "把一次旅行记成一段记录" |
+| `JourneyListPage` | "我的一程" / "还没有一程" / "把一次旅行、一次兼职…串成一个有故事的小册" / "开始第一程" | "旅游记录" / "还没有旅游记录" / "把一次旅行…串成一个有故事的小册" / "开始第一段" |
+| `JourneyDetailPage` | header「一程」/ CTA「给这一程记一笔」 | header「旅游记录」/ CTA「给这段记一笔」 |
+| `JourneyEditModal` | "新建/编辑一程" / "删除一程" | "新建/编辑旅游记录" / "删除" |
+| `JourneySelector` | "关联一程" / "还没有收入/支出程" / "「我的 → 我的一程」" / 副标"收入程/支出程" | "选择旅游记录" / "还没有旅游记录" / "「…→ 旅游记录」" / 副标"收入/支出" |
+| `JourneyRecordPicker` | 「本程已关联」/ 「其他程已关联」/ 「未归入任何程」/ tag 本/他/未挂 / fallback "另一程" | 「已关联到这里」/ 「已关联到其他」/ 「未归入」/ tag 当前/其他/未归 / fallback "另一段" |
+| `AddRecordModal` | 「所属一程」/ 移除按钮 aria / "关联" | 「旅游记录」/ 移除按钮 aria / "添加" |
+
+> 用户特别说明:「不加什么兼职、不在页面里解释太复杂」。已在 `JourneySection` / `JourneyListPage` 空态里删除「一次兼职」字样；选择器与详情页不再出现 "收入/支出程" 措辞。
+
+### F · 配套修复
+
+- `JourneyRecordPicker` 的 `grouped` 计算: 之前一次替换意外把 `j` 的查找 + `push` 弄丢；本次补回 + 改名
+- `JourneySection` / `JourneyDetailPage` / `JourneyListPage` 三页 eyebrow、标题、CTA、空态文案统一更新
+- `Journey/index.ts` 加一行 re-export
+- `RecurringCard` 顺手清理一处 "一程" 残留字
+
+### 不做的事
+
+- ❌ 一程预算（「这趟预算 5000」→ v3.1+ 与月度预算一起评估）
+- ❌ 批量多选记录挂程（先走单条编辑挂程 + 「关联其他」勾选）
+- ❌ 一程分享 / 导出海报
+
+### 验证
+
+- `npm run typecheck` 通过
+- `npm run test` 447 / 447 通过
+- `npm run build` 成功
+- 用户浏览器验收通过（2026-10-20）
+
+
