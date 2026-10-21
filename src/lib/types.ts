@@ -167,6 +167,14 @@ export interface Config {
    * 切换实时生效,不 reload。
    */
   walletEnabled?: boolean;
+  /**
+   * v3.0 TASK-060：计时模式隐藏开关（记账纯净模式）。
+   * - `false`(默认):计时/记账两模式均可见,底部 nav 可切换。
+   * - `true`:隐藏计时模式入口(底部 nav 仅显示记账 tabs),应用启动直接进 /accounting。
+   * 后台功能(薪资关联同步/定期账同步)继续运行,计时路由不可访问。
+   * 切换实时生效,不 reload。
+   */
+  hideTimerMode?: boolean;
 }
 
 // ── Day Overrides(手动调休 / 加班 / 请假) ───────────────────

@@ -73,6 +73,8 @@ function migrateToV3(raw: Partial<Config> | undefined): Config {
     salaryLinkageEnabled: raw?.salaryLinkageEnabled ?? DEFAULT_CONFIG.salaryLinkageEnabled,
     // ── v3.0 TASK-057:钱包模式开关(默认 false = 关闭,不展示账户 UI) ──
     walletEnabled: raw?.walletEnabled ?? DEFAULT_CONFIG.walletEnabled,
+    // ── v3.0 TASK-060:计时模式隐藏开关(默认 false = 双模式可见) ──
+    hideTimerMode: raw?.hideTimerMode ?? DEFAULT_CONFIG.hideTimerMode,
   };
 }
 

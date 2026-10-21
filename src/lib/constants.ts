@@ -84,6 +84,9 @@ export const DEFAULT_CONFIG: Config = {
   // v3.0 TASK-057:钱包模式开关。false=关闭(默认,UI 不展示账户 / 账户选择器 / 拖拽归入);
   // true=开启(沿用 v2.4 行为 + 新增每账户详情页)。切换实时生效,无 reload。
   walletEnabled: false,
+  // v3.0 TASK-060:计时模式隐藏开关(记账纯净模式)。false=默认双模式;
+  // true=隐藏计时入口,仅显示记账界面(后台功能仍运行)。切换实时生效,无 reload。
+  hideTimerMode: false,
 };
 
 // ── 静态数据 ────────────────────────────────────────────────

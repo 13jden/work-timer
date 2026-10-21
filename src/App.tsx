@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bootstrapTheme, useThemeStore } from './store/themeStore';
 import { useAppModeStore } from './store/appModeStore';
 import { useAccountStore } from './store/accountStore';
+import { useConfigStore } from './store/configStore';
 import { useIsDesktop } from './hooks/useMediaQuery';
 import { useDesktopScale, BASE_WIDTH, BASE_HEIGHT } from './hooks/useDesktopScale';
 import { type TabId } from './components/Sidebar';
@@ -97,6 +98,8 @@ export function App() {
   // v2.1 TASK-037:移动端双主题;tabIndex 跨主题保持索引对应
   const mode = useAppModeStore((s) => s.mode);
   const setMode = useAppModeStore((s) => s.setMode);
+  // v3.0 TASK-060:计时模式隐藏开关(记账纯净模式)
+  const hideTimerMode = useConfigStore((s) => s.hideTimerMode ?? false);
   const [tabIndex, setTabIndex] = useState(0);
   const [desktopTab, setDesktopTab] = useState<DesktopTabId>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -106,6 +109,14 @@ export function App() {
   useEffect(() => {
     useAccountStore.getState().syncPoolCycles();
   }, []);
+
+  // v3.0 TASK-060：隐藏计时模式时自动切换至记账模式
+  useEffect(() => {
+    if (hideTimerMode && mode === 'timer') {
+      setMode('accounting');
+      setTabIndex(0); // 重置到记账首页
+    }
+  }, [hideTimerMode, mode, setMode]);
 
   // v2.5-patch12：time → accounting 联动 全局同步。任何页面打开都跟
   // CalendarPage 一样实时更新(使用真实当月,不受 calendarStore 浏览月份影响)。
@@ -147,6 +158,8 @@ export function App() {
     const dy = t.clientY - s.y;
     const dx = t.clientX - s.x;
     const dt = Date.now() - s.t;
+    // v3.0 TASK-060：隐藏计时模式时禁用滑动切换
+    if (hideTimerMode) return;
     // 只认向下滑（dy>0）；上滑不再切换，避免与滚动回弹混淆
     // v2.5 T-415：触发距离 70 → 120，手势更长更不易误触
     // v2.5-patch10：必须先滑到顶部才能触发（atTopRef.current）
@@ -227,7 +240,8 @@ export function App() {
   }
 
   // ── 移动端 BottomNav 布局(双主题 + 上下滑切换)──────────────────
-  const tabs = mode === 'timer' ? TIMER_TABS : ACCT_TABS;
+  // v3.0 TASK-060：隐藏计时模式时只显示记账 tabs
+  const tabs = (hideTimerMode || mode === 'accounting') ? ACCT_TABS : TIMER_TABS;
   const safeIndex = Math.min(tabIndex, tabs.length - 1);
   const activeId = tabs[safeIndex]?.id ?? tabs[0]!.id;
 
@@ -249,14 +263,15 @@ export function App() {
         <ConvertPage onBack={() => setMobileOverlay(null)} />
       ) : mobileOverlay === 'fish' ? (
         <FishPage />
-      ) : mode === 'timer' ? (
+      ) : (hideTimerMode || mode === 'accounting') ? (
+        // v3.0 TASK-060：隐藏计时模式时只显示记账页面
+        renderAcctPage(safeIndex)
+      ) : (
         renderPage(activeId as TabId, () => setMobileOverlay('convert'), () => {
           setMode('timer');
           setTabIndex(2);
           setMobileOverlay(null);
         })
-      ) : (
-        renderAcctPage(safeIndex)
       )}
       <BottomNav
         tabs={tabs}
