@@ -609,13 +609,13 @@
 .imageAddBtn {
   flex-shrink: 0;
   align-self: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: transparent;
-  border: 1px dashed var(--line);
-  color: var(--ink-muted);
-  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: none;
+  color: var(--ink-soft);
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -625,10 +625,9 @@
 }
 
 .imageAddBtn:hover:not(:disabled) {
-  background: var(--paper-2);
-  border-style: solid;
+  background: var(--accent);
   color: var(--ink);
-  border-color: var(--accent-deep);
+  transform: scale(1.05);
 }
 
 .imageAddBtn:disabled {

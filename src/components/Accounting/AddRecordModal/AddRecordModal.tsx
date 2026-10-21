@@ -525,7 +525,7 @@ export function AddRecordModal({
               aria-label="添加图片"
               title="添加图片"
             >
-              {imageStatus === 'compressing' ? '…' : '🖼'}
+              {imageStatus === 'compressing' ? '…' : '+'}
             </button>
           )}
           <input
