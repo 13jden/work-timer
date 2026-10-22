@@ -45,6 +45,9 @@ v3.0 做一次 **减法 + 叙事**：
 | TASK-057 | 取消钱包 · 总资产直接改 | Phase 3 | 无 | ✅ 完成 | [`TASK-057-v3.0-total-assets.md`](./TASK-057-v3.0-total-assets.md) |
 | TASK-058 | 池 → 定期账（简化 + 更名） | Phase 4 | TASK-057 | ⏳ 待开发 | [`TASK-058-v3.0-pool-to-recurring.md`](./TASK-058-v3.0-pool-to-recurring.md) |
 | TASK-059 | 一程（消费块 + 瀑布流） | Phase 5 | TASK-056 / 057 | ✅ 完成 | [`TASK-059-v3.0-journey.md`](./TASK-059-v3.0-journey.md) |
+| TASK-060 | 模式切换设置：记账纯净模式 | Phase 6 | TASK-059 | 🚧 开发中 | [`TASK-060-v3.0-mode-toggle.md`](./TASK-060-v3.0-mode-toggle.md) |
+| TASK-061 | 一程详情页手账化 + 钱包开关一致性修复 | Phase 6 | TASK-059 / 056 / 057 | ✅ 完成 | [`TASK-061-v3.0-journey-journal.md`](./TASK-061-v3.0-journey-journal.md) |
+| TASK-062 | 支持 0 元记录（别人请客也能记） | Phase 6 | TASK-056 | ✅ 完成 | [`TASK-062-v3.0-zero-amount-record.md`](./TASK-062-v3.0-zero-amount-record.md) |
 
 **推进顺序理由**：055 / 056 是无数据迁移的独立小改，先拿快赢；057 是数据迁移重头，单独一阶段；058 依赖 057 定稿的资产页新布局；059 依赖 056 的图片管线与 057 之后的记录弹窗（账户选择器已移除，避免二次改动）。
 

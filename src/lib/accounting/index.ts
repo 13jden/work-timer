@@ -357,9 +357,12 @@ export function isToday(dateKey: string): boolean {
 
 /**
  * 验证金额是否为有效数字
+ *
+ * v3.0 TASK-062：0 元是合法金额（别人请客等场景 —— 有消费但没花钱）。
+ * 负数是合法的（支出在存储层存负数），调用方需自行判断方向。
  */
 export function isValidAmount(amount: number): boolean {
-  return Number.isFinite(amount) && amount !== 0;
+  return Number.isFinite(amount);
 }
 
 /**

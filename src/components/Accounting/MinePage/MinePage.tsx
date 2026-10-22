@@ -114,8 +114,11 @@ function TotalAssetsCard() {
     virtualTotal,
   } = breakdown;
 
+  // v3.0 TASK-061：关闭钱包时不展示「未分类」（未归入账户的待调整项）——
+  // 没有钱包就没有账户归类概念，展示该金额对用户无意义。
+  const showPendingAdjust = walletEnabled && pendingAdjust !== 0;
   const hasVirtual = prepaidUnconsumed > 0 || earnedUnarrived > 0 || depositRefundable > 0;
-  const hasPending = pendingAdjust !== 0 || unpaidConsumed > 0 || depositPending > 0;
+  const hasPending = showPendingAdjust || unpaidConsumed > 0 || depositPending > 0;
   const hasBreakdown = hasVirtual || hasPending;
 
   return (
@@ -141,7 +144,7 @@ function TotalAssetsCard() {
             <span className={styles.virtualActual}>实际 ¥{formatAmount(actualTotal, true)}</span>
             {hasPending && (
               <span className={styles.pendingBox}>
-                {pendingAdjust !== 0 && (
+                {showPendingAdjust && (
                   <span className={pendingAdjust < 0 ? styles.pendingNeg : styles.pendingPos}>
                     {pendingAdjust < 0 ? '-' : '+'}¥{formatAmount(Math.abs(pendingAdjust))} 未分类
                   </span>

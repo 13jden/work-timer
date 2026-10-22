@@ -1,6 +1,38 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { rmSync } from 'node:fs';
+import { resolve } from 'node:path';
+/**
+ * v3.0 修复:APK 体积从 16.5 MB 暴涨到 73 MB 的根因
+ *
+ * public/downloads/ 里放着网站下载页用的旧 APK(SalaryTimer-2.5.0-arm64.apk, 16.5 MB)。
+ * Vite 会把 public/ 原样复制进 dist/,而 Tauri 又把整个 dist/ 压缩成
+ * tauri-codegen-assets 并链进 Rust 二进制,导致:
+ *   1) 旧 APK 被嵌进新 APK 的 .so(每个架构一份)→ .so 从 ~11 MB 涨到 ~18 MB
+ *   2) universal APK 4 个架构叠加 → 73 MB
+ *
+ * 修法:Tauri 构建(TAURI_BUILD=1)时把 dist/downloads/ 删掉。
+ * 网站部署走纯 npm run build,downloads 目录照常保留,下载页不受影响。
+ */
+const isTauriBuild = process.env.TAURI_BUILD === '1';
+
+/** Tauri 构建时移除 dist/downloads,避免把旧 APK 嵌进二进制 */
+function excludeDownloads(): Plugin {
+  let outDir = '';
+  return {
+    name: 'exclude-downloads',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
+    closeBundle() {
+      const target = resolve(outDir, 'downloads');
+      rmSync(target, { recursive: true, force: true });
+      console.log(`[exclude-downloads] 已移除 ${target}`);
+    },
+  };
+}
 
 /**
  * Vite 配置
@@ -10,10 +42,15 @@ import { VitePWA } from 'vite-plugin-pwa';
  *  - 生产构建自动注入 /sw.js(Workbox precache 所有 dist 静态资源)
  *  - dev 模式不启用 SW,避免 HMR 缓存炸
  *  - 三主题切换由 src/store/themeStore.ts 动态同步 <meta name="theme-color">
+ *
+ * v3.0 修复:
+ *  - TAURI_BUILD=1 时剔除 dist/downloads(旧 APK 不能进二进制)
+ *  - 关闭 sourcemap(约 2.4 MB .map 同样会被嵌入二进制)
  */
 export default defineConfig({
   plugins: [
     react(),
+    ...(isTauriBuild ? [excludeDownloads()] : []),
     VitePWA({
       registerType: 'autoUpdate',
       // dev 模式不注册 SW,避免 HMR 与缓存冲突
@@ -98,10 +135,16 @@ export default defineConfig({
   server: {
     port: 5176,
     host: true,
+    watch: {
+      // v3.0:排除 src-tauri —— Android/Gradle 构建会生成并锁住大量报告文件
+      // (problems-report.html 等),Vite 监听它们时会抛 EBUSY 导致 dev server 崩溃
+      ignored: ['**/src-tauri/**'],
+    },
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // v3.0:Tauri 构建关闭 sourcemap(约 2.4 MB .map 会被嵌进二进制);网站构建保留便于调试
+    sourcemap: !isTauriBuild,
     target: 'es2022',
   },
 });

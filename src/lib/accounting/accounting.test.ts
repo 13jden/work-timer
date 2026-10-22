@@ -330,10 +330,10 @@ describe('日期工具', () => {
 // ── 验证测试 ───────────────────────────────────────────────
 
 describe('验证', () => {
-  it('isValidAmount 验证金额', () => {
+  it('isValidAmount 验证金额（v3.0 TASK-062：0 元合法）', () => {
     expect(isValidAmount(100)).toBe(true);
     expect(isValidAmount(-50)).toBe(true);
-    expect(isValidAmount(0)).toBe(false);
+    expect(isValidAmount(0)).toBe(true);
     expect(isValidAmount(NaN)).toBe(false);
     expect(isValidAmount(Infinity)).toBe(false);
   });

@@ -255,8 +255,13 @@ export function AddRecordModal({
 
   const handleSave = async () => {
     const amount = parseAmountToNumber(amountStr);
-    if (!isFinite(amount) || amount <= 0) {
+    // v3.0 TASK-062：允许 0 元记录（例如别人请客 —— 吃了但没花钱）
+    if (!isFinite(amount)) {
       setError('请输入有效金额');
+      return;
+    }
+    if (amount < 0) {
+      setError('金额不能为负数');
       return;
     }
     if (!categoryId) {
@@ -264,7 +269,8 @@ export function AddRecordModal({
       return;
     }
 
-    const signedAmount = type === 'expense' ? -amount : amount;
+    // v3.0 TASK-062：0 元记录避免产生 -0（负零会让展示出现 "-¥0"）
+    const signedAmount = amount === 0 ? 0 : type === 'expense' ? -amount : amount;
 
     // v3.0 TASK-056：先入库待保存图片（成功后再写记录）
     let savedImageId: string | undefined;
@@ -297,8 +303,12 @@ export function AddRecordModal({
 
     if (editingRecord) {
       // 含 imageId 字段（即便 undefined）以触发 store 的级联清理
+      // 含 journeyId 字段（即便 undefined）以支持「取消关联一程」——
+      // store 的 updateRecord 用 {...old, ...patch} 合并，
+      // 不传该键 = 不改动；传 undefined = 显式解除关联。
       updateRecord(editingRecord.id, {
         ...patchBase,
+        journeyId: journeyId || undefined,
         imageId: savedImageId,
       });
       onSaved?.(editingRecord.id);
@@ -349,20 +359,26 @@ export function AddRecordModal({
 
   const resolveAmount = (): number => parseAmountToNumber(amountStr);
 
+  // v3.0 TASK-062：0 元记录提示（别人请客等场景）
+  const isZeroAmount = amountStr.trim() !== '' && resolveAmount() === 0;
+
   const canSubmit = () => {
     const amt = resolveAmount();
-    return isFinite(amt) && amt > 0 && !!categoryId && imageStatus !== 'compressing';
+    // v3.0 TASK-062：0 元合法（别人请客等场景）；空输入仍非法
+    return isFinite(amt) && amt >= 0 && !!categoryId && imageStatus !== 'compressing';
   };
 
   const handleSaveAndAgain = async () => {
     if (!canSubmit()) {
       const amt = parseAmountToNumber(amountStr);
-      if (!isFinite(amt) || amt <= 0) { setError('请输入有效金额'); return; }
+      if (!isFinite(amt)) { setError('请输入有效金额'); return; }
+      if (amt < 0) { setError('金额不能为负数'); return; }
       if (!categoryId) { setError('请选择分类'); return; }
       return;
     }
     const amount = parseAmountToNumber(amountStr);
-    const signedAmount = type === 'expense' ? -amount : amount;
+    // v3.0 TASK-062：0 元记录避免产生 -0（负零）
+    const signedAmount = amount === 0 ? 0 : type === 'expense' ? -amount : amount;
     let savedImageId: string | undefined;
     if (pendingBlob && pendingId) {
       const ok = await putImage(pendingId, pendingBlob);
@@ -386,7 +402,12 @@ export function AddRecordModal({
       ...(journeyId ? { journeyId } : {}),
     };
     if (editingRecord) {
-      updateRecord(editingRecord.id, { ...patchBase, imageId: savedImageId });
+      // 同 handleSave：显式传 journeyId（可能为 undefined = 解除关联）
+      updateRecord(editingRecord.id, {
+        ...patchBase,
+        journeyId: journeyId || undefined,
+        imageId: savedImageId,
+      });
       onSaved?.(editingRecord.id);
     } else {
       const record = addRecord({
@@ -631,6 +652,8 @@ export function AddRecordModal({
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
+        {/* v3.0 TASK-062：0 元记录提示（别人请客等场景） */}
+        {isZeroAmount && <div className={styles.zeroHint}>¥0 记录 · 例如别人请客，不计入金额统计</div>}
         {editingRecord && (
           <button
             className={styles.deleteBtn}

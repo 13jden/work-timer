@@ -38,13 +38,14 @@ export function QuickAddRecord({
 
   const handleSubmit = useCallback(() => {
     const amount = parseFloat(amountStr);
-    if (!isFinite(amount) || amount <= 0) {
+    // v3.0 TASK-062：允许 0 元记录（例如别人请客）
+    if (!isFinite(amount) || amount < 0) {
       inputRef.current?.focus();
       return;
     }
 
-    // 支出存负数，收入存正数
-    const signedAmount = type === 'expense' ? -amount : amount;
+    // 支出存负数，收入存正数（v3.0 TASK-062：0 元不产生 -0）
+    const signedAmount = amount === 0 ? 0 : type === 'expense' ? -amount : amount;
     const today = getTodayKey();
 
     // v2.1: 快速记录默认归入"未分类"区域，等待用户拖拽归类
@@ -114,7 +115,7 @@ export function QuickAddRecord({
       <button
         className={styles.submitBtn}
         onClick={handleSubmit}
-        disabled={!amountStr || parseFloat(amountStr) <= 0}
+        disabled={!amountStr || parseFloat(amountStr) < 0}
         aria-label="提交快速记录"
       >
         +

@@ -1,7 +1,39 @@
 # Android APK 打包指南 · Salary Timer
 
 > 环境: Windows 11 · Tauri 2.x · Rust 1.82+ · Android SDK build-tools 35 · JDK 17
-> 当前版本: 1.3.4 (参见 tauri.conf.json 的 version)
+> 当前版本: 3.0.0 (参见 tauri.conf.json 的 version)
+
+---
+
+## ⚠️ v3.0 新增:必须用 `npm run build:tauri`,不能用 `npm run build`
+
+### 背景:APK 体积从 16.5 MB 暴涨到 73 MB 的根因
+
+`public/downloads/` 存放网站下载页用的 APK。Vite 会把 `public/` **原样复制**进 `dist/`,
+而 Tauri 又把整个 `dist/` 压缩成 `tauri-codegen-assets` 并链进 Rust 二进制,
+导致旧 APK 被嵌进新 APK:
+
+| 阶段 | 体积 |
+|------|------|
+| dist(含旧 APK) | 20.14 MB |
+| .so (arm64) 嵌入旧 APK 后 | 18.45 MB |
+| universal APK (4 架构叠加) | **73.06 MB** |
+
+实测证据(嵌入资源 brotli 解压后 sha256 = `b5f1d87c...`,与 `public/downloads/` 里的旧 APK 完全一致)。
+
+### 修法
+
+`package.json` 新增两个脚本:
+
+| 脚本 | 用途 | 行为 |
+|------|------|------|
+| `npm run build` | 网站部署 (CI 用) | 保留 `dist/downloads/`,下载页正常 |
+| `npm run build:tauri` | Tauri 打包 (桌面 + APK) | 设 `TAURI_BUILD=1`,构建后删除 `dist/downloads/`;同时关闭 sourcemap |
+
+`tauri.conf.json` 的 `beforeBuildCommand` 已指向 `npm run build:tauri`。
+**手动执行前端构建时也要用 `npm run build:tauri`**,否则旧的 `dist/` 残留会让旧 APK 再次被嵌入。
+
+修复后 dist = 1.21 MB,.so (arm64) = 9.19 MB,arm64 APK = **11.71 MB**。
 
 ---
 
@@ -116,7 +148,7 @@ foreach ($a in @("arm64-v8a","armeabi-v7a","x86","x86_64")) { mkdir "$jr\$a" -Fo
 ```
 ### Step 1 · 构建前端
 
-    npm run build   # 输出 dist/
+    npm run build:tauri   # 必须用这个!普通 build 会把旧 APK 留在 dist/ 里 (见文首说明)
 
 ### Step 2 · (可选) 仅构建 arm64 以加速
 
@@ -235,7 +267,8 @@ Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk
 
 | 文件 | 大小 | 说明 |
 |------|------|------|
-| **SalaryTimer-1.3.4-arm64.apk** | **11.59 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
+| **SalaryTimer-3.0.0-arm64.apk** | **11.71 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
+| SalaryTimer-3.0.0-universal.apk | 35.97 MB | 全架构(含 x86 模拟器),仅调试用 |
 
 > 产物命名规则:`SalaryTimer-<version>-arm64.apk`，version 与 tauri.conf.json 一致。
 
@@ -243,6 +276,9 @@ Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk
 1. `src-tauri/tauri.conf.json` 的 `version` (Gradle versionName 来源，格式 x.y.z)
 2. 产物文件名同步更新版本号
 3. 桌面窗口尺寸如需调整，保持宽高比 ≥ 1.5 (见下文桌面端 EXE 打包)
+4. **用 `npm run build:tauri` 构建前端**(不能用 `npm run build`,见文首说明)
+5. 确认 `dist/` 体积 ≈ 1.2 MB(若明显偏大说明旧 APK 又被带进来了)
+6. 网站下载页 `public/download/index.html` + `public/downloads/manifest.json` 同步更新版本号与 sha256
 
 ---
 
@@ -273,10 +309,11 @@ Copy-Item src-tauri\target\release\app.exe dist-desktop\SalaryTimer.exe -Force
 
 | 问题 | 原因 | 解决方案 |
 |------|------|---------|
+| **APK 体积暴涨 (16 MB → 73 MB)** | **旧 APK 被 `public/downloads/` 复制进 dist,再被 Tauri 嵌进二进制** | **用 `npm run build:tauri` 构建前端;检查 dist 体积应 ≈ 1.2 MB** |
 | jniLibs 签名冲突报错 | Windows 权限 + symlink 限制 | 提前清理 jniLibs/build/target → 重建 4 个空目录 → Step 5 HardLink .so |
 | Gradle assemble 报 rustBuild 任务失败 | Tauri Gradle 插件默认行为 | 加 5 个 `-x :app:rustBuildXxxRelease` 排除 |
 | **安装失败/解析错误** | **yazl 重新打包破坏 resources.arsc 对齐** | **用 `aapt remove` 删除架构，不要用 yazl/yauzl 重新打包!** |
-| arm64 APK > 10 MB (体积异常) | .so 被 DEFLATE 压缩 | `aapt remove` 保留原始压缩方式 |
+| arm64 APK > 12 MB (体积异常) | .so 被 DEFLATE 压缩 / 旧 APK 又被嵌入 | `aapt remove` 保留原始压缩方式;检查 dist 是否含 downloads |
 | Android 桌面 LOGO 被裁切 | adaptive icon fg 图片太大 | manifest 里设 `android_fg_scale: 80` 缩小 |
 | 图标模糊/锯齿 | 原始图片分辨率不够 | 用 System.Drawing 裁剪 1024×1024 高清图 |
 
@@ -355,8 +392,8 @@ unsigned APK → zipalign → apksigner → 最终 APK
 
 ```powershell
 cd d:\MyProject\work-timer
-# 1 构建前端
-npm run build
+# 1 构建前端 (必须 build:tauri!普通 build 会把旧 APK 留在 dist/)
+npm run build:tauri
 # 2 清理 jniLibs
 Remove-Item src-tauri\gen\android\app\src\main\jniLibs -Recurse -Force -EA SilentlyContinue
 Remove-Item src-tauri\gen\android\app\build            -Recurse -Force -EA SilentlyContinue

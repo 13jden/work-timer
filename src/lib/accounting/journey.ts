@@ -104,3 +104,64 @@ export function availableJourneys(
 export function canAttachToJourney(record: AccountRecord, journey: Journey): boolean {
   return record.type === journey.type;
 }
+
+// ── v3.0 TASK-060：详情页按日期分组 ───────────────────────────────
+
+export interface JourneyDayGroup {
+  /** YYYY-MM-DD */
+  dateKey: string;
+  /** 当日记录（保持入参顺序） */
+  items: AccountRecord[];
+  /** 当日支出合计（Σ|amount|，仅 expense） */
+  expense: number;
+  /** 当日收入合计（Σ|amount|，仅 income） */
+  income: number;
+}
+
+/**
+ * 把一程的关联记录按日期分组（详情页「某一天消费了什么」用）。
+ *
+ * 约定：
+ * - 分组顺序 = 首次出现顺序（调用方传入已按 dateKey 降序的记录即可得到倒序日期）
+ * - 组内记录保持入参顺序
+ * - expense / income 均为绝对值求和（金额符号由 RecordRow 的 type 决定）
+ */
+export function groupJourneyRecordsByDay(records: AccountRecord[]): JourneyDayGroup[] {
+  const map = new Map<string, AccountRecord[]>();
+  for (const r of records) {
+    const list = map.get(r.dateKey);
+    if (list) list.push(r);
+    else map.set(r.dateKey, [r]);
+  }
+  return Array.from(map.entries()).map(([dateKey, items]) => {
+    let expense = 0;
+    let income = 0;
+    for (const r of items) {
+      if (r.type === 'expense') expense += Math.abs(r.amount);
+      else income += Math.abs(r.amount);
+    }
+    return {
+      dateKey,
+      items,
+      expense: Math.round(expense * 100) / 100,
+      income: Math.round(income * 100) / 100,
+    };
+  });
+}
+
+/** 星期索引 → 中文（周日 = 0） */
+export const JOURNEY_WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const;
+
+/** dateKey → 星期（非法日期返回空串） */
+export function journeyWeekday(dateKey: string): string {
+  const d = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  return JOURNEY_WEEKDAYS[d.getDay()] ?? '';
+}
+
+/** dateKey → 日期章文本（10/21） */
+export function journeyStampDate(dateKey: string): string {
+  const parts = dateKey.split('-');
+  if (parts.length !== 3) return dateKey;
+  return `${parts[1]}/${parts[2]}`;
+}

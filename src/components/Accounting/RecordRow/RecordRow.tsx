@@ -113,7 +113,10 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
         </span>
       )}
       <span className={`${styles.amt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>
-        {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
+        {/* v3.0 TASK-062：0 元记录不带正负号（别人请客等场景） */}
+        {record.amount === 0
+          ? `¥${formatAmount(0)}`
+          : `${isExpense ? '-' : '+'}¥${formatAmount(Math.abs(record.amount))}`}
       </span>
     </div>
   );

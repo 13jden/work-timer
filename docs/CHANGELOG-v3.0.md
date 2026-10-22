@@ -8,6 +8,156 @@
 
 ---
 
+## [v3.0] · 2026-10-22 · 支持 0 元记录 · 别人请客也能记 (TASK-062)
+
+现实中有一类消费值得记下来，但金额是 0：别人请客、公司买单、霸王餐。
+之前弹窗只接受 > 0 的金额，用户要么被迫填个假金额污染统计，要么干脆不记（丢失消费轨迹）。
+本次放开 0 元记录。
+
+### A · 金额校验放开 0
+
+- `AddRecordModal`：`amount <= 0` 拦截 → 改为仅拦截「空输入 / 非数字 / 负数」
+- 空输入仍然非法（必须真的输入 `0`，而不是什么都没填）
+- 负数单独提示「金额不能为负数」，不再混在「请输入有效金额」里
+- `QuickAddRecord`（快速记录）同步放开 0
+
+### B · 0 元记录的语义
+
+| 维度 | 行为 |
+|---|---|
+| 账户余额 | 不变（delta = 0） |
+| 收支统计 | 计入笔数，对总额 / 占比贡献为 0 |
+| 列表展示 | 显示 `¥0.00`，**不带正负号** |
+| 分类聚合 | 归入对应分类，`total` 贡献 0，`count` + 1 |
+
+- 存 0 元记录时不再产生 `-0`（负零会让列表渲染成 `-¥0`）
+
+### C · 交互提示
+
+- 弹窗内金额为 0 时，金额区下方显示灰色提示「¥0 记录 · 例如别人请客，不计入金额统计」
+
+### D · 新增文件
+
+- `src/components/Accounting/AddRecordModal/AddRecordModal.test.tsx`：0 元保存 / 余额不变 / 统计不变三个用例
+- `docs/plans/tauri-migration/v3.0/TASK-062-v3.0-zero-amount-record.md`
+
+### 附：APK 重打 + dev server 修复
+
+- 重打 arm64 APK：`dist-android/SalaryTimer-3.0.0-arm64.apk`（11.71 MB，v2 + v3 签名）
+  - 本次只编 arm64（`--target aarch64`），APK 内只含 `lib/arm64-v8a/`，无需 `aapt remove`
+  - `public/downloads/manifest.json` 同步新 sha256 / 体积 / 日期
+- `vite.config.ts` 的 `server.watch.ignored` 排除 `**/src-tauri/**`：Android/Gradle 构建会生成并锁住
+  `problems-report.html` 等报告文件，Vite 监听时抛 EBUSY 会让 dev server 直接崩
+
+### 验证
+
+- `npm run typecheck` 通过
+- `npm run test` 466 / 466 通过
+- `npm run build` 成功
+- arm64 APK 签名校验通过（v2 + v3），`resources.arsc` 对齐 OK
+
+---
+
+## [v3.0] · 2026-10-22 · 一程详情页手账化 + 钱包开关一致性修复 (TASK-061)
+
+三个问题一起修：关闭钱包后资产卡仍显示「未分类」、一程详情页的记录只能看不能改（且「取消关联」保存不生效）、有照片的记录在详情页没有差异化展示。
+
+### A · 关闭钱包后不再显示「未分类」
+
+- `MinePage.tsx` → `TotalAssetsCard`：「未分类」来自 `pendingAdjust`（未归入账户的待调整项）
+- 现在只在 `walletEnabled` 时渲染；`hasPending` / `hasBreakdown` 计算同步排除，避免出现空的容器
+- 池相关的「未支付 / 待付 / 预付未消耗 / 已赚未到账 / 待退」不受影响，照常显示
+
+### B · 一程详情页记录可编辑 + 修复「取消关联保存不生效」
+
+**根因**：`AddRecordModal.handleSave` 构造 patch 时用的是条件展开
+
+```ts
+...(journeyId ? { journeyId } : {})   // journeyId 为空时整个键都不存在
+```
+
+而 `accountStore.updateRecord` 的合并语义是 `{ ...oldRecord, ...patch }` —— **不传键 = 不改动**。
+所以点 ✕ 取消关联后，旧 `journeyId` 被原样保留。修复为编辑分支显式传键：
+
+```ts
+journeyId: journeyId || undefined,   // 显式 undefined = 解除关联
+```
+
+`handleSave` 与 `handleSaveAndAgain` 两处都改了。
+
+- 详情页记录行现在可点击打开编辑弹窗，行为与统计页 `RecordRow` 一致
+- 键盘可达：`role="button"` + `tabIndex=0` + Enter / Space
+- 顺手修掉一个崩溃隐患：原代码在 `useImage` / `useMemo` 之前就 `if (!journey) return null`，一程被删除时 hook 数量骤减会触发 React 报错。现已把所有 hook 提到 early return 之前
+
+### C · 详情页记录区改成「旅行手账」
+
+沿用详情页已有的英雄封面 + 圆形邮戳这套「实体旅行物件」语言，而不是另起一套风格。
+
+- **墨块日期章**（签名元素）：日期以实心墨块 + 轻微旋转呈现，右侧接一条手账点状虚线，尽头浮着当日笔数与小计
+- **拍立得贴片**（有照片的记录）：白边 + 投影 + 轻微旋转的方形照片。照片是页面里唯一饱和的颜色块，自然成为视觉焦点
+- **紧凑行**（无照片的记录）：左槽放弱化的分类圆标，与有图记录共用同一条 76px 竖向基线，栅格不跳
+
+```
+▌10/21 周三 ┈┈┈┈┈┈┈  2 笔  -¥163
+ ┌──────┐  餐饮
+ │ IMG  │  野生菌火锅          -¥128     ← 备注 15px，可换行
+ └──────┘
+  ●  餐饮  烤乳扇              -¥35      ← 备注 13px，单行省略
+```
+
+- 点照片 → 全屏放大（复用已有的 `ImagePreview`，`stopPropagation` 不会误触发编辑）
+- 点记录其他位置 → 进编辑弹窗
+- 分组逻辑抽成纯函数 `groupJourneyRecordsByDay` 放进 `src/lib/accounting/journey.ts`（配套 `journeyStampDate` / `journeyWeekday`），可直接单测
+
+### D · 新增文件
+
+- `src/components/Accounting/Journey/JourneyPhotoTile.tsx`：拍立得贴片组件
+- `src/components/Accounting/Journey/JourneyDetailPage.test.tsx`
+- `src/components/Accounting/MinePage/MinePage.test.tsx`
+- `docs/plans/tauri-migration/v3.0/TASK-061-v3.0-journey-journal.md`
+
+### 验证
+
+- `npm run typecheck` 通过
+- `npm run test` 463 / 463 通过
+- `npm run build` 成功
+
+---
+
+## [v3.0] · 2026-10-21 · APK 打包链路修复 · 体积 73 MB → 11.71 MB
+
+### 根因
+
+`public/downloads/` 存放网站下载页用的 APK。Vite 会把 `public/` 原样复制进 `dist/`，而 Tauri 又把整个 `dist/` 压缩成 `tauri-codegen-assets` 并链进 Rust 二进制，导致旧 APK 被嵌进新 APK：
+
+| 阶段 | 体积 |
+|------|------|
+| dist（含旧 APK） | 20.14 MB |
+| .so (arm64) 嵌入旧 APK 后 | 18.45 MB |
+| universal APK（4 架构叠加） | **73.06 MB** |
+
+### 修法
+
+- `package.json` 新增 `build:tauri` 脚本（`scripts/build-tauri.mjs`）：设 `TAURI_BUILD=1` 后调用 Vite build API，跨 Windows / POSIX 行为一致
+- `vite.config.ts` 新增 `excludeDownloads` 插件：`TAURI_BUILD=1` 时构建结束删除 `dist/downloads/`，并关闭 sourcemap（约 2.4 MB `.map` 同样会被嵌入二进制）
+- `tauri.conf.json` 的 `beforeBuildCommand` 改为 `npm run build:tauri`；`version` 升到 `3.0.0`
+- 网站部署仍走 `npm run build`，`dist/downloads/` 保留，下载页不受影响
+
+修复后 dist = 1.21 MB，.so (arm64) = 9.19 MB，arm64 APK = **11.71 MB**。
+
+### 其他
+
+- `public/download/index.html` + `public/downloads/manifest.json` 同步到 v3.0.0（版本号 / 日期 / sha256 / 体积）
+- `docs/ANDROID-APK-PACKAGING.md` 补上 `build:tauri` 强制说明与体积排查条目
+
+### 验证
+
+- `npm run build` 成功
+- `npm run build:tauri` 成功，`dist/` 体积 ≈ 1.2 MB
+- arm64 APK 签名校验通过（v2 + v3）
+
+---
+
 ## [v3.0] · 2026-10-16 · 取消钱包·总资产直接改 (TASK-057)
 
 钱包（账户体系）从「记账入口筛选工具」降级为「可关闭的展示层开关」。关闭钱包仅影响总资产卡的账户行显示，不影响底层数据逻辑。

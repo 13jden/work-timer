@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Salary Timer",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "identifier": "com.salary-timer.dev",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build:tauri"
   },
   "app": {
     "windows": [

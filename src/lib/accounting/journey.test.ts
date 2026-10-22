@@ -2,7 +2,10 @@
  * @fileoverview journeyTotals 单测（v3.0 TASK-059 T-592）
  */
 import { describe, it, expect } from 'vitest';
-import { journeyTotals, availableJourneys, canAttachToJourney } from './journey';
+import {
+  journeyTotals, availableJourneys, canAttachToJourney,
+  groupJourneyRecordsByDay, journeyStampDate, journeyWeekday,
+} from './journey';
 import type { AccountRecord, Journey } from '../types';
 
 const mkRecord = (
@@ -120,5 +123,67 @@ describe('canAttachToJourney', () => {
     const journey = mkJourney('j1', '兼职', 'income');
     const record = mkRecord('r1', '', 100, 'expense', '2026-10-01');
     expect(canAttachToJourney(record, journey)).toBe(false);
+  });
+});
+
+describe('groupJourneyRecordsByDay', () => {
+  it('空数组返回空分组', () => {
+    expect(groupJourneyRecordsByDay([])).toEqual([]);
+  });
+
+  it('按 dateKey 分组，组内保持入参顺序', () => {
+    const records = [
+      mkRecord('r1', 'j1', 100, 'expense', '2026-10-21'),
+      mkRecord('r2', 'j1', 200, 'expense', '2026-10-20'),
+      mkRecord('r3', 'j1', 300, 'expense', '2026-10-21'),
+    ];
+    const groups = groupJourneyRecordsByDay(records);
+    expect(groups.map((g) => g.dateKey)).toEqual(['2026-10-21', '2026-10-20']);
+    expect(groups[0]!.items.map((r) => r.id)).toEqual(['r1', 'r3']);
+    expect(groups[1]!.items.map((r) => r.id)).toEqual(['r2']);
+  });
+
+  it('当日支出 / 收入分别按绝对值累计', () => {
+    const records = [
+      mkRecord('r1', 'j1', -100, 'expense', '2026-10-21'),
+      mkRecord('r2', 'j1', -50.5, 'expense', '2026-10-21'),
+      mkRecord('r3', 'j1', 300, 'income', '2026-10-21'),
+    ];
+    const groups = groupJourneyRecordsByDay(records);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.expense).toBe(150.5);
+    expect(groups[0]!.income).toBe(300);
+  });
+
+  it('支出 / 收入分属不同日期时互不串账', () => {
+    const records = [
+      mkRecord('r1', 'j1', -100, 'expense', '2026-10-21'),
+      mkRecord('r2', 'j1', 300, 'income', '2026-10-20'),
+    ];
+    const groups = groupJourneyRecordsByDay(records);
+    expect(groups[0]!.expense).toBe(100);
+    expect(groups[0]!.income).toBe(0);
+    expect(groups[1]!.expense).toBe(0);
+    expect(groups[1]!.income).toBe(300);
+  });
+});
+
+describe('journeyStampDate / journeyWeekday', () => {
+  it('日期章文本取 M/D', () => {
+    expect(journeyStampDate('2026-10-21')).toBe('10/21');
+    expect(journeyStampDate('2026-01-05')).toBe('01/05');
+  });
+
+  it('非法日期原样返回', () => {
+    expect(journeyStampDate('bad-key')).toBe('bad-key');
+  });
+
+  it('星期换算正确（2026-10-21 是周三）', () => {
+    expect(journeyWeekday('2026-10-21')).toBe('周三');
+    expect(journeyWeekday('2026-10-18')).toBe('周日');
+  });
+
+  it('非法日期返回空串', () => {
+    expect(journeyWeekday('bad-key')).toBe('');
   });
 });
