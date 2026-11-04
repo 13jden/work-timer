@@ -62,11 +62,6 @@ const VIEW_OPTIONS: Array<{ value: StatsView; label: string }> = [
   { value: 'year', label: '年' },
 ];
 
-const TYPE_OPTIONS: Array<{ value: RecordType; label: string }> = [
-  { value: 'expense', label: '支出' },
-  { value: 'income', label: '收入' },
-];
-
 const LIST_CHART_OPTIONS: Array<{ value: ListOrChart; label: string }> = [
   { value: 'list', label: '列表' },
   { value: 'chart', label: '统计' },
@@ -117,12 +112,11 @@ export function StatsPage() {
   const [view, setView] = useState<StatsView>('day');
   /** 列表 / 统计 切换（仅月/年视图生效；日视图只有列表） */
   const [listOrChart, setListOrChart] = useState<ListOrChart>('list');
-  /** 分类排行所用类型（仅图表模式可见切换器） */
-  const [type, setType] = useState<RecordType>('expense');
   const [dayKey, setDayKey] = useState(getTodayKey());
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const [year, setYear] = useState(new Date().getFullYear());
-  const [rankCategoryId, setRankCategoryId] = useState<string | null>(null);
+  /** v3.1：选中的分类 + 所属口径（支出/收入两套排行同时展示，点谁带谁） */
+  const [rankSelection, setRankSelection] = useState<{ categoryId: string; type: RecordType } | null>(null);
   /** v3.0 TASK-056：点击缩略图触发的全屏预览 */
   const [previewImageId, setPreviewImageId] = useState<string | null>(null);
   /** v2.3 T-307：虚拟/实际筛选开关 */
@@ -191,11 +185,15 @@ export function StatsPage() {
     });
   }, [view, currentRecords, year, statsOptions]);
 
-  // ── 分类排行（月/年视图） ───────────────────────────────
-  const ranks = useMemo(() => {
+  // ── 分类排行（月/年视图）：支出 / 收入 两套同时展示 ────
+  const expenseRanks = useMemo(() => {
     if (view === 'day') return [];
-    return aggregateByCategory(currentRecords, type, statsOptions);
-  }, [view, currentRecords, type, statsOptions]);
+    return aggregateByCategory(currentRecords, 'expense', statsOptions);
+  }, [view, currentRecords, statsOptions]);
+  const incomeRanks = useMemo(() => {
+    if (view === 'day') return [];
+    return aggregateByCategory(currentRecords, 'income', statsOptions);
+  }, [view, currentRecords, statsOptions]);
 
   // ── 日视图：记录列表（listableRecords） ─────────────────
   const listBaseRecords = useMemo(
@@ -232,7 +230,6 @@ export function StatsPage() {
   };
 
   const todayKey = getTodayKey();
-  const typeLabel = type === 'expense' ? '支出' : '收入';
   const nowDate = new Date();
 
   // 列表/统计切换器仅月/年显示
@@ -247,23 +244,23 @@ export function StatsPage() {
         title="日统计"
       />
 
-      {/* v3.0 TASK-055：「账本头条」汇总卡片 — 顶部日/月/年满宽 segmented（页面级控件） + 卡片内：期间标签 + 本期双块大数字 + 列表/统计切换 */}
+      {/* v3.0 TASK-055：「账本头条」汇总卡片 — 顶部日/月/年满宽 segmented（页面级控件，不动共用组件） + 汇总带：期间标签 + 本期双块大数字 + 列表/统计切换 */}
       <div className={styles.viewSwitcher}>
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleViewChange} />
       </div>
 
       <div className={styles.summaryCard}>
-        {/* 头牌：期间标签 + 范围 */}
-        <div className={styles.summaryPeriod}>
+        {/* 头牌：期间标签 + 范围（mono 小字） */}
+        <div className={styles.summaryHead}>
           <span className={styles.periodLabel}>{periodLabel(view, dayKey, monthKey, year)}</span>
           <span className={styles.periodRange}>{rangeLabel(view, ranges.start, ranges.end)}</span>
         </div>
 
-        {/* 双块大数字（display 衬线） */}
+        {/* 双块大数字（等宽数字体 + 支出/收入色，与 v3.1 手账页数字语言一致） */}
         <div className={styles.summaryNumbers}>
           <div className={styles.summaryBlock}>
             <span className={styles.summaryLabel}>支出</span>
-            <span className={`${styles.summaryValue} ${styles.expense}`}>
+            <span className={`${styles.summaryValue} ${styles.valueExpense}`}>
               <span className={styles.summarySign} aria-hidden="true">−</span>
               {formatAmount(summary.expense)}
             </span>
@@ -272,7 +269,7 @@ export function StatsPage() {
           <div className={styles.summaryDivider} />
           <div className={styles.summaryBlock}>
             <span className={styles.summaryLabel}>收入</span>
-            <span className={`${styles.summaryValue} ${styles.income}`}>
+            <span className={`${styles.summaryValue} ${styles.valueIncome}`}>
               <span className={styles.summarySign} aria-hidden="true">+</span>
               {formatAmount(summary.income)}
             </span>
@@ -283,7 +280,7 @@ export function StatsPage() {
         {/* 列表/统计切换（仅月/年） */}
         {showListChartToggle && (
           <div className={styles.summaryToggle}>
-            <SegmentedControl options={LIST_CHART_OPTIONS} value={listOrChart} onChange={setListOrChart} />
+            <ModeSwitch options={LIST_CHART_OPTIONS} value={listOrChart} onChange={setListOrChart} />
           </div>
         )}
       </div>
@@ -385,16 +382,19 @@ export function StatsPage() {
               }}
             />
           </div>
+          {/* v3.1：支出 / 收入 两套排行同时展示，不再切口径 */}
           <CategoryRankList
-            ranks={ranks}
+            ranks={expenseRanks}
             categories={categories}
-            typeLabel={typeLabel}
-            onSelect={setRankCategoryId}
+            typeLabel="支出"
+            onSelect={(categoryId) => setRankSelection({ categoryId, type: 'expense' })}
           />
-          <div className={styles.chartTypeRow}>
-            <span className={styles.chartTypeLabel}>排行口径</span>
-            <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
-          </div>
+          <CategoryRankList
+            ranks={incomeRanks}
+            categories={categories}
+            typeLabel="收入"
+            onSelect={(categoryId) => setRankSelection({ categoryId, type: 'income' })}
+          />
         </>
       )}
 
@@ -438,24 +438,27 @@ export function StatsPage() {
               }}
             />
           </div>
+          {/* v3.1：支出 / 收入 两套排行同时展示，不再切口径 */}
           <CategoryRankList
-            ranks={ranks}
+            ranks={expenseRanks}
             categories={categories}
-            typeLabel={typeLabel}
-            onSelect={setRankCategoryId}
+            typeLabel="支出"
+            onSelect={(categoryId) => setRankSelection({ categoryId, type: 'expense' })}
           />
-          <div className={styles.chartTypeRow}>
-            <span className={styles.chartTypeLabel}>排行口径</span>
-            <SegmentedControl options={TYPE_OPTIONS} value={type} onChange={setType} />
-          </div>
+          <CategoryRankList
+            ranks={incomeRanks}
+            categories={categories}
+            typeLabel="收入"
+            onSelect={(categoryId) => setRankSelection({ categoryId, type: 'income' })}
+          />
         </>
       )}
 
-      {rankCategoryId !== null && (
+      {rankSelection !== null && (
         <CategoryRecordsPage
-          categoryId={rankCategoryId}
-          type={type}
-          onBack={() => setRankCategoryId(null)}
+          categoryId={rankSelection.categoryId}
+          type={rankSelection.type}
+          onBack={() => setRankSelection(null)}
         />
       )}
 
@@ -472,6 +475,35 @@ export function StatsPage() {
 }
 
 // ── 子组件 ────────────────────────────────────────────────
+
+interface ModeSwitchProps<T extends string> {
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => void;
+}
+
+/**
+ * 统计页汇总带内的模式切换（本地实现，不改共用 SegmentedControl 的样式）。
+ * 墨底胶囊 + mono 小字，跟汇总带的细线语言一致。
+ */
+function ModeSwitch<T extends string>({ options, value, onChange }: ModeSwitchProps<T>) {
+  return (
+    <div className={styles.modeSwitch} role="tablist">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="tab"
+          aria-selected={value === option.value}
+          className={`${styles.modeItem} ${value === option.value ? styles.modeItemActive : ''}`}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 interface PeriodNavProps {
   title: string;
