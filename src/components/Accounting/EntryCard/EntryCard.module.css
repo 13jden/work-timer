@@ -1,0 +1,137 @@
+/* EntryCard — MINE 页入口卡通用骨架（登机牌 / 收据语言） */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  min-width: 0;
+  min-height: 156px;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 12px,
+      color-mix(in srgb, var(--line) 35%, transparent) 12px 13px
+    ),
+    var(--paper-2);
+  border: 1.5px dashed var(--line);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 150ms, box-shadow 150ms, border-color 150ms;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+/* ── 顶部：邮戳 / 图标 + 眉标 ───────────────── */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconCircle,
+.stampCircle {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.iconCircle {
+  border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+/* 邮戳：双圈 + 虚线内环 + 轻微旋转（v3.1 签名） */
+.stampCircle {
+  border: 2px solid var(--ink);
+  transform: rotate(-8deg);
+  position: relative;
+}
+
+.stampCircle::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.overline {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+/* ── 主区 ─────────────────────────────────── */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+
+.unit {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.meta {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 底部动作行 ───────────────────────────── */
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.footText {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+.chev {
+  flex-shrink: 0;
+  color: var(--muted);
+}

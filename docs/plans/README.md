@@ -15,7 +15,7 @@
 
 | 版本 | 目录 | 状态 | 主题 |
 |---|---|---|---|
-| v3.1 | [`tauri-migration/v3.1/`](./tauri-migration/v3.1/) | 🚧 进行中 | 一程命名重写 + 列表/详情 UI 重设计 (TASK-063) |
+| v3.1 | [`tauri-migration/v3.1/`](./tauri-migration/v3.1/) | 🚧 进行中 | 一程命名重写 + 列表/详情 UI 重设计 (TASK-063) · MINE 页布局重排 (TASK-064) |
 
 ---
 

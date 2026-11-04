@@ -1,0 +1,134 @@
+/* RecurringPage — 定期账全屏列表页（与一程列表页同构） */
+
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+  padding-bottom: 96px;
+  width: 100%;
+}
+
+/* ── 头部 ── */
+.header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--paper);
+}
+
+.circleBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 150ms var(--ease), background 150ms;
+}
+.circleBtn:hover { background: var(--paper-2); }
+.circleBtn:active { transform: scale(0.9); }
+.circleBtn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+
+.addBtn {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+  justify-self: end;
+}
+.addBtn:hover { background: var(--ink); opacity: 0.86; }
+
+.headerCenter { text-align: center; min-width: 0; }
+.overline {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.headerTitle {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+/* ── 列表 ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 16px 0;
+}
+
+/* ── 空态 ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 72px 24px;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.emptyHint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.emptyAddBtn {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+}
+.emptyAddBtn:hover {
+  border-color: var(--ink);
+  background: var(--paper-2);
+}
+
+@media (min-width: 720px) {
+  .page {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+}

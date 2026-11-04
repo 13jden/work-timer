@@ -2,12 +2,18 @@
  * @fileoverview MinePage — MINE 页（v2.4 · TASK-040 T-402/T-405 + v3.0 · TASK-057 T-575）
  *
  * 记账主题第 4 个 tab，分区纵向排列：
- * 总资产卡 → 存钱目标 → 池管理。
+ * 总资产卡 → 并排双入口卡（一程 / 定期账）。
  *
  * v3.0 TASK-057 改造（钱包模式开关）：
  * - TotalAssetsCard 双形态：关闭 = 「总支出」累计；开启 = v2.4 总资产（虚拟分解 + AccountRow）
  * - 总资产卡右上角 ⚙ 按钮 → WalletSwitchSheet 切换
  * - 开启钱包时，AccountRow 小卡点击 → AccountDetailPage（每账户详情）
+ *
+ * v3.1 TASK-064 改造（页面重排）：
+ * - 结余目标从独立 GOAL 大卡改为页面底部的设置行（MonthlyGoalSetting）
+ * - 隐藏计时模式从设置弹层下放到页面底部（HideTimerSetting）
+ * - 底部两块合并成并排的两张竖版入口卡：JourneySection + RecurringEntryCard
+ * - 定期账列表从 MINE 页内嵌分区改为独立全屏页（RecurringPage）
  */
 import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -17,9 +23,12 @@ import { Gear } from '@phosphor-icons/react';
 import { AccountRow } from './AccountRow';
 import { AccountDetailPage } from './AccountDetailPage';
 import { WalletSwitchSheet } from './WalletSwitchSheet';
-import { GoalsSection } from './GoalsSection';
+import { MonthlyGoalSetting } from './MonthlyGoalSetting';
+import { HideTimerSetting } from './HideTimerSetting';
 // v3.0 TASK-058：PoolSection → RecurringSection（去池化）
-import { RecurringSection } from '../PoolPage/RecurringSection';
+// v3.1 TASK-064：定期账 → 入口卡 + 独立全屏页
+import { RecurringEntryCard } from '../PoolPage/RecurringEntryCard';
+import { RecurringPage } from '../PoolPage/RecurringPage';
 // v3.0 TASK-059：MINE 页「旅游记录」入口
 import { JourneySection } from '../Journey/JourneySection';
 import { JourneyListPage } from '../Journey/JourneyListPage';
@@ -29,7 +38,7 @@ import styles from './MinePage.module.css';
 
 export function MinePage() {
   const accountCount = useAccountStore((s) => s.accounts.length);
-  const [pageMode, setPageMode] = useState<'mine' | 'list' | 'detail'>('mine');
+  const [pageMode, setPageMode] = useState<'mine' | 'list' | 'detail' | 'recurring'>('mine');
   const [detailJourneyId, setDetailJourneyId] = useState<string | null>(null);
 
   // v3.0 TASK-059：旅游记录页面独立全屏（不再内嵌于 MINE）
@@ -44,6 +53,10 @@ export function MinePage() {
           }}
         />
       );
+    }
+    // v3.1 TASK-064：定期账列表独立全屏
+    if (pageMode === 'recurring') {
+      return <RecurringPage onBack={() => setPageMode('mine')} />;
     }
     if (detailJourneyId) {
       return (
@@ -67,14 +80,22 @@ export function MinePage() {
         title="资产设置"
       />
       <TotalAssetsCard />
-      <GoalsSection />
       {/* v2.5-patch4 N-481：取消「time → accounting 联动」展示入口。
           联动功能本身保留在 store（ensureSalaryPool / upsertSalaryLinkageForDate），
           默认开关=false，CalendarPage 不再写入联动 record。
           未来如需恢复，仅修改 config.salaryLinkageEnabled 即可。 */}
-      {/* v3.0 TASK-059：MINE 页「旅游记录」入口（位于定期账单之上） */}
-      <JourneySection onOpen={() => setPageMode('list')} />
-      <RecurringSection />
+      {/* v3.1 TASK-064：页面底部两行设置（结余目标 / 隐藏计时模式） */}
+      <div className={styles.settingsList}>
+        <MonthlyGoalSetting />
+        <HideTimerSetting />
+      </div>
+      {/* v3.1 TASK-064：底部并排双入口卡（一程 / 定期账） */}
+      <div className={styles.entryRow}>
+        <JourneySection onOpen={() => setPageMode('list')} />
+        <RecurringEntryCard onOpen={() => setPageMode('recurring')} />
+      </div>
+
+
     </div>
   );
 }

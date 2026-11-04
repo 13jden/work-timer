@@ -291,115 +291,84 @@
   cursor: pointer;
 }
 
-/* ── v2.5-patch5 N-485 redesign：结余目标 — 浅色极简卡 ── */
-.goalHeroCard {
-  position: relative;
+/* ── v3.1 TASK-064：底部并排双入口卡 ────────── */
+.entryRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* ── v3.1 TASK-064：页面底部两行设置 ────────── */
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── v3.1 TASK-064：结余目标设置行（页面底部） ── */
+.goalSetting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
   background: var(--paper-3);
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  padding: 14px 18px 16px;
+  border-radius: 12px;
+}
+
+.goalSettingLabel {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  width: 100%;
-  transition: border-color 180ms ease, background 180ms ease;
+  min-width: 0;
 }
 
-.goalHeroCard:hover {
-  background: var(--paper-2);
-  border-color: var(--line);
+.goalSettingTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
-/* 极细下划线 — 提示「目标」性质的视觉签名 */
-.goalHeroCard::after {
-  content: '';
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 8px;
-  height: 1px;
-  background: var(--accent);
-  opacity: 0.35;
-  transition: opacity 180ms;
+.goalSettingHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
-.goalHeroCard:hover::after {
-  opacity: 0.7;
-}
-
-.goalHeroEyebrowRow {
+.goalSettingRight {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
-.goalHeroEyebrow {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  opacity: 0.65;
-}
-
-.goalHeroEdit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink-muted);
-  opacity: 0.5;
-  transition: all 150ms;
-}
-
-.goalHeroCard:hover .goalHeroEdit {
-  opacity: 1;
-  border-color: var(--line-soft);
-  background: var(--paper-4);
-}
-
-.goalHeroLabel {
-  font-size: 12px;
-  color: var(--ink-muted);
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.goalHeroAmt {
-  font-family: var(--font-display);
-  font-size: 36px;
+.goalSettingValue {
+  font-family: var(--font-num, ui-monospace, monospace);
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-  letter-spacing: -0.8px;
 }
 
-.goalHeroFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.goalHeroHint {
+.goalSettingEdit {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-family: inherit;
   font-size: 11px;
-  color: var(--ink-muted);
-  opacity: 0.7;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
 }
 
-.goalHeroSlash {
-  display: none;
+.goalSettingEdit:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--paper-2);
 }
 
 /* ── 月度目标编辑弹窗（v2.5-patch2 T-507） ─────────── */

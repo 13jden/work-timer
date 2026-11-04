@@ -32,6 +32,7 @@ v3.1 做一件事：**把「一程」当成一个人的旅行手账来做**。
 | TASK ID | 标题 | 状态 | 文档 |
 |---|---|---|---|
 | TASK-063 | 一程命名重写 + 列表/详情 UI 重设计 | ✅ 已完成 | [`TASK-063-v3.1-oneway-ui.md`](./TASK-063-v3.1-oneway-ui.md) |
+| TASK-064 | MINE 页布局重排（双入口卡 + 设置下放） | ✅ 已完成 | [`TASK-064-v3.1-mine-layout.md`](./TASK-064-v3.1-mine-layout.md) |
 
 ---
 
