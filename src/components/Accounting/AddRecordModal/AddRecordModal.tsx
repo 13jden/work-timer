@@ -611,12 +611,12 @@ export function AddRecordModal({
               </div>
             </>
           )}
-          {/* v3.0 TASK-059：旅游记录 chip
+          {/* v3.0 TASK-059：一程 chip
               - 钱包开启：放在账户右边
               - 钱包关闭：放在原「账户」位置 */}
           <span className={styles.fieldDivider} aria-hidden />
           <div className={styles.fieldCell}>
-            <div className={styles.fieldLabel}>旅游记录</div>
+            <div className={styles.fieldLabel}>一程</div>
             {journeyId ? (
               <button
                 type="button"
@@ -632,7 +632,7 @@ export function AddRecordModal({
                   className={styles.journeyChipRemove}
                   onClick={(e) => { e.stopPropagation(); setJourneyId(''); }}
                   role="button"
-                  aria-label="移除旅游记录"
+                  aria-label="移除一程"
                   title="移除"
                 >
                   <X size={12} weight="bold" />

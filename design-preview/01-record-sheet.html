@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>记一笔 · 概念稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1E9; --paper-2:#ECE8DD; --card:#FBF9F3;
+  --ink:#1B1A15; --ink-2:#4F4C44; --muted:#8D897C;
+  --line:rgba(27,26,21,.10); --line-2:rgba(27,26,21,.18);
+  --lime:#CDF25A; --coral:#CE5A4C; --green:#4E9B72;
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --num:"Space Grotesk","IBM Plex Mono",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+body{background:#DFDCD3;display:flex;justify-content:center;font-family:var(--sans);color:var(--ink)}
+.phone{width:min(420px,100%);height:100dvh;background:var(--paper);display:flex;flex-direction:column;position:relative;overflow:hidden}
+@media (min-width:520px){
+  body{padding:28px 0}
+  .phone{height:min(900px,calc(100dvh - 56px));border-radius:36px;box-shadow:0 30px 90px rgba(30,28,20,.28)}
+}
+.screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* 底层页面（被遮罩的记账主页暗示） */
+.underlay{padding:14px 24px 0;opacity:.38;user-select:none}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font:500 12px var(--mono);letter-spacing:.06em}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.sb-icons svg{display:block}
+.under-head{margin-top:10px;font:500 10px var(--mono);letter-spacing:.2em;color:var(--ink-2)}
+.under-num{margin-top:4px;font:600 30px/1 var(--num);letter-spacing:-.02em}
+
+/* 面板 */
+.sheet{flex:1;margin-top:-26px;background:var(--paper);border-radius:28px 28px 0 0;box-shadow:0 -16px 50px rgba(30,28,20,.14);display:flex;flex-direction:column;padding:10px 20px calc(16px + env(safe-area-inset-bottom));position:relative;overflow-y:auto;animation:rise .45s cubic-bezier(.22,1,.36,1)}
+@keyframes rise{from{transform:translateY(28px);opacity:.4}to{transform:none;opacity:1}}
+.grab{width:38px;height:4px;border-radius:99px;background:var(--line-2);margin:2px auto 8px}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;height:36px}
+.sheet-head h1{font:600 17px var(--serif);letter-spacing:.06em}
+.icon-btn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2);border:1px solid var(--line);transition:.2s}
+.icon-btn:active{transform:scale(.92);background:var(--paper-2)}
+.head-tag{font:500 10px var(--mono);letter-spacing:.16em;color:var(--muted)}
+
+/* 收支切换 */
+.seg{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;background:var(--paper-2);border-radius:14px;padding:4px;gap:4px}
+.seg-btn{height:36px;border-radius:11px;font:500 14px var(--sans);color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;transition:.25s}
+.seg-btn .sg{font:500 15px var(--num)}
+.seg-btn.active{background:var(--ink);color:var(--paper);box-shadow:0 6px 16px rgba(27,26,21,.22)}
+.seg-btn.active .sg{color:var(--lime)}
+
+/* 表达式 + 金额读数 */
+.expr{min-height:14px;margin-top:8px;text-align:center;font:500 12px var(--num);letter-spacing:.06em;color:var(--muted)}
+.readout{margin:2px 0 4px;display:flex;align-items:baseline;justify-content:center;gap:4px}
+.readout .sign{font:600 24px var(--num);color:var(--coral)}
+.readout .cur{font:500 18px var(--num);color:var(--muted)}
+.readout .num{font:600 40px/1 var(--num);letter-spacing:-.03em;font-feature-settings:"tnum"}
+.readout .caret{width:2px;height:28px;background:var(--ink);margin-left:4px;animation:blink 1.1s steps(1) infinite;align-self:center}
+@keyframes blink{50%{opacity:0}}
+.readout.inc .sign{color:var(--green)}
+.readout-hint{text-align:center;font:400 11px var(--mono);letter-spacing:.14em;color:var(--muted);margin-bottom:10px}
+
+/* 分类 */
+.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.cat{position:relative;aspect-ratio:1;border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink-2);transition:.18s;background:var(--card)}
+.cat svg{width:20px;height:20px}
+.cat span{font:400 10.5px var(--sans)}
+.cat:active{transform:scale(.94)}
+.cat.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.cat.on::after{content:"";position:absolute;top:7px;right:7px;width:5px;height:5px;border-radius:50%;background:var(--lime)}
+.cat.add{border-style:dashed;background:transparent;color:var(--muted)}
+
+/* 元信息行 */
+.meta{margin-top:12px;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}
+.meta-row{width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;text-align:left}
+.meta-row + .meta-row,.imgs + .meta-row{border-top:1px solid var(--line)}
+.meta-k{font:500 10px var(--mono);letter-spacing:.14em;color:var(--muted);width:34px;flex:none}
+.meta-v{flex:1;font:400 13.5px var(--sans)}
+.meta-v.ph{color:var(--muted)}
+.meta-row svg{width:16px;height:16px;color:var(--muted);flex:none}
+.chip{font:500 11px var(--mono);letter-spacing:.06em;border:1.5px solid rgba(27,26,21,.35);border-radius:99px;padding:5px 12px;color:var(--ink);background:var(--paper-2)}
+.chip.on{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.chip.plus{display:inline-flex;align-items:center;gap:4px}
+.chip.plus svg{width:10px;height:10px}
+
+/* 合行：图片 · 旅行（左右分布） */
+.meta-row.combo{padding:0;align-items:stretch}
+.combo-cell{display:flex;align-items:center;gap:6px;padding:9px 12px;min-width:0;text-align:left}
+.vr{width:1px;background:var(--line);margin:9px 0;flex:none}
+.imgs-cell{flex:1;padding:9px 12px}
+.imgs{display:flex;gap:6px;align-items:center}
+.img-tile{width:40px;height:40px;flex:none;border-radius:10px;background:var(--paper-2);border:1px solid var(--line);padding:0;overflow:hidden}
+.img-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.img-add{width:44px;height:40px;flex:none;border-radius:10px;border:1.5px dashed rgba(27,26,21,.35);background:var(--paper-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.img-add svg{width:14px;height:14px;color:var(--ink-2)}
+.img-add span{font:500 9.5px var(--sans);color:var(--ink)}
+.img-add:active{background:var(--line)}
+.trip-cell{flex:none}
+.trip-t{font:400 12px var(--sans);color:var(--ink);max-width:104px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trip-t.ph{color:var(--muted)}
+
+/* 旅行选择浮层 */
+.pop-mask{position:absolute;inset:0;z-index:4;background:rgba(27,26,21,.18)}
+.trip-pop{position:absolute;left:20px;right:20px;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 44px rgba(30,28,20,.22);padding:6px}
+.pop-item{width:100%;display:flex;align-items:baseline;gap:8px;padding:12px;border-radius:11px;text-align:left;font:500 14px var(--sans)}
+.pop-item small{font:400 10.5px var(--mono);color:var(--muted);letter-spacing:.06em}
+.pop-item:active{background:var(--paper-2)}
+.pop-item.new{color:var(--ink-2);font:400 13px var(--sans);border-top:1px solid var(--line);border-radius:0 0 11px 11px;margin-top:2px}
+
+/* 键盘 */
+.pad{margin-top:auto;padding-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.key{height:46px;border-radius:13px;background:var(--paper-2);font:600 18px var(--num);display:grid;place-items:center;transition:.12s;color:var(--ink)}
+.key:active{transform:scale(.94);background:var(--line)}
+.key.op{font:500 17px var(--num);color:var(--ink-2)}
+.key svg{width:20px;height:20px;color:var(--ink-2)}
+.key.again{background:transparent;border:1px solid var(--line);font:400 12px var(--sans);color:var(--ink-2)}
+.key.done{background:var(--lime);color:var(--ink);font:600 14px var(--sans);letter-spacing:.1em}
+.key.done:active{transform:scale(.94);filter:brightness(.94)}
+
+.toast{position:absolute;top:86px;left:50%;transform:translate(-50%,-8px);background:var(--ink);color:var(--paper);font:400 12.5px var(--sans);padding:10px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:.3s;white-space:nowrap;z-index:6}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <div class="underlay" aria-hidden="true">
+      <div class="statusbar"><span>16:40</span>
+        <span class="sb-icons">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.3" y="5" width="3" height="6" rx="1"/><rect x="8.6" y="2.5" width="3" height="8.5" rx="1"/><rect x="12.9" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.4 9.4 0 0 1 13 0"/><path d="M3.4 6.2a6 6 0 0 1 8.2 0"/><path d="M5.9 8.7a2.6 2.6 0 0 1 3.2 0"/><circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>
+          <svg width="20" height="11" viewBox="0 0 20 11" fill="none" stroke="currentColor"><rect x=".7" y=".7" width="16" height="9.6" rx="2.6"/><rect x="2.4" y="2.4" width="10" height="6.2" rx="1.2" fill="currentColor" stroke="none"/><path d="M18.6 3.6v3.8" stroke-linecap="round"/></svg>
+        </span>
+      </div>
+      <div class="under-head">记账中 · 10 月</div>
+      <div class="under-num">¥ +568.26</div>
+    </div>
+
+    <section class="sheet">
+      <div class="grab"></div>
+      <header class="sheet-head">
+        <button class="icon-btn" aria-label="关闭">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <h1>记一笔</h1>
+        <span class="head-tag">QUICK ADD</span>
+      </header>
+
+      <div class="seg" role="tablist" aria-label="收支类型">
+        <button class="seg-btn active" data-sign="-" role="tab" aria-selected="true"><span class="sg">−</span>支出</button>
+        <button class="seg-btn" data-sign="+" role="tab" aria-selected="false"><span class="sg">+</span>收入</button>
+      </div>
+
+      <div class="expr" id="expr"></div>
+      <div class="readout" id="readout">
+        <span class="sign" id="sign">−</span><span class="cur">¥</span><span class="num" id="amount">0.00</span><span class="caret"></span>
+      </div>
+      <div class="readout-hint" id="hint">餐饮 · 2026-10-22</div>
+
+      <div class="cats" id="cats">
+        <button class="cat on" data-name="餐饮"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg><span>餐饮</span></button>
+        <button class="cat" data-name="交通"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg><span>交通</span></button>
+        <button class="cat" data-name="购物"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>购物</span></button>
+        <button class="cat" data-name="娱乐"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59c-.01.05-.01.1-.02.15C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.42.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.54-.6-6.58-.69-7.26-.01-.05-.01-.1-.02-.15A4 4 0 0 0 17.32 5z"/></svg><span>娱乐</span></button>
+        <button class="cat" data-name="住宿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"/><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M2 18h20"/></svg><span>住宿</span></button>
+        <button class="cat" data-name="水电"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A11 11 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 0 1-11.91 4.97"/></svg><span>水电</span></button>
+        <button class="cat" data-name="医疗"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h5v5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"/></svg><span>医疗</span></button>
+        <button class="cat" data-name="教育"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>教育</span></button>
+        <button class="cat" data-name="其他"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>其他</span></button>
+        <button class="cat add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>添加</span></button>
+      </div>
+
+      <div class="meta">
+        <button class="meta-row">
+          <span class="meta-k">DATE</span><span class="meta-v">2026-10-22 · 周四</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="16" x="3" y="6" rx="2"/><path d="M3 10h18"/></svg>
+        </button>
+        <div class="meta-row combo">
+          <div class="combo-cell imgs-cell">
+            <span class="imgs" id="imgs">
+              <button class="img-tile" aria-label="预览图片"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rustic%20wooden%20table%20with%20simple%20Chinese%20home%20dishes%20beside%20a%20lake-view%20window%2C%20warm%20natural%20light%2C%20travel%20snapshot%20film%20style&image_size=square" alt=""></button>
+              <button class="img-tile" aria-label="预览图片"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Wooden%20pier%20extending%20over%20calm%20green%20lake%20with%20forested%20mountains%20behind%2C%20soft%20daylight%2C%20travel%20snapshot%20film%20style&image_size=square" alt=""></button>
+              <button class="img-add" id="imgAdd">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                <span>添加</span>
+              </button>
+            </span>
+          </div>
+          <span class="vr"></span>
+          <button class="combo-cell trip-cell" id="tripRow">
+            <span class="trip-t ph" id="tripText">关联旅行</span>
+            <span class="chip plus" id="tripChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>添加</span>
+          </button>
+        </div>
+        <button class="meta-row" id="noteBtn">
+          <span class="meta-k">NOTE</span><span class="meta-v ph">添加备注（选填）</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+      </div>
+
+      <div class="pad" id="pad">
+        <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+        <button class="key op" data-k="del" aria-label="退格"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><path d="m18 9-6 6M12 9l6 6"/></svg></button>
+        <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+        <button class="key op" data-k="+">+</button>
+        <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+        <button class="key op" data-k="-">−</button>
+        <button class="key" data-k="0">0</button><button class="key" data-k=".">.</button>
+        <button class="key again" data-k="again">再记</button>
+        <button class="key done" data-k="done">完成</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="pop-mask" id="popMask" hidden></div>
+  <div class="trip-pop" id="tripPop" hidden>
+    <button class="pop-item" data-trip="千岛湖 · 10-06 → 10-06"><span>千岛湖</span><small>10-06 → 10-06 · 4 笔</small></button>
+    <button class="pop-item" data-trip="苏州 · 09-26 → 09-28"><span>苏州</span><small>09-26 → 09-28 · 0 笔</small></button>
+    <button class="pop-item" id="popUnlink" hidden>不关联旅行记录</button>
+    <button class="pop-item new" id="tripNew">+ 新建旅程</button>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+(function(){
+  var raw="", parts=[], sign="-", catName="餐饮";
+  var $=function(id){return document.getElementById(id);};
+  var amountEl=$("amount"), signEl=$("sign"), readout=$("readout"), hint=$("hint"),
+      exprEl=$("expr"), toast=$("toast"), tripText=$("tripText"), tripChip=$("tripChip"),
+      tripPop=$("tripPop"), popMask=$("popMask"), tripRow=$("tripRow"), phone=document.querySelector(".phone");
+  function fmt(s){
+    if(!s) return "0.00";
+    var p=s.split(".");
+    p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");
+    return p.length>1 ? p[0]+"."+p[1] : p[0];
+  }
+  function total(){
+    var seq=parts.slice();
+    if(raw) seq.push(fmt(raw));
+    if(!seq.length) return "0.00";
+    var v=parseFloat(seq[0].replace(/,/g,""));
+    for(var i=1;i<seq.length;i+=2){
+      var n=parseFloat(seq[i+1].replace(/,/g,""));
+      v = seq[i]==="+" ? v+n : v-n;
+    }
+    return v.toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function render(){
+    amountEl.textContent=fmt(raw);
+    signEl.textContent=sign==="-"?"−":"+";
+    readout.classList.toggle("inc",sign==="+");
+    hint.textContent=catName+" · 2026-10-22";
+    exprEl.textContent=parts.join(" ");
+  }
+  function say(msg){
+    toast.textContent=msg; toast.classList.add("show");
+    setTimeout(function(){toast.classList.remove("show");},1600);
+  }
+  $("pad").addEventListener("click",function(e){
+    var b=e.target.closest(".key"); if(!b) return;
+    var k=b.dataset.k;
+    if(k==="del"){ raw=raw.slice(0,-1); }
+    else if(k==="again"){ raw=""; parts=[]; }
+    else if(k==="done"){
+      var v=total();
+      say("已记 "+(sign==="-"?"−":"+")+"¥"+v+" · "+catName);
+      raw=""; parts=[];
+    }
+    else if(k==="+"||k==="-"){
+      if(!raw && !parts.length) return;
+      if(!raw && parts.length%2===1){ parts[parts.length-1]=k; }
+      else { parts.push(fmt(raw), k); raw=""; }
+    }
+    else{
+      if(k==="." && raw.indexOf(".")>-1) return;
+      if(raw.indexOf(".")>-1 && raw.split(".")[1].length>=2) return;
+      if(raw.length>=9) return;
+      raw+=k;
+    }
+    render();
+  });
+  document.querySelectorAll(".seg-btn").forEach(function(b){
+    b.addEventListener("click",function(){
+      document.querySelectorAll(".seg-btn").forEach(function(x){x.classList.remove("active");x.setAttribute("aria-selected","false");});
+      b.classList.add("active"); b.setAttribute("aria-selected","true");
+      sign=b.dataset.sign; render();
+    });
+  });
+  $("cats").addEventListener("click",function(e){
+    var b=e.target.closest(".cat"); if(!b) return;
+    if(b.classList.contains("add")){ say("概念稿：打开分类管理"); return; }
+    document.querySelectorAll(".cat").forEach(function(x){x.classList.remove("on");});
+    b.classList.add("on"); catName=b.dataset.name; render();
+  });
+  $("noteBtn").addEventListener("click",function(){ say("概念稿：输入备注"); });
+  $("imgAdd").addEventListener("click",function(){ say("概念稿：打开相册 / 相机"); });
+  $("imgs").addEventListener("click",function(e){
+    if(e.target.closest(".img-tile")) say("概念稿：预览大图");
+  });
+  var linked=false, PLUS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  function setChip(){
+    if(linked){ tripChip.textContent="已关联"; tripChip.classList.add("on"); tripChip.classList.remove("plus"); }
+    else { tripChip.classList.add("plus"); tripChip.classList.remove("on"); tripChip.innerHTML=PLUS+"添加"; }
+  }
+  function closePop(){ tripPop.hidden=true; popMask.hidden=true; }
+  tripRow.addEventListener("click",function(){
+    var r=tripRow.getBoundingClientRect(), p=phone.getBoundingClientRect();
+    tripPop.style.top=Math.min(r.bottom-p.top+8, p.height-230)+"px";
+    $("popUnlink").hidden=!linked;
+    tripPop.hidden=false; popMask.hidden=false;
+  });
+  popMask.addEventListener("click",closePop);
+  tripPop.addEventListener("click",function(e){
+    if(e.target.closest("#tripNew")){ say("概念稿：新建一段旅程"); closePop(); return; }
+    if(e.target.closest("#popUnlink")){ linked=false; tripText.textContent="关联旅行"; tripText.classList.add("ph"); setChip(); closePop(); return; }
+    var b=e.target.closest(".pop-item"); if(!b||!b.dataset.trip) return;
+    linked=true; tripText.textContent=b.dataset.trip; tripText.classList.remove("ph"); setChip();
+    closePop();
+  });
+  setChip();
+  render();
+})();
+</script>
+</body>
+</html>

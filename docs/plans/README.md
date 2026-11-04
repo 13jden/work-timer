@@ -11,6 +11,12 @@
 |---|---|---|
 | [`tauri-migration/`](./tauri-migration/) | 🚧 进行中 | 从 HTML + Capacitor 重构为 Tauri + React 多端架构 |
 
+### tauri-migration 版本路线图
+
+| 版本 | 目录 | 状态 | 主题 |
+|---|---|---|---|
+| v3.1 | [`tauri-migration/v3.1/`](./tauri-migration/v3.1/) | 🚧 进行中 | 一程命名重写 + 列表/详情 UI 重设计 (TASK-063) |
+
 ---
 
 ## 目录模板(每个项目子目录)

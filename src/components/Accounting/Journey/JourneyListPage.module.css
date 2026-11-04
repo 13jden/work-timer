@@ -1,251 +1,406 @@
-/* JourneyListPage — Polaroid 瀑布流 */
+/* JourneyListPage — 一程列表（v3.1 TASK-063 · 护照页语言） */
+
 .page {
   min-height: 100vh;
   background: var(--paper);
-  padding-bottom: 80px;
+  padding-bottom: 96px;
+  width: 100%;
 }
 
-/* ── Header ── */
+/* ── 头部 ── */
 .header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px 16px;
+  gap: 8px;
+  padding: 16px 20px 8px;
   position: sticky;
   top: 0;
-  background: var(--paper);
   z-index: 10;
-  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
 }
-.backBtn, .addBtn {
-  background: var(--paper-2);
-  border: none;
-  border-radius: 10px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.circleBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
   cursor: pointer;
-  color: var(--ink);
-  transition: background 150ms;
-  flex-shrink: 0;
+  transition: transform 150ms var(--ease), background 150ms;
 }
-.backBtn:hover, .addBtn:hover { background: var(--paper-3); }
+.circleBtn:hover { background: var(--paper-2); }
+.circleBtn:active { transform: scale(0.9); }
+.circleBtn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+
 .addBtn {
   background: var(--ink);
+  border-color: var(--ink);
   color: var(--paper);
+  justify-self: end;
 }
-.addBtn:hover { opacity: 0.85; }
+.addBtn:hover { background: var(--ink); opacity: 0.86; }
 
-.headerCenter {
-  flex: 1;
-  text-align: center;
-}
-.headerEyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--muted);
+.headerCenter { text-align: center; min-width: 0; }
+.overline {
   font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  color: var(--muted);
+  text-transform: uppercase;
 }
 .headerTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.3px;
+  margin: 4px 0 0;
   font-family: var(--font-display);
-  margin-top: 2px;
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.14em;
+  color: var(--ink);
 }
 
-/* ── 瀑布流（Polaroid 风） ── */
-.masonry {
-  columns: 2;
-  column-gap: 14px;
-  padding: 18px 16px 0;
+/* ── 统计行 ── */
+.sumline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 22px 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.sumline i {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.sumline b {
+  font-family: var(--font-num);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 卡片列表 ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px;
 }
 
 .card {
-  break-inside: avoid;
-  margin-bottom: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
   cursor: pointer;
-  transform: rotate(var(--tilt, 0deg));
-  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Polaroid：白底阴影 + 底部留白 */
-  background: var(--paper);
-  padding: 10px 10px 14px;
-  border-radius: 2px;
-  box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.04),
-    0 4px 8px rgba(0, 0, 0, 0.08);
-  position: relative;
+  transition: transform 200ms var(--ease), box-shadow 200ms var(--ease);
 }
 .card:hover {
-  transform: rotate(0deg) translateY(-3px);
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--ink) 10%, transparent);
 }
-.card:active { transform: scale(0.98); }
+.card:active { transform: scale(0.985); }
+.card:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 
-.cardInner {
+/* 封面 */
+.photo {
   position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 16 / 9;
+  background: var(--paper-2);
   overflow: hidden;
-  border-radius: 1px;
-  background: var(--paper-3);
 }
-
-.cover {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.coverExpense {
-  background: linear-gradient(160deg, #FFD3CB 0%, #FF8A75 50%, #E64A2E 100%);
-}
-.coverIncome {
-  background: linear-gradient(160deg, #C7F0D0 0%, #6BD899 50%, #2DAB5E 100%);
-}
-.coverGlyph {
-  font-size: 56px;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  font-weight: 300;
-}
-
-.coverImgWrap {
-  width: 100%;
-  height: 100%;
-}
-.coverImg {
+.photoImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 600ms var(--ease);
 }
+.card:hover .photoImg { transform: scale(1.03); }
 
-/* 邮戳角标（覆盖在封面右上） */
-.stampBadge {
+/* 无封面：墨底 + 纸纹 + 标题首字（印刷封面，不用渐变占位色） */
+.photoFallback {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 56px;
-  height: 56px;
-  pointer-events: none;
-}
-.stampCircle {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  color: rgba(255, 255, 255, 0.98);
-  transform: rotate(-12deg);
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
-  position: relative;
+  gap: 6px;
+  background-color: var(--surface-dark);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 10px,
+    color-mix(in srgb, var(--ink-on-dark) 6%, transparent) 10px 11px
+  );
 }
-.stampCircle::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.6);
-}
-.stampDate {
-  font-size: 8px;
+.photoFallbackGlyph {
+  font-family: var(--font-display);
+  font-size: 76px;
+  line-height: 0.9;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink-on-dark) 18%, transparent);
+}
+.photoFallbackHint {
   font-family: var(--font-mono);
-}
-.stampDivider {
-  width: 70%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.6);
-}
-.stampType {
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, var(--ink-on-dark) 36%, transparent);
 }
 
-/* 文字区 */
-.cardBody {
-  padding: 10px 4px 0;
-  text-align: center;
+.photoScrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--surface-dark) 84%, transparent) 0%,
+    color-mix(in srgb, var(--surface-dark) 18%, transparent) 46%,
+    transparent 72%
+  );
 }
-.cardTitle {
-  font-size: 14px;
+
+.onPhoto {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.photoText { min-width: 0; }
+.photoTitle {
+  font-family: var(--font-display);
+  font-size: 23px;
   font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.2px;
+  line-height: 1.1;
+  letter-spacing: 0.1em;
+  color: var(--ink-on-dark);
+  text-shadow: 0 2px 14px color-mix(in srgb, var(--surface-dark) 55%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-display);
 }
-.cardMeta {
+.photoDates {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--ink-on-dark) 80%, transparent);
+}
+
+/* 邮戳：整个模块的签名元素（列表 / 详情 / 日分组共用一套语言） */
+.stamp {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 62%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transform: rotate(-9deg);
+  color: color-mix(in srgb, var(--ink-on-dark) 92%, transparent);
+  position: relative;
+}
+.stamp::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--ink-on-dark) 38%, transparent);
+}
+.stampDate {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.stampLine {
+  width: 56%;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.5;
+}
+.stampType {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+/* 卡底统计 */
+.cardBody {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 16px;
+  min-width: 0;
+}
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+.statNum {
+  font-family: var(--font-num);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.statExpense { color: var(--expense); }
+.statIncome { color: var(--income); }
+.statZero { color: var(--muted); }
+.statUnit {
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.statSep {
+  width: 1px;
+  height: 12px;
+  background: var(--line);
+  flex: none;
+}
+.statEmptyHint {
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chev {
+  margin-left: auto;
+  flex: none;
+  color: var(--muted-2);
+}
+
+/* ── 新建 / 页脚 ── */
+.newBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  width: 100%;
+  padding: 20px;
+  border: 1px dashed var(--line);
+  border-radius: 20px;
+  background: transparent;
   color: var(--muted);
-  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 180ms, color 180ms, transform 180ms var(--ease);
+}
+.newBtn:hover { background: var(--paper-2); color: var(--ink-2); }
+.newBtn:active { transform: scale(0.985); }
+.newBtn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+
+.footNote {
+  margin: 18px 0 6px;
+  text-align: center;
   font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: var(--muted-2);
 }
-.cardAmount {
-  font-weight: 600;
-  color: var(--ink);
-}
-.cardDivider { opacity: 0.5; }
 
 /* ── 空态 ── */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 100px 24px;
   text-align: center;
+  padding: 64px 32px 40px;
 }
 .emptyStamp {
-  color: var(--muted-2);
-  margin-bottom: 20px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--muted-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--muted);
+  transform: rotate(-9deg);
+  margin-bottom: 24px;
+}
+.emptyStampDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.emptyStampLine {
+  width: 52%;
+  height: 1px;
+  background: currentColor;
   opacity: 0.5;
-  transform: rotate(-12deg);
 }
 .emptyTitle {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 10px;
   font-family: var(--font-display);
-  letter-spacing: -0.3px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink);
 }
 .emptyHint {
-  font-size: 14px;
-  color: var(--muted);
+  margin: 10px 0 26px;
+  font-size: 13px;
   line-height: 1.7;
-  margin-bottom: 28px;
+  color: var(--muted);
 }
 .emptyAddBtn {
-  background: var(--ink);
-  color: var(--paper);
+  padding: 12px 26px;
   border: none;
   border-radius: 999px;
-  padding: 12px 28px;
-  font-size: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: opacity 150ms;
-  letter-spacing: 0.5px;
+  transition: opacity 150ms, transform 150ms var(--ease);
 }
-.emptyAddBtn:hover { opacity: 0.85; }
+.emptyAddBtn:hover { opacity: 0.88; }
+.emptyAddBtn:active { transform: scale(0.97); }
+
+@media (min-width: 720px) {
+  .page {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card:hover,
+  .photoImg,
+  .card:hover .photoImg,
+  .newBtn,
+  .circleBtn {
+    transition: none;
+    transform: none;
+  }
+}

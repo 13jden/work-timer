@@ -1,7 +1,7 @@
 /**
- * @fileoverview JourneySelector — 单选旅游记录的底部 sheet（v3.0 TASK-059 T-598）
+ * @fileoverview JourneySelector — 单选一程的底部 sheet（v3.0 TASK-059 T-598 · v3.1 TASK-063 文案）
  *
- * 用于 AddRecordModal 内「旅游记录」chip 的选择器。
+ * 用于 AddRecordModal 内「一程」chip 的选择器。
  * 只列出当前类型的 journey，无则显示空态。
  */
 import { useMemo } from 'react';
@@ -38,7 +38,7 @@ export function JourneySelector({ open, type, selectedId, onPick, onClose }: Jou
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
             <X size={20} />
           </button>
-          <div className={styles.headerTitle}>选择旅游记录</div>
+          <div className={styles.headerTitle}>选择一程</div>
           <div className={styles.headerSpacer} />
         </div>
 
@@ -47,8 +47,8 @@ export function JourneySelector({ open, type, selectedId, onPick, onClose }: Jou
             <div className={styles.emptyIcon}>
               <AirplaneTilt size={36} weight="duotone" />
             </div>
-            <div className={styles.emptyText}>还没有旅游记录</div>
-            <div className={styles.emptyHint}>去「我的 → 旅游记录」新建一段</div>
+            <div className={styles.emptyText}>还没有一程</div>
+            <div className={styles.emptyHint}>去「我的 → 一程」开始第一程</div>
           </div>
         ) : (
           <div className={styles.list}>

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>千岛湖 · 旅行详情 · 概念稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1E9; --paper-2:#ECE8DD; --card:#FBF9F3;
+  --ink:#1B1A15; --ink-2:#4F4C44; --muted:#8D897C;
+  --line:rgba(27,26,21,.10); --line-2:rgba(27,26,21,.18);
+  --lime:#CDF25A; --coral:#CE5A4C; --green:#4E9B72;
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --num:"Space Grotesk","IBM Plex Mono",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+a{text-decoration:none;color:inherit}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+body{background:#DFDCD3;display:flex;justify-content:center;font-family:var(--sans);color:var(--ink)}
+.phone{width:min(420px,100%);height:100dvh;background:var(--paper);display:flex;flex-direction:column;position:relative;overflow:hidden}
+@media (min-width:520px){
+  body{padding:28px 0}
+  .phone{height:min(900px,calc(100dvh - 56px));border-radius:36px;box-shadow:0 30px 90px rgba(30,28,20,.28)}
+}
+.screen{flex:1;overflow-y:auto;display:flex;flex-direction:column;position:relative}
+
+/* 头图 */
+.hero{position:relative;flex:none}
+.hero img{width:100%;height:308px;object-fit:cover;display:block}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(18,17,12,.72),rgba(18,17,12,.06) 46%,rgba(18,17,12,.28))}
+.statusbar{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;justify-content:space-between;align-items:center;font:500 12px var(--mono);letter-spacing:.06em;padding:14px 24px 0;color:#F6F3EB}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.hero-bar{position:absolute;top:44px;left:16px;right:16px;z-index:2;display:flex;justify-content:space-between}
+.float-btn{width:36px;height:36px;border-radius:50%;background:rgba(246,243,235,.92);color:var(--ink);display:grid;place-items:center;backdrop-filter:blur(6px);transition:.15s}
+.float-btn:active{transform:scale(.9)}
+.float-btn svg{width:16px;height:16px}
+.hero-text{position:absolute;left:20px;right:20px;bottom:18px;z-index:2;color:#F6F3EB}
+.hero-text .overline{font:500 9.5px var(--mono);letter-spacing:.26em;color:rgba(246,243,235,.72)}
+.hero-text h1{margin-top:6px;font:700 32px/1.1 var(--serif);letter-spacing:.12em}
+.hero-text .dates{margin-top:8px;display:flex;align-items:center;gap:8px;font:400 11px var(--mono);letter-spacing:.16em;color:rgba(246,243,235,.85)}
+.hero-text .dates svg{width:13px;height:13px}
+
+/* 数据带 */
+.stats{display:grid;grid-template-columns:1.3fr 1fr 1fr;background:var(--paper);padding:16px 20px 15px;gap:14px}
+.stat + .stat{border-left:1px solid var(--line);padding-left:14px}
+.stat .lb{font:500 9.5px var(--mono);letter-spacing:.18em;color:var(--muted)}
+.stat .v{margin-top:6px;font:600 22px/1 var(--num);letter-spacing:-.02em;font-feature-settings:"tnum"}
+.stat .v small{font:400 10.5px var(--sans);color:var(--muted);margin-left:3px;letter-spacing:0}
+.stat .v.exp{color:var(--coral)}
+
+/* 操作 */
+.acts{display:flex;gap:10px;padding:2px 20px 18px}
+.act{flex:1;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:7px;font:500 13.5px var(--sans);transition:.15s}
+.act:active{transform:scale(.97)}
+.act.primary{background:var(--ink);color:var(--paper)}
+.act.primary svg{width:15px;height:15px;color:var(--lime)}
+.act.ghost{border:1px solid var(--line-2);color:var(--ink-2)}
+.act.ghost svg{width:15px;height:15px}
+
+/* 记录 */
+.sec{padding:0 20px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px;border-top:1px solid var(--line)}
+.sec-head .t{font:500 10px var(--mono);letter-spacing:.22em;color:var(--muted)}
+.day-head{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
+.day-chip{background:var(--ink);color:var(--paper);border-radius:9px;padding:6px 11px;font:500 11px var(--mono);letter-spacing:.1em}
+.day-head i{flex:1;height:1px;background:var(--line)}
+.day-head .tot{font:500 11.5px var(--num);color:var(--coral);letter-spacing:-.01em}
+.day-head .cnt{font:400 10px var(--mono);color:var(--muted)}
+.tx-row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.tx-thumb{width:50px;height:50px;flex:none;border-radius:12px;object-fit:cover;background:var(--paper-2)}
+.tx-ico{width:50px;height:50px;flex:none;border-radius:12px;background:var(--paper-2);display:grid;place-items:center;color:var(--ink-2)}
+.tx-ico svg{width:20px;height:20px}
+.tx-main{flex:1;min-width:0}
+.tx-t{font:500 14.5px var(--sans)}
+.tx-s{margin-top:2px;font:400 10px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.tx-v{font:600 15.5px var(--num);letter-spacing:-.01em;color:var(--coral);font-feature-settings:"tnum"}
+.end-note{padding:20px 0 10px;text-align:center;font:400 9.5px var(--mono);letter-spacing:.24em;color:var(--muted)}
+
+.tabbar{margin:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--ink);border-radius:28px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 6px 12px;gap:4px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(244,241,233,.5);font:500 9px var(--mono);letter-spacing:.16em}
+.tab::before{content:"";width:4px;height:4px;border-radius:50%;background:transparent}
+.tab svg{width:20px;height:20px}
+.tab.active{color:var(--lime)}
+.tab.active::before{background:var(--lime)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <header class="hero">
+      <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Aerial%20view%20of%20Qiandao%20Lake%20in%20China%2C%20emerald%20green%20water%20dotted%20with%20forested%20islands%2C%20winding%20lakeside%20road%2C%20sunny%20day%2C%20soft%20natural%20light%2C%20travel%20photography&image_size=landscape_16_9" alt="千岛湖">
+      <div class="statusbar"><span>16:40</span>
+        <span class="sb-icons">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.3" y="5" width="3" height="6" rx="1"/><rect x="8.6" y="2.5" width="3" height="8.5" rx="1"/><rect x="12.9" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.4 9.4 0 0 1 13 0"/><path d="M3.4 6.2a6 6 0 0 1 8.2 0"/><path d="M5.9 8.7a2.6 2.6 0 0 1 3.2 0"/><circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>
+          <svg width="20" height="11" viewBox="0 0 20 11" fill="none" stroke="currentColor"><rect x=".7" y=".7" width="16" height="9.6" rx="2.6"/><rect x="2.4" y="2.4" width="10" height="6.2" rx="1.2" fill="currentColor" stroke="none"/><path d="M18.6 3.6v3.8" stroke-linecap="round"/></svg>
+        </span>
+      </div>
+      <div class="hero-bar">
+        <a class="float-btn" href="04-travel-list.html" aria-label="返回">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        </a>
+        <button class="float-btn" aria-label="编辑旅程">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+      </div>
+      <div class="hero-text">
+        <div class="overline">PASSPORT · NO.001</div>
+        <h1>千岛湖</h1>
+        <div class="dates">10-06
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          10-06 · 周二
+        </div>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="lb">总支出</div>
+        <div class="v exp">¥273.00</div>
+      </div>
+      <div class="stat">
+        <div class="lb">记录</div>
+        <div class="v">4<small>笔</small></div>
+      </div>
+      <div class="stat">
+        <div class="lb">时长</div>
+        <div class="v">1<small>天</small></div>
+      </div>
+    </div>
+
+    <div class="acts">
+      <button class="act primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        给这段记一笔
+      </button>
+      <button class="act ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        关联其他
+      </button>
+    </div>
+
+    <section class="sec">
+      <div class="sec-head"><span class="t">记录</span><span class="t">共 4 笔</span></div>
+      <div class="day-head">
+        <span class="day-chip">10/06 周二</span>
+        <span class="cnt">4 笔</span><i></i>
+        <span class="tot">−¥273.00</span>
+      </div>
+
+      <div class="tx-row">
+        <img class="tx-thumb" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rustic%20wooden%20table%20with%20simple%20Chinese%20home%20dishes%20beside%20a%20lake-view%20window%2C%20warm%20natural%20light%2C%20travel%20snapshot%20film%20style&image_size=square" alt="">
+        <span class="tx-main"><span class="tx-t" style="display:block">吃</span><span class="tx-s">餐饮 · 12:40</span></span>
+        <span class="tx-v">−¥48.00</span>
+      </div>
+      <div class="tx-row">
+        <span class="tx-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+        </span>
+        <span class="tx-main"><span class="tx-t" style="display:block">饼</span><span class="tx-s">餐饮 · 15:02</span></span>
+        <span class="tx-v">−¥10.00</span>
+      </div>
+      <div class="tx-row">
+        <img class="tx-thumb" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Wooden%20pier%20extending%20over%20calm%20green%20lake%20with%20forested%20mountains%20behind%2C%20soft%20daylight%2C%20travel%20snapshot%20film%20style&image_size=square" alt="">
+        <span class="tx-main"><span class="tx-t" style="display:block">门票</span><span class="tx-s">娱乐 · 09:15</span></span>
+        <span class="tx-v">−¥80.00</span>
+      </div>
+      <div class="tx-row">
+        <img class="tx-thumb" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=View%20from%20car%20passenger%20window%20of%20lakeside%20mountain%20road%20during%20road%20trip%2C%20dashboard%20edge%20visible%2C%20travel%20snapshot%20film%20style&image_size=square" alt="">
+        <span class="tx-main"><span class="tx-t" style="display:block">租车 · 油费停车</span><span class="tx-s">交通 · 18:26</span></span>
+        <span class="tx-v">−¥135.00</span>
+      </div>
+      <div class="end-note">END OF TRIP · 千岛湖</div>
+    </section>
+
+    <nav class="tabbar">
+      <a class="tab" href="01-record-sheet.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span>ACCT</span></a>
+      <a class="tab" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="16" x="3" y="6" rx="2"/><path d="M3 10h18"/></svg>
+        <span>CAL</span></a>
+      <a class="tab" href="03-stats.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-4"/></svg>
+        <span>STATS</span></a>
+      <a class="tab active" href="02-assets.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+        <span>MINE</span></a>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

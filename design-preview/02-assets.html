@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>资产设置 · 概念稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1E9; --paper-2:#ECE8DD; --card:#FBF9F3;
+  --ink:#1B1A15; --ink-2:#4F4C44; --muted:#8D897C;
+  --line:rgba(27,26,21,.10); --line-2:rgba(27,26,21,.18);
+  --lime:#CDF25A; --coral:#CE5A4C; --green:#4E9B72;
+  --paper-on-ink:rgba(244,241,233,.62);
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --num:"Space Grotesk","IBM Plex Mono",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+a{text-decoration:none;color:inherit}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+body{background:#DFDCD3;display:flex;justify-content:center;font-family:var(--sans);color:var(--ink)}
+.phone{width:min(420px,100%);height:100dvh;background:var(--paper);display:flex;flex-direction:column;position:relative;overflow:hidden}
+@media (min-width:520px){
+  body{padding:28px 0}
+  .phone{height:min(900px,calc(100dvh - 56px));border-radius:36px;box-shadow:0 30px 90px rgba(30,28,20,.28)}
+}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font:500 12px var(--mono);letter-spacing:.06em;padding:14px 24px 0}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.screen{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.body{flex:1;padding:6px 20px 12px}
+
+.phead{display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px}
+.overline{font:500 10px var(--mono);letter-spacing:.22em;color:var(--muted)}
+.phead h1{font:700 27px/1.2 var(--serif);letter-spacing:.04em;margin-top:6px}
+.count-chip{font:500 10.5px var(--mono);letter-spacing:.08em;border:1px solid var(--line-2);border-radius:99px;padding:5px 11px;color:var(--ink-2);margin-bottom:4px}
+
+/* 总资产暗卡 */
+.hero{margin-top:18px;background:var(--ink);color:var(--paper);border-radius:22px;padding:18px 20px 16px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-46px;top:-46px;width:150px;height:150px;border-radius:50%;border:1px solid rgba(205,242,90,.22)}
+.hero::before{content:"";position:absolute;right:-16px;top:-16px;width:150px;height:150px;border-radius:50%;border:1px solid rgba(244,241,233,.10)}
+.hero-top{display:flex;align-items:center;gap:8px}
+.hero-top .lb{font:500 10px var(--mono);letter-spacing:.2em;color:var(--paper-on-ink)}
+.badge-v{font:500 9.5px var(--mono);letter-spacing:.1em;color:var(--lime);border:1px solid rgba(205,242,90,.45);border-radius:99px;padding:2.5px 8px}
+.hero-eye{margin-left:auto;color:var(--paper-on-ink);width:28px;height:28px;display:grid;place-items:center;border-radius:50%;border:1px solid rgba(244,241,233,.16)}
+.hero-num{margin-top:10px;font:600 40px/1 var(--num);letter-spacing:-.025em;font-feature-settings:"tnum"}
+.hero-num .sg{color:var(--lime)}
+.hero-sub{margin-top:12px;display:flex;align-items:center;gap:10px;font:400 11.5px var(--sans);color:var(--paper-on-ink)}
+.hero-chip{font:500 10.5px var(--mono);background:var(--lime);color:var(--ink);border-radius:99px;padding:4px 10px;letter-spacing:.02em}
+
+/* 结余目标：单行 + 进度 */
+.goal{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:14px}
+.goal-main{flex:1;min-width:0}
+.goal-lb{display:flex;align-items:center;gap:7px;font:500 10px var(--mono);letter-spacing:.16em;color:var(--muted)}
+.goal-lb svg{width:13px;height:13px}
+.goal-bar{margin-top:9px;height:3px;border-radius:99px;background:var(--paper-2);overflow:hidden}
+.goal-bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--ink);animation:grow 1s .2s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes grow{to{width:4.7%}}
+.goal-note{margin-top:7px;font:400 10.5px var(--sans);color:var(--muted)}
+.goal-note b{font:500 10.5px var(--num);color:var(--ink-2)}
+.goal-right{text-align:right;flex:none}
+.goal-val{font:600 19px var(--num);letter-spacing:-.01em;font-feature-settings:"tnum"}
+.goal-edit{margin-top:5px;display:inline-flex;align-items:center;gap:4px;font:400 10.5px var(--sans);color:var(--muted)}
+.goal-edit svg{width:11px;height:11px}
+
+/* 分组列表 */
+.sec-lb{margin:22px 2px 8px;display:flex;justify-content:space-between;align-items:center;font:500 10px var(--mono);letter-spacing:.2em;color:var(--muted)}
+.sec-lb button{display:inline-flex;align-items:center;gap:5px;font:500 11px var(--sans);color:var(--ink-2);border:1px solid var(--line-2);border-radius:99px;padding:5px 11px}
+.sec-lb button svg{width:11px;height:11px}
+.list{border:1px solid var(--line);border-radius:18px;background:var(--card);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left}
+.row + .row{border-top:1px solid var(--line)}
+.row-ico{width:38px;height:38px;flex:none;border-radius:12px;background:var(--paper-2);display:grid;place-items:center;color:var(--ink-2)}
+.row-ico svg{width:18px;height:18px}
+.row-main{flex:1;min-width:0}
+.row-t{font:500 14.5px var(--sans)}
+.row-s{margin-top:3px;display:block;font:400 11px var(--sans);color:var(--muted)}
+.row-right{display:flex;align-items:center;gap:8px;flex:none}
+.mini-chip{font:500 10px var(--mono);letter-spacing:.04em;color:var(--ink-2);background:var(--paper-2);border-radius:99px;padding:4px 9px}
+.chev{color:var(--muted);width:15px;height:15px}
+.row:active{background:var(--paper-2)}
+
+/* 定期账单行内池 */
+.pool-row{align-items:flex-start}
+.pool-row .row-ico{margin-top:2px}
+.row-tline{display:flex;align-items:center;gap:8px}
+.st{display:inline-flex;align-items:center;gap:5px;font:500 10px var(--mono);letter-spacing:.06em;color:var(--green);background:rgba(78,155,114,.10);border-radius:99px;padding:3.5px 9px}
+.st i{width:5px;height:5px;border-radius:50%;background:var(--green)}
+.row-bar{display:block;margin-top:9px;height:3px;border-radius:99px;background:var(--paper-2);overflow:hidden}
+.row-bar i{display:block;height:100%;width:0;background:var(--lime);border-radius:99px;animation:grow0 .8s .2s ease forwards}
+@keyframes grow0{to{width:2%}}
+.row-foot{margin-top:7px;display:flex;align-items:center;justify-content:space-between;font:400 10.5px var(--sans);color:var(--muted)}
+.pool-amt{font:600 16px var(--num);letter-spacing:-.01em;color:var(--green);font-feature-settings:"tnum"}
+
+/* 底栏 */
+.tabbar{margin:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--ink);border-radius:28px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 6px 12px;gap:4px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(244,241,233,.5);font:500 9px var(--mono);letter-spacing:.16em}
+.tab::before{content:"";width:4px;height:4px;border-radius:50%;background:transparent}
+.tab svg{width:20px;height:20px}
+.tab.active{color:var(--lime)}
+.tab.active::before{background:var(--lime)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>16:40</span>
+    <span class="sb-icons">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.3" y="5" width="3" height="6" rx="1"/><rect x="8.6" y="2.5" width="3" height="8.5" rx="1"/><rect x="12.9" y="0" width="3" height="11" rx="1"/></svg>
+      <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.4 9.4 0 0 1 13 0"/><path d="M3.4 6.2a6 6 0 0 1 8.2 0"/><path d="M5.9 8.7a2.6 2.6 0 0 1 3.2 0"/><circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>
+      <svg width="20" height="11" viewBox="0 0 20 11" fill="none" stroke="currentColor"><rect x=".7" y=".7" width="16" height="9.6" rx="2.6"/><rect x="2.4" y="2.4" width="10" height="6.2" rx="1.2" fill="currentColor" stroke="none"/><path d="M18.6 3.6v3.8" stroke-linecap="round"/></svg>
+    </span>
+  </div>
+  <div class="screen">
+    <div class="body">
+      <header class="phead">
+        <div>
+          <div class="overline">MINE · WHAT YOU OWN</div>
+          <h1>资产设置</h1>
+        </div>
+        <span class="count-chip">3 资产</span>
+      </header>
+
+      <section class="hero">
+        <div class="hero-top">
+          <span class="lb">总资产</span><span class="badge-v">虚拟</span>
+          <span class="hero-eye" aria-label="隐藏金额">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+        </div>
+        <div class="hero-num"><span class="sg">+</span>¥568.06</div>
+        <div class="hero-sub">
+          <span>实际 ¥0.00</span>
+          <span class="hero-chip">已赚未到账 +¥568.06</span>
+        </div>
+      </section>
+
+      <section class="goal" role="button" tabindex="0" aria-label="结余目标设置">
+        <div class="goal-main">
+          <div class="goal-lb">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg>
+            结余目标 · 月度
+          </div>
+          <div class="goal-bar"><i></i></div>
+          <div class="goal-note">本月已结余 <b>¥568.06</b> · 完成 4.7%</div>
+        </div>
+        <div class="goal-right">
+          <div class="goal-val">¥12,000</div>
+          <span class="goal-edit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            调整
+          </span>
+        </div>
+      </section>
+
+      <div class="sec-lb"><span>旅行</span></div>
+      <div class="list">
+        <a class="row" href="04-travel-list.html">
+          <span class="row-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2"/><path d="M8 20h8"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 11v5M16 11v5"/></svg>
+          </span>
+          <span class="row-main">
+            <span class="row-t">旅行记录</span>
+            <span class="row-s">把一次旅行记成一段记录</span>
+          </span>
+          <span class="row-right"><span class="mini-chip">2 段</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="sec-lb">
+        <span>定期账单</span>
+        <button>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          新建定期账
+        </button>
+      </div>
+      <div class="list">
+        <button class="row pool-row">
+          <span class="row-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+          </span>
+          <span class="row-main">
+            <span class="row-tline"><span class="row-t">工资池</span><span class="st"><i></i>运行中</span></span>
+            <span class="row-s">贝呗 · 收入 · 日抽 ¥0.00 · 已抽 ¥568.06</span>
+            <span class="row-bar"><i></i></span>
+            <span class="row-foot"><span>已到账 ¥0.00 / ¥568.06</span><span class="mini-chip">0% 到账</span></span>
+          </span>
+          <span class="row-right"><span class="pool-amt">+¥568.06</span></span>
+        </button>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <a class="tab" href="01-record-sheet.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span>ACCT</span></a>
+      <a class="tab" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="16" x="3" y="6" rx="2"/><path d="M3 10h18"/></svg>
+        <span>CAL</span></a>
+      <a class="tab" href="03-stats.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-4"/></svg>
+        <span>STATS</span></a>
+      <a class="tab active" href="02-assets.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+        <span>MINE</span></a>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

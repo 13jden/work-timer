@@ -1,14 +1,15 @@
 /**
- * @fileoverview JourneyDetailPage — 旅游记录详情页（v3.0 TASK-059 T-594 重设计）
+ * @fileoverview JourneyDetailPage — 一程详情（v3.1 TASK-063 重设计）
  *
- * 设计：英雄封面 + 邮戳日期 + 大字 serif 标题 + 总账 + 「给这段记一笔」/「关联其他」CTA。
- * v3.0 TASK-059 fix: 封面图可点击更换（原生文件选择 + imageStore）
+ * 设计语言：护照页 / 旅行手账。
+ * - 头图（300px）：封面压衬线标题 + 浮动圆钮（返回 / 编辑）+ 角落邮戳
+ * - 总账带：总支出 / 记录 / 旅途 三栏（细线分隔）
+ * - 双按钮：记一笔（墨底）/ 关联旧账（描边）
+ * - 沿途：按日期分组，每组一个墨块日期章 + 虚线 + 当日小计
+ * - 记录行：有图 → 拍立得贴片；无图 → 分类圆标；点击行编辑记录
+ * - 收尾：END OF ONE WAY · 标题
  *
- * v3.0 TASK-061 重设计（记录区）：
- * - 记录按「日期」分组，每组一个墨块日期章 + 当日小计（旅行手账语言）
- * - 有照片的记录 → 拍立得贴片（大图 + 备注 + 金额），点击照片放大
- * - 无照片的记录 → 紧凑行（分类 + 备注 + 金额）
- * - 记录行可点击 → 打开编辑弹窗（与统计页记录列表一致）
+ * 数据口径（v3.0 保持不变）：总额 = Σ|amount|，类型按收入/支出合计大小推断。
  */
 import { useMemo, useState, useRef } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -36,6 +37,7 @@ interface JourneyDetailPageProps {
 
 export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps) {
   const journey = useAccountStore((s) => s.journeys.find((j) => j.id === journeyId));
+  const journeys = useAccountStore((s) => s.journeys);
   const records = useAccountStore((s) => s.records);
   const categories = useAccountStore((s) => s.categories);
   const getJourneyRecords = useAccountStore((s) => s.getJourneyRecords);
@@ -51,7 +53,7 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
   // v3.0 TASK-061 fix：所有 hook 必须在 early return 之前无条件调用，
   // 否则「一程被删除」时 journey 变为 undefined → 提前 return → 渲染时报
   // “Rendered fewer hooks than expected”。
-  const { url: coverUrl } = useImage(journey?.coverImageId);
+  const { url: coverUrl, status: coverStatus } = useImage(journey?.coverImageId);
 
   const linkedRecords = useMemo(
     () => (journey ? getJourneyRecords(journeyId) : []),
@@ -69,6 +71,14 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
     [journey, records],
   );
   const summary = journey ? summaries.get(journeyId) : undefined;
+
+  // v3.1：这一程是第几程（按创建时间升序编号）
+  const ordinal = useMemo(() => {
+    if (!journey) return 0;
+    const ordered = [...journeys].sort((a, b) => a.createdAt - b.createdAt);
+    const index = ordered.findIndex((j) => j.id === journey.id);
+    return index >= 0 ? index + 1 : 0;
+  }, [journeys, journey]);
 
   // v3.0 TASK-059 fix: 点击封面 → 更换封面图（原生文件选择）
   const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,22 +116,20 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
     ? `${summary.firstKey.slice(5)} → ${summary.lastKey.slice(5)}`
     : '';
 
+  const startWeekday = summary?.firstKey ? journeyWeekday(summary.firstKey) : '';
+  const stampDate = summary?.firstKey ? journeyStampDate(summary.firstKey) : '';
+
   return (
     <div className={styles.page}>
-      {/* Header */}
-      <div className={styles.header}>
-        <button type="button" className={styles.backBtn} onClick={onBack} aria-label="返回">
-          <ArrowLeft size={18} weight="bold" />
-        </button>
-        <div className={styles.headerTitle}>旅游记录</div>
-        <button type="button" className={styles.editBtn} onClick={() => setEditOpen(true)} aria-label="编辑">
-          <PencilSimple size={16} />
-        </button>
-      </div>
-
-      {/* 英雄封面（点击可更换） */}
-      {/* v3.0 TASK-059 fix: 点击封面 → 触发文件选择 */}
-      <div className={styles.hero} onClick={() => coverInputRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && coverInputRef.current?.click()} aria-label="点击更换封面">
+      {/* ── 头图（点击可更换封面） ── */}
+      <header
+        className={styles.hero}
+        onClick={() => coverInputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && coverInputRef.current?.click()}
+        aria-label="点击更换封面"
+      >
         <input
           ref={coverInputRef}
           type="file"
@@ -131,72 +139,106 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
           aria-hidden="true"
           tabIndex={-1}
         />
-        {journey.coverImageId ? (
+        {journey.coverImageId && coverStatus === 'ok' && coverUrl ? (
           <>
-            <img src={coverUrl ?? ''} alt="封面" className={styles.heroImg} />
-            {/* 更换图标浮层 */}
+            <img src={coverUrl} alt="封面" className={styles.heroImg} />
+            {/* 更换图标浮层（悬停/聚焦时出现） */}
             <div className={styles.coverOverlay} aria-hidden>
-              <ImageIcon size={28} weight="duotone" />
+              <ImageIcon size={26} weight="duotone" />
             </div>
           </>
         ) : (
-          <div className={`${styles.heroBg} ${effectiveType === 'income' ? styles.incomeBg : styles.expenseBg}`}>
-            <AirplaneTilt size={64} weight="duotone" />
-            <div className={styles.coverAddHint}>
-              <ImageIcon size={18} weight="duotone" />
-              <span>设置封面</span>
-            </div>
-          </div>
-        )}
-        {/* 邮戳 */}
-        {summary && (summary.firstKey || summary.lastKey) && (
-          <div className={styles.heroStamp}>
-            <div className={styles.stampCircle}>
-              <span className={styles.stampDate}>
-                {(summary.firstKey || summary.lastKey || '').slice(2, 7).replace('-', '/')}
-              </span>
-              <span className={styles.stampDivider} />
-              <span className={styles.stampType}>{effectiveType === 'income' ? '收入' : '支出'}</span>
-            </div>
+          <div className={styles.heroFallback} aria-hidden>
+            <span className={styles.heroFallbackGlyph}>{journey.title.slice(0, 1)}</span>
+            <span className={styles.heroFallbackHint}>
+              {journey.coverImageId ? '封面加载中' : '没有封面的旅程'}
+            </span>
           </div>
         )}
         {/* 渐变蒙版（让文字可读） */}
         <div className={styles.heroOverlay} aria-hidden />
-        {/* 标题区（封面底部） */}
-        <div className={styles.heroBottom}>
-          <div className={styles.heroTitle}>{journey.title}</div>
-          {dateRange && <div className={styles.heroDateRange}>{dateRange}</div>}
-        </div>
-      </div>
 
-      {/* 总账条 */}
-      <div className={styles.totalBox}>
-        {/* v3.0 TASK-059 fix: 按实际记录展示金额，不依赖 journey.type */}
-        <div className={styles.totalMain}>
-          <span className={styles.totalLabel}>
+        {/* 浮动圆钮 */}
+        <div className={styles.heroBar}>
+          <button
+            type="button"
+            className={styles.floatBtn}
+            onClick={(e) => { e.stopPropagation(); onBack(); }}
+            aria-label="返回"
+          >
+            <ArrowLeft size={16} weight="bold" />
+          </button>
+          <button
+            type="button"
+            className={styles.floatBtn}
+            onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
+            aria-label="编辑一程"
+          >
+            <PencilSimple size={16} weight="bold" />
+          </button>
+        </div>
+
+        {/* 邮戳 */}
+        {stampDate && (
+          <div className={styles.heroStamp} aria-hidden>
+            <span className={styles.stampDate}>{stampDate}</span>
+            <span className={styles.stampLine} />
+            <span className={styles.stampType}>{effectiveType === 'income' ? '收入' : '支出'}</span>
+          </div>
+        )}
+
+        {/* 标题区 */}
+        <div className={styles.heroBottom}>
+          <div className={styles.heroOverline}>
+            ONE WAY{ordinal > 0 && ` · 第 ${ordinal} 程`}
+          </div>
+          <h1 className={styles.heroTitle}>{journey.title}</h1>
+          {dateRange && (
+            <div className={styles.heroDates}>
+              <span>{dateRange}</span>
+              {startWeekday && (
+                <>
+                  <i aria-hidden />
+                  <span>{startWeekday}</span>
+                </>
+              )}
+              {spanDays > 0 && (
+                <>
+                  <i aria-hidden />
+                  <span>{spanDays} 天</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* ── 总账带 ── */}
+      <div className={styles.stats}>
+        <div className={`${styles.stat} ${styles.statLead}`}>
+          <span className={styles.statLabel}>
             {effectiveType === 'income' ? '总收入' : '总支出'}
             {incomeTotal > 0 && expenseTotal > 0 && (
-              <span className={styles.totalMix}>（含两类）</span>
+              <span className={styles.statMix}>（含两类）</span>
             )}
           </span>
-          <span className={styles.totalAmount}>
-            {effectiveType === 'income' ? '+' : '-'}¥{formatAmount(effectiveTotal, true)}
+          <span className={`${styles.statValue} ${effectiveType === 'income' ? styles.statValueIncome : styles.statValueExpense}`}>
+            {effectiveType === 'income' ? '+' : '-'}${formatAmount(effectiveTotal)}
           </span>
         </div>
-        <div className={styles.totalStats}>
-          <div className={styles.statCell}>
-            <span className={styles.statValue}>{summary?.count ?? 0}</span>
-            <span className={styles.statLabel}>笔</span>
-          </div>
-          {spanDays > 0 && (
-            <>
-              <span className={styles.statDivider} aria-hidden />
-              <div className={styles.statCell}>
-                <span className={styles.statValue}>{spanDays}</span>
-                <span className={styles.statLabel}>天</span>
-              </div>
-            </>
-          )}
+        <div className={styles.stat}>
+          <span className={styles.statLabel}>记录</span>
+          <span className={styles.statValue}>
+            {summary?.count ?? 0}
+            <small>笔</small>
+          </span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statLabel}>旅途</span>
+          <span className={styles.statValue}>
+            {spanDays}
+            <small>天</small>
+          </span>
         </div>
       </div>
 
@@ -207,40 +249,40 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
         </div>
       )}
 
-      {/* CTA 按钮组 */}
+      {/* ── 双按钮 ── */}
       <div className={styles.ctaRow}>
         <button
           type="button"
           className={`${styles.cta} ${styles.ctaPrimary}`}
           onClick={() => setAddRecordOpen(true)}
         >
-          <Plus size={16} weight="bold" />
-          <span>给这段记一笔</span>
+          <Plus size={15} weight="bold" />
+          <span>记一笔</span>
         </button>
         <button
           type="button"
           className={`${styles.cta} ${styles.ctaSecondary}`}
           onClick={() => setLinkPickerOpen(true)}
         >
-          <LinkIcon size={16} weight="bold" />
-          <span>关联其他</span>
+          <LinkIcon size={15} weight="bold" />
+          <span>关联旧账</span>
         </button>
       </div>
 
-      {/* 记录清单（v3.0 TASK-061：按日期分组 + 有图记录单独形态） */}
-      <div className={styles.recordsSection}>
+      {/* ── 沿途 ── */}
+      <section className={styles.recordsSection}>
         <div className={styles.recordsHeader}>
-          <span className={styles.recordsHeaderTitle}>记录</span>
+          <span className={styles.recordsHeaderTitle}>沿途</span>
           {linkedRecords.length > 0 && (
-            <span className={styles.recordsHeaderCount}>
-              共 {linkedRecords.length} 笔
-            </span>
+            <span className={styles.recordsHeaderCount}>共 {linkedRecords.length} 笔</span>
           )}
         </div>
         {linkedRecords.length === 0 ? (
           <div className={styles.recordsEmpty}>
-            <span className={styles.recordsEmptyIcon}>📒</span>
-            <span>还没有记录·「给这一程记一笔」</span>
+            <span className={styles.recordsEmptyIcon} aria-hidden>
+              <AirplaneTilt size={26} weight="duotone" />
+            </span>
+            <span>这一程还没有账 · 给它记一笔</span>
           </div>
         ) : (
           <div className={styles.dayGroups}>
@@ -252,16 +294,14 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
                     <span className={styles.dayStampDate}>{journeyStampDate(group.dateKey)}</span>
                     <span className={styles.dayStampWeek}>{journeyWeekday(group.dateKey)}</span>
                   </span>
+                  <span className={styles.dayCount}>{group.items.length} 笔</span>
                   <span className={styles.dayRule} aria-hidden />
-                  <span className={styles.dayMeta}>
-                    <span className={styles.dayCount}>{group.items.length} 笔</span>
-                    {group.expense > 0 && (
-                      <span className={styles.dayExpense}>-¥{formatAmount(group.expense)}</span>
-                    )}
-                    {group.income > 0 && (
-                      <span className={styles.dayIncome}>+¥{formatAmount(group.income)}</span>
-                    )}
-                  </span>
+                  {group.expense > 0 && (
+                    <span className={styles.dayExpense}>-¥{formatAmount(group.expense)}</span>
+                  )}
+                  {group.income > 0 && (
+                    <span className={styles.dayIncome}>+¥{formatAmount(group.income)}</span>
+                  )}
                 </div>
 
                 <div className={styles.dayItems}>
@@ -315,7 +355,9 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
 
                         <div className={styles.entryAmount}>
                           <span className={isExpense ? styles.expenseAmt : styles.incomeAmt}>
-                            {isExpense ? '-' : '+'}¥{formatAmount(Math.abs(record.amount))}
+                            {record.amount === 0
+                              ? `¥${formatAmount(0)}`
+                              : `${isExpense ? '-' : '+'}¥${formatAmount(Math.abs(record.amount))}`}
                           </span>
                         </div>
                       </div>
@@ -324,13 +366,17 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
                 </div>
               </section>
             ))}
+
+            <div className={styles.endNote}>
+              END OF ONE WAY · {journey.title}
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
       {journey.note && (
         <div className={styles.noteBox}>
-          <div className={styles.noteLabel}>备注</div>
+          <div className={styles.noteLabel}>随记</div>
           <div className={styles.noteText}>{journey.note}</div>
         </div>
       )}

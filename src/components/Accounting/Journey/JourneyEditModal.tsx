@@ -70,7 +70,7 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
     <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={styles.sheet}>
         <div className={styles.header}>
-          <span className={styles.headerTitle}>{isEdit ? '编辑旅游记录' : '新建旅游记录'}</span>
+          <span className={styles.headerTitle}>{isEdit ? '编辑一程' : '新建一程'}</span>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
             <X size={20} />
           </button>
@@ -79,28 +79,28 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
         <div className={styles.body}>
           {/* 标题 */}
           <div className={styles.field}>
-            <div className={styles.fieldLabel}>标题 <em className={styles.required}>*</em></div>
+            <div className={styles.fieldLabel}>这一程叫什么 <em className={styles.required}>*</em></div>
             <input
               ref={titleRef}
               type="text"
               className={styles.input}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="例如：云南 7 日游"
+              placeholder="例如：千岛湖两日"
               maxLength={20}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
             <div className={styles.charCount}>{title.length}/20</div>
           </div>
 
-          {/* 备注 */}
+          {/* 随记 */}
           <div className={styles.field}>
-            <div className={styles.fieldLabel}>备注（可选）</div>
+            <div className={styles.fieldLabel}>随记（可选）</div>
             <textarea
               className={styles.textarea}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="补充说明"
+              placeholder="路上遇到的、吃到的，都可以写一句"
               rows={3}
             />
           </div>
@@ -126,7 +126,7 @@ export function JourneyEditModal({ open, journeyId, onClose, onCreated }: Journe
             取消
           </button>
           <button type="button" className={styles.submitBtn} onClick={handleSubmit}>
-            {isEdit ? '保存' : '创建'}
+            {isEdit ? '保存' : '开始这一程'}
           </button>
         </div>
       </div>

@@ -1,10 +1,10 @@
 /**
- * @fileoverview JourneyRecordPicker — 关联 / 取消关联记录到旅游记录（v3.0 TASK-059 T-597 重设计）
+ * @fileoverview JourneyRecordPicker — 关联 / 取消关联记录到一程（v3.0 TASK-059 T-597 · v3.1 TASK-063 文案）
  *
  * 列出全部同类型记录（按时间倒序），分三组：
- * - 已关联到这里
- * - 已关联到其他旅游记录
- * - 未挂记录
+ * - 已归入这一程
+ * - 已归入其他一程
+ * - 未归入任何一程
  *
  * 多选：勾选 → 保存时把 journeyId 写入（覆盖其他关联）。
  * 已勾选的「已关联到这里」可点击取消勾选 → 保存时会把这些移出。
@@ -60,7 +60,7 @@ export function JourneyRecordPicker({ open, journeyId, type, onClose }: JourneyR
         thisJourney.push(r);
       } else if (r.journeyId) {
         const j = journeys.find((j) => j.id === r.journeyId);
-        otherJourney.push({ record: r, otherTitle: j?.title ?? '另一段' });
+        otherJourney.push({ record: r, otherTitle: j?.title ?? '另一程' });
       } else {
         unattached.push(r);
       }
@@ -119,7 +119,7 @@ export function JourneyRecordPicker({ open, journeyId, type, onClose }: JourneyR
         </div>
 
         <div className={styles.subTitle}>
-          勾选要纳入「{journey.title}」的记录
+          勾选要归入「{journey.title}」的记录
           <span className={styles.subHint}>
             已选 {selected.size} 条 · 共 {sortedAll.length} 条
           </span>
@@ -133,10 +133,10 @@ export function JourneyRecordPicker({ open, journeyId, type, onClose }: JourneyR
             </div>
           )}
 
-          {/* 已关联到这里 */}
+          {/* 已归入这一程 */}
           {grouped.thisJourney.length > 0 && (
             <Section
-              label="已关联到这里"
+              label="已归入这一程"
               count={grouped.thisJourney.length}
               tag={tagThis}
             >
@@ -153,10 +153,10 @@ export function JourneyRecordPicker({ open, journeyId, type, onClose }: JourneyR
             </Section>
           )}
 
-          {/* 已关联到其他旅游记录 */}
+          {/* 已归入其他一程 */}
           {grouped.otherJourney.length > 0 && (
             <Section
-              label="已关联到其他"
+              label="已归入其他程"
               count={grouped.otherJourney.length}
               tag={tagOther}
             >
@@ -174,7 +174,7 @@ export function JourneyRecordPicker({ open, journeyId, type, onClose }: JourneyR
             </Section>
           )}
 
-          {/* 未归入任何旅游记录 */}
+          {/* 未归入任何一程 */}
           {grouped.unattached.length > 0 && (
             <Section
               label="未归入"

@@ -1,55 +1,20 @@
-/* JourneyDetailPage 样式 — 英雄封面 + 邮戳 + CTA */
+/* JourneyDetailPage — 一程详情（v3.1 TASK-063 · 护照页语言） */
+
 .page {
   min-height: 100vh;
   background: var(--paper);
-  padding-bottom: 80px;
+  padding-bottom: 96px;
+  width: 100%;
 }
 
-/* ── Header ── */
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px 12px;
-  position: sticky;
-  top: 0;
-  background: var(--paper);
-  z-index: 10;
-  border-bottom: 1px solid var(--line-soft);
-}
-.backBtn, .editBtn {
-  background: var(--paper-2);
-  border: none;
-  border-radius: 10px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--ink);
-  transition: background 150ms;
-  flex-shrink: 0;
-}
-.backBtn:hover, .editBtn:hover { background: var(--paper-3); }
-.headerTitle {
-  flex: 1;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-}
-
-/* ── 英雄封面 ── */
+/* ── 头图 ── */
 .hero {
   position: relative;
   width: 100%;
-  height: 280px;
+  height: 300px;
   overflow: hidden;
   cursor: pointer;
+  background: var(--surface-dark);
 }
 .heroImg {
   width: 100%;
@@ -57,199 +22,238 @@
   object-fit: cover;
   pointer-events: none;
 }
-.heroBg {
-  width: 100%;
-  height: 100%;
+
+/* 无封面：墨底 + 纸纹 + 标题首字（印刷封面，不用渐变占位色） */
+.heroFallback {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  gap: 8px;
+  background-color: var(--surface-dark);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 10px,
+    color-mix(in srgb, var(--ink-on-dark) 6%, transparent) 10px 11px
+  );
 }
-.expenseBg {
-  background: linear-gradient(160deg, #FFD3CB 0%, #FF8A75 50%, #E64A2E 100%);
+.heroFallbackGlyph {
+  font-family: var(--font-display);
+  font-size: 92px;
+  line-height: 0.9;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink-on-dark) 18%, transparent);
 }
-.incomeBg {
-  background: linear-gradient(160deg, #C7F0D0 0%, #6BD899 50%, #2DAB5E 100%);
+.heroFallbackHint {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, var(--ink-on-dark) 36%, transparent);
 }
 
-/* v3.0 TASK-059 fix: 封面图悬停更换图标 */
+/* 悬停时显示「换封面」提示 */
 .coverOverlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-  color: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--surface-dark) 40%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 90%, transparent);
   opacity: 0;
   transition: opacity 180ms;
+  pointer-events: none;
 }
-.hero:hover .coverOverlay {
-  opacity: 1;
-}
-.coverAddHint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(0, 0, 0, 0.25);
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-.hiddenInput {
-  display: none;
-}
+.hero:hover .coverOverlay { opacity: 1; }
+.hero:focus-visible .coverOverlay { opacity: 1; }
+
+.hiddenInput { display: none; }
 
 .heroOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.45) 100%
-  );
   pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--surface-dark) 88%, transparent) 0%,
+    color-mix(in srgb, var(--surface-dark) 34%, transparent) 42%,
+    color-mix(in srgb, var(--surface-dark) 22%, transparent) 72%,
+    color-mix(in srgb, var(--surface-dark) 30%, transparent) 100%
+  );
 }
 
+/* 浮动圆钮 */
+.heroBar {
+  position: absolute;
+  top: calc(14px + var(--safe-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 2;
+}
+.floatBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: color-mix(in srgb, var(--ink-on-dark) 92%, transparent);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 150ms var(--ease), opacity 150ms;
+}
+.floatBtn:hover { opacity: 0.86; }
+.floatBtn:active { transform: scale(0.9); }
+.floatBtn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+
+/* 邮戳（与列表页同一套语言） */
 .heroStamp {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 80px;
-  height: 80px;
-  pointer-events: none;
-}
-.stampCircle {
-  width: 100%;
-  height: 100%;
+  top: calc(60px + var(--safe-top));
+  right: 18px;
+  z-index: 2;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 62%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  color: rgba(255, 255, 255, 0.98);
-  transform: rotate(-12deg);
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
-  position: relative;
+  gap: 3px;
+  transform: rotate(-9deg);
+  color: color-mix(in srgb, var(--ink-on-dark) 92%, transparent);
+  pointer-events: none;
 }
-.stampCircle::before {
+.heroStamp::before {
   content: '';
   position: absolute;
   inset: 4px;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.6);
+  border: 1px dashed color-mix(in srgb, var(--ink-on-dark) 38%, transparent);
 }
 .stampDate {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
   font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
-.stampDivider {
-  width: 70%;
+.stampLine {
+  width: 56%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.6);
+  background: currentColor;
+  opacity: 0.5;
 }
 .stampType {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 2px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
 }
 
+/* 标题区 */
 .heroBottom {
   position: absolute;
   left: 20px;
   right: 20px;
   bottom: 18px;
-  color: white;
+  z-index: 1;
+  color: var(--ink-on-dark);
+}
+.heroOverline {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink-on-dark) 72%, transparent);
 }
 .heroTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  line-height: 1.2;
+  margin: 6px 0 0;
   font-family: var(--font-display);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 14px color-mix(in srgb, var(--surface-dark) 55%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.heroDateRange {
-  font-size: 13px;
-  opacity: 0.92;
-  margin-top: 4px;
+.heroDates {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
-  letter-spacing: 0.5px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--ink-on-dark) 84%, transparent);
+}
+.heroDates i {
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
 }
 
-/* ── 总账条 ── */
-.totalBox {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 20px 16px;
+/* ── 总账带 ── */
+.stats {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 12px;
+  padding: 16px 20px 15px;
   border-bottom: 1px solid var(--line-soft);
 }
-.totalMain {
+.stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
+  min-width: 0;
 }
-.totalLabel {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-}
-.totalMix {
-  font-size: 10px;
-  color: var(--muted-2);
-  font-style: italic;
-  letter-spacing: 0;
-  text-transform: none;
-  margin-left: 4px;
-}
-.totalAmount {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -1px;
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
-}
-.totalStats {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.statCell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-}
-.statValue {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink);
-  font-family: var(--font-display);
+.stat + .stat {
+  border-left: 1px solid var(--line);
+  padding-left: 12px;
 }
 .statLabel {
-  font-size: 10px;
-  color: var(--muted);
   font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--muted);
 }
-.statDivider {
-  width: 1px;
-  height: 24px;
-  background: var(--line);
+.statMix {
+  letter-spacing: 0;
+  font-size: 9px;
+  color: var(--muted-2);
 }
+.statValue {
+  font-family: var(--font-num);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.statLead .statValue { font-size: 24px; }
+.statValue small {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.statValueExpense { color: var(--expense); }
+.statValueIncome { color: var(--income); }
 
 /* claimed 标注 */
 .claimedNote {
@@ -258,95 +262,92 @@
   background: var(--paper-2);
   padding: 8px 20px;
   border-bottom: 1px solid var(--line-soft);
-  font-style: italic;
 }
 
-/* ── CTA 按钮组 ── */
+/* ── 双按钮 ── */
 .ctaRow {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.35fr 1fr;
   gap: 8px;
-  padding: 16px 20px;
+  padding: 16px 20px 18px;
 }
 .cta {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: none;
-  border-radius: 12px;
-  padding: 13px 16px;
+  border-radius: 13px;
+  padding: 13px 14px;
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: opacity 150ms, transform 150ms;
+  transition: opacity 150ms, transform 150ms var(--ease), background 150ms;
 }
 .cta:active { transform: scale(0.98); }
+.cta:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 .ctaPrimary {
   background: var(--ink);
   color: var(--paper);
+  border: none;
 }
+.ctaPrimary svg { color: var(--accent); }
 .ctaPrimary:hover { opacity: 0.88; }
 .ctaSecondary {
-  background: var(--paper-2);
-  color: var(--ink);
+  background: transparent;
+  color: var(--ink-2);
   border: 1.5px solid var(--line);
 }
-.ctaSecondary:hover {
-  background: var(--paper-3);
-}
+.ctaSecondary:hover { background: var(--paper-2); }
 
-/* ── 记录清单 ── */
-.recordsSection {
-  padding: 8px 0 16px;
-}
+/* ── 沿途 ── */
+.recordsSection { padding: 0 0 8px; }
 .recordsHeader {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 8px 20px 12px;
+  gap: 10px;
+  margin: 0 20px;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--line);
 }
 .recordsHeaderTitle {
-  font-size: 11px;
+  font-family: var(--font-display);
+  font-size: 16px;
   font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
+  letter-spacing: 0.16em;
+  color: var(--ink);
 }
 .recordsHeaderCount {
-  font-size: 11px;
-  color: var(--muted);
   font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
 }
 .recordsEmpty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  color: var(--muted-2);
+  gap: 10px;
+  color: var(--muted);
   font-size: 13px;
-  padding: 32px 24px;
+  padding: 34px 24px 40px;
   text-align: center;
-  font-style: italic;
 }
-.recordsEmptyIcon { font-size: 32px; opacity: 0.6; }
+.recordsEmptyIcon {
+  color: var(--muted-2);
+  opacity: 0.7;
+}
 
-/* ── 记录清单 · v3.0 TASK-060：日期分组 + 照片贴片 ── */
-.dayGroups {
-  padding-bottom: 8px;
-}
-.dayGroup {
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 2px;
-}
-.dayGroup:last-child { border-bottom: none; }
+/* 日期分组 */
+.dayGroups { padding-bottom: 4px; }
+.dayGroup { border-bottom: 1px solid var(--line-soft); }
 
-/* 日期章：呼应封面邮戳的「墨块印章」 */
 .dayHeader {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 16px 20px 8px;
 }
 .dayStamp {
@@ -355,11 +356,11 @@
   gap: 6px;
   background: var(--ink);
   color: var(--paper);
-  padding: 4px 9px;
+  padding: 5px 9px;
   border-radius: 3px;
   font-family: var(--font-mono);
   transform: rotate(-1.4deg);
-  box-shadow: 1px 1px 0 rgba(15, 15, 15, 0.14);
+  box-shadow: 1px 1px 0 color-mix(in srgb, var(--ink) 14%, transparent);
   flex-shrink: 0;
 }
 .dayStampDate {
@@ -373,6 +374,13 @@
   letter-spacing: 0.5px;
   opacity: 0.72;
 }
+.dayCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
 /* 手账虚线 */
 .dayRule {
   flex: 1;
@@ -381,20 +389,13 @@
   background-size: 5px 5px;
   opacity: 0.9;
 }
-.dayMeta {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.dayCount { letter-spacing: 0.5px; }
 .dayExpense,
 .dayIncome {
+  font-family: var(--font-num);
+  font-size: 11.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 .dayExpense { color: var(--expense); }
 .dayIncome { color: var(--income); }
@@ -404,10 +405,10 @@
 /* ── 记录条目 ── */
 .entry {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) auto;
+  grid-template-columns: 60px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
+  padding: 11px 20px;
   border-bottom: 1px solid var(--line-soft);
   cursor: pointer;
   transition: background 140ms;
@@ -415,17 +416,18 @@
 .entry:last-child { border-bottom: none; }
 .entry:hover { background: var(--paper-2); }
 .entry:active { background: var(--paper-3); }
+.entry:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: -2px; }
 .entryWithPhoto { padding: 12px 20px; }
 
 /* 拍立得贴片：白边 + 投影 + 轻微旋转 */
 .photoTile {
-  width: 76px;
-  height: 76px;
+  width: 60px;
+  height: 60px;
   padding: 4px;
   background: var(--card);
   border: none;
   border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(15, 15, 15, 0.16);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 16%, transparent);
   transform: rotate(-1.6deg);
   cursor: zoom-in;
   overflow: hidden;
@@ -434,7 +436,7 @@
 }
 .photoTile:hover {
   transform: rotate(0deg) scale(1.05);
-  box-shadow: 0 6px 18px rgba(15, 15, 15, 0.22);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 22%, transparent);
 }
 .photoTile:focus-visible {
   outline: 2px solid var(--accent-deep);
@@ -455,7 +457,7 @@
   height: 100%;
   background: var(--paper-2);
   color: var(--muted-2);
-  font-size: 10px;
+  font-size: 9px;
   border-radius: 2px;
 }
 
@@ -488,14 +490,14 @@
   flex-shrink: 0;
 }
 .entryCat {
-  font-size: 11px;
-  color: var(--muted);
   font-family: var(--font-mono);
-  letter-spacing: 0.4px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
   white-space: nowrap;
 }
 .entryNote {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink);
   min-width: 0;
   overflow: hidden;
@@ -518,8 +520,15 @@
   justify-content: flex-end;
   font-variant-numeric: tabular-nums;
 }
-.incomeAmt { font-size: 14px; font-weight: 700; color: var(--income); font-variant-numeric: tabular-nums; }
-.expenseAmt { font-size: 14px; font-weight: 700; color: var(--expense); font-variant-numeric: tabular-nums; }
+.incomeAmt,
+.expenseAmt {
+  font-family: var(--font-num);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.incomeAmt { color: var(--income); }
+.expenseAmt { color: var(--expense); }
 .entryWithPhoto .incomeAmt,
 .entryWithPhoto .expenseAmt { font-size: 17px; }
 
@@ -533,7 +542,17 @@
   white-space: nowrap;
 }
 
-/* ── 备注 ── */
+/* 收尾 */
+.endNote {
+  padding: 22px 20px 14px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: var(--muted-2);
+}
+
+/* ── 随记 ── */
 .noteBox {
   margin: 16px 20px 0;
   padding: 12px 16px;
@@ -542,15 +561,32 @@
   border: 1px solid var(--line-soft);
 }
 .noteLabel {
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.2em;
   color: var(--muted);
-  letter-spacing: 1.5px;
-  font-family: var(--font-mono);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 .noteText {
   font-size: 13px;
   color: var(--ink);
-  line-height: 1.6;
+  line-height: 1.65;
+}
+
+@media (min-width: 720px) {
+  .page {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photoTile,
+  .photoTile:hover,
+  .floatBtn,
+  .cta {
+    transition: none;
+    transform: none;
+  }
 }

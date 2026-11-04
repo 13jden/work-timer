@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>旅行记录 · 概念稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1E9; --paper-2:#ECE8DD; --card:#FBF9F3;
+  --ink:#1B1A15; --ink-2:#4F4C44; --muted:#8D897C;
+  --line:rgba(27,26,21,.10); --line-2:rgba(27,26,21,.18);
+  --lime:#CDF25A; --coral:#CE5A4C; --green:#4E9B72;
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --num:"Space Grotesk","IBM Plex Mono",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+a{text-decoration:none;color:inherit}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+body{background:#DFDCD3;display:flex;justify-content:center;font-family:var(--sans);color:var(--ink)}
+.phone{width:min(420px,100%);height:100dvh;background:var(--paper);display:flex;flex-direction:column;position:relative;overflow:hidden}
+@media (min-width:520px){
+  body{padding:28px 0}
+  .phone{height:min(900px,calc(100dvh - 56px));border-radius:36px;box-shadow:0 30px 90px rgba(30,28,20,.28)}
+}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font:500 12px var(--mono);letter-spacing:.06em;padding:14px 24px 0}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.screen{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.body{flex:1;padding:0 20px 12px}
+
+.phead{margin-top:14px;display:grid;grid-template-columns:40px 1fr 40px;align-items:center}
+.circle-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;transition:.15s}
+.circle-btn:active{transform:scale(.9)}
+.circle-btn.back{border:1px solid var(--line-2);color:var(--ink-2)}
+.circle-btn.add{background:var(--ink);color:var(--lime)}
+.circle-btn svg{width:17px;height:17px}
+.phead-c{text-align:center}
+.overline{font:500 9.5px var(--mono);letter-spacing:.26em;color:var(--muted)}
+.phead-c h1{font:700 22px/1.2 var(--serif);letter-spacing:.08em;margin-top:4px}
+
+.sumline{margin:16px 2px 14px;display:flex;align-items:center;gap:10px;font:400 11px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.sumline i{flex:1;height:1px;background:var(--line)}
+.sumline b{font:500 11px var(--num);color:var(--ink-2);letter-spacing:0}
+
+/* 旅程卡 */
+.journey{display:block;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--card);margin-bottom:14px;transition:transform .2s,box-shadow .2s}
+.journey:active{transform:scale(.985)}
+.j-photo{position:relative;aspect-ratio:16/9;background:var(--paper-2)}
+.j-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.j-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(20,19,14,.62),rgba(20,19,14,0) 52%)}
+.j-on-photo{position:absolute;left:16px;right:16px;bottom:12px;z-index:1;display:flex;align-items:flex-end;justify-content:space-between}
+.j-title{font:700 23px/1 var(--serif);letter-spacing:.1em;color:#F6F3EB;text-shadow:0 2px 14px rgba(0,0,0,.35)}
+.j-dates{margin-top:6px;font:400 10.5px var(--mono);letter-spacing:.14em;color:rgba(246,243,235,.82)}
+.j-stamp{width:46px;height:46px;flex:none;border:1px solid rgba(246,243,235,.65);border-radius:50%;display:grid;place-items:center;text-align:center;font:500 8.5px/1.25 var(--mono);letter-spacing:.08em;color:rgba(246,243,235,.9);transform:rotate(-10deg)}
+.j-body{display:flex;align-items:center;gap:12px;padding:13px 16px}
+.j-stat{display:flex;align-items:baseline;gap:5px}
+.j-stat .n{font:600 15px var(--num);letter-spacing:-.01em;font-feature-settings:"tnum"}
+.j-stat .n.exp{color:var(--coral)}
+.j-stat .n.zero{color:var(--muted)}
+.j-stat .u{font:400 10px var(--sans);color:var(--muted)}
+.j-sep{width:1px;height:14px;background:var(--line-2)}
+.j-body .chev{margin-left:auto;color:var(--muted);width:15px;height:15px}
+
+/* 新建卡 */
+.new{width:100%;border:1px dashed var(--line-2);border-radius:22px;padding:22px;display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font:400 13px var(--sans);background:transparent;transition:.2s}
+.new:active{background:var(--paper-2);transform:scale(.985)}
+.new svg{width:15px;height:15px}
+.foot-note{margin:18px 0 8px;text-align:center;font:400 9.5px var(--mono);letter-spacing:.22em;color:var(--muted)}
+
+.tabbar{margin:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--ink);border-radius:28px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 6px 12px;gap:4px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(244,241,233,.5);font:500 9px var(--mono);letter-spacing:.16em}
+.tab::before{content:"";width:4px;height:4px;border-radius:50%;background:transparent}
+.tab svg{width:20px;height:20px}
+.tab.active{color:var(--lime)}
+.tab.active::before{background:var(--lime)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>16:40</span>
+    <span class="sb-icons">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.3" y="5" width="3" height="6" rx="1"/><rect x="8.6" y="2.5" width="3" height="8.5" rx="1"/><rect x="12.9" y="0" width="3" height="11" rx="1"/></svg>
+      <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.4 9.4 0 0 1 13 0"/><path d="M3.4 6.2a6 6 0 0 1 8.2 0"/><path d="M5.9 8.7a2.6 2.6 0 0 1 3.2 0"/><circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>
+      <svg width="20" height="11" viewBox="0 0 20 11" fill="none" stroke="currentColor"><rect x=".7" y=".7" width="16" height="9.6" rx="2.6"/><rect x="2.4" y="2.4" width="10" height="6.2" rx="1.2" fill="currentColor" stroke="none"/><path d="M18.6 3.6v3.8" stroke-linecap="round"/></svg>
+    </span>
+  </div>
+  <div class="screen">
+    <div class="body">
+      <header class="phead">
+        <button class="circle-btn back" aria-label="返回">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        </button>
+        <div class="phead-c">
+          <div class="overline">PASSPORT</div>
+          <h1>旅行记录</h1>
+        </div>
+        <button class="circle-btn add" aria-label="新建旅程">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </header>
+
+      <div class="sumline"><span>2 段旅程</span><i></i><b>4 笔</b><i></i><b>¥273.00</b></div>
+
+      <a class="journey" href="05-travel-detail.html">
+        <div class="j-photo">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Aerial%20view%20of%20Qiandao%20Lake%20in%20China%2C%20emerald%20green%20water%20dotted%20with%20forested%20islands%2C%20winding%20lakeside%20road%2C%20sunny%20day%2C%20soft%20natural%20light%2C%20travel%20photography&image_size=landscape_16_9" alt="千岛湖">
+          <div class="j-on-photo">
+            <div>
+              <div class="j-title">千岛湖</div>
+              <div class="j-dates">10-06 → 10-06 · 1 天</div>
+            </div>
+            <span class="j-stamp">26/10<br>支出</span>
+          </div>
+        </div>
+        <div class="j-body">
+          <span class="j-stat"><span class="n">4</span><span class="u">笔</span></span>
+          <span class="j-sep"></span>
+          <span class="j-stat"><span class="n exp">−¥273.00</span><span class="u">支出</span></span>
+          <span class="j-sep"></span>
+          <span class="j-stat"><span class="n">¥273.00</span><span class="u">日均</span></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </a>
+
+      <a class="journey" href="05-travel-detail.html">
+        <div class="j-photo">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20China%20ancient%20canal%20town%20at%20night%2C%20red%20lanterns%20glowing%20and%20reflecting%20on%20dark%20water%2C%20traditional%20white-wall%20architecture%2C%20boats%20moored%20along%20canal%2C%20travel%20photography&image_size=landscape_16_9" alt="苏州">
+          <div class="j-on-photo">
+            <div>
+              <div class="j-title">苏州</div>
+              <div class="j-dates">09-26 → 09-28 · 3 天</div>
+            </div>
+            <span class="j-stamp">09/26<br>旅程</span>
+          </div>
+        </div>
+        <div class="j-body">
+          <span class="j-stat"><span class="n zero">0</span><span class="u">笔</span></span>
+          <span class="j-sep"></span>
+          <span class="j-stat"><span class="n zero">¥0.00</span><span class="u">支出</span></span>
+          <span class="j-sep"></span>
+          <span class="j-stat"><span class="u">还没有记录 · 补一笔</span></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </a>
+
+      <button class="new">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        开始一段新旅程
+      </button>
+      <div class="foot-note">EVERY TRIP DESERVES A LEDGER</div>
+    </div>
+
+    <nav class="tabbar">
+      <a class="tab" href="01-record-sheet.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span>ACCT</span></a>
+      <a class="tab" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="16" x="3" y="6" rx="2"/><path d="M3 10h18"/></svg>
+        <span>CAL</span></a>
+      <a class="tab" href="03-stats.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-4"/></svg>
+        <span>STATS</span></a>
+      <a class="tab active" href="02-assets.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+        <span>MINE</span></a>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

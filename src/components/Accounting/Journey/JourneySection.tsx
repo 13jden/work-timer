@@ -1,5 +1,5 @@
 /**
- * @fileoverview JourneySection — MINE 页「旅游记录」入口卡（v3.0 TASK-059 T-596）
+ * @fileoverview JourneySection — MINE 页「一程」入口卡（v3.0 TASK-059 T-596 · v3.1 TASK-063 文案）
  *
  * 裸入口卡，点击或点击「查看全部」都会触发 onOpen 回调，由 MinePage
  * 切到独立全屏的 JourneyListPage。
@@ -46,29 +46,29 @@ export function JourneySection({ onOpen }: JourneySectionProps) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onOpen()}
-      aria-label="打开旅游记录"
+      aria-label="打开一程"
     >
       {/* 左上：邮戳 */}
       <div className={styles.stamp}>
         <div className={styles.stampCircle}>
           <AirplaneTilt size={16} weight="fill" />
         </div>
-        <span className={styles.stampText}>TRIP</span>
+        <span className={styles.stampText}>ONE WAY</span>
       </div>
 
       {/* 主区 */}
       <div className={styles.body}>
         <div className={styles.eyebrow}>
-          <span>旅游记录</span>
+          <span>一程</span>
           {totalCount > 0 && <span className={styles.eyebrowDot} />}
-          {totalCount > 0 && <span>{totalCount} 段</span>}
+          {totalCount > 0 && <span>{totalCount} 程</span>}
         </div>
         <div className={styles.title}>
-          {totalCount === 0 ? '把一次旅行记成一段记录' : recent?.title ?? '旅游记录'}
+          {totalCount === 0 ? '把一次远行，走成一程' : recent?.title ?? '一程'}
         </div>
         {totalCount > 0 && recentSummary && recentSummary.count > 0 && (
           <div className={styles.meta}>
-            {recentSummary.count} 笔{recentDate && ` · 截至 ${recentDate.slice(5)}`}
+            {recentSummary.count} 笔{recentDate && ` · 最近 ${recentDate.slice(5)}`}
           </div>
         )}
       </div>
@@ -79,7 +79,7 @@ export function JourneySection({ onOpen }: JourneySectionProps) {
           type="button"
           className={styles.viewBtn}
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
-          aria-label="查看全部旅游记录"
+          aria-label="查看全部一程"
           title="查看全部"
         >
           <ArrowUpRight size={16} weight="bold" />

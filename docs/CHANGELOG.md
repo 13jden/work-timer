@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v3.1 | 2026-11-04 | 一程命名重写 + 列表/详情 UI 重设计 (TASK-063) | [`docs/CHANGELOG-v3.1.md`](./CHANGELOG-v3.1.md) |
 | v3.0 | 2026-10-22 | 支持 0 元记录 · 别人请客也能记 (TASK-062) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |
 | v3.0 | 2026-10-22 | 一程详情页手账化 + 钱包开关一致性修复 (TASK-061) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |
 | v3.0 | 2026-10-21 | APK 打包链路修复 · 体积 73 MB → 11.71 MB | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |

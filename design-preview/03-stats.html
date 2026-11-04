@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>统计 · 概念稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1E9; --paper-2:#ECE8DD; --card:#FBF9F3;
+  --ink:#1B1A15; --ink-2:#4F4C44; --muted:#8D897C;
+  --line:rgba(27,26,21,.10); --line-2:rgba(27,26,21,.18);
+  --lime:#CDF25A; --coral:#CE5A4C; --coral-lt:#E89A8F; --green:#4E9B72;
+  --paper-on-ink:rgba(244,241,233,.6);
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --num:"Space Grotesk","IBM Plex Mono",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+a{text-decoration:none;color:inherit}
+button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+body{background:#DFDCD3;display:flex;justify-content:center;font-family:var(--sans);color:var(--ink)}
+.phone{width:min(420px,100%);height:100dvh;background:var(--paper);display:flex;flex-direction:column;position:relative;overflow:hidden}
+@media (min-width:520px){
+  body{padding:28px 0}
+  .phone{height:min(900px,calc(100dvh - 56px));border-radius:36px;box-shadow:0 30px 90px rgba(30,28,20,.28)}
+}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font:500 12px var(--mono);letter-spacing:.06em;padding:14px 24px 0}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.screen{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.body{flex:1;padding:6px 20px 12px}
+
+.phead{display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px}
+.overline{font:500 10px var(--mono);letter-spacing:.22em;color:var(--muted)}
+.phead h1{font:700 27px/1.2 var(--serif);letter-spacing:.04em;margin-top:6px}
+.phead .range{font:500 10.5px var(--mono);letter-spacing:.08em;color:var(--ink-2);border:1px solid var(--line-2);border-radius:99px;padding:5px 11px;margin-bottom:4px}
+
+.seg{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--paper-2);border-radius:13px;padding:3.5px;gap:3px}
+.seg button{height:34px;border-radius:10px;font:500 13px var(--sans);color:var(--muted);transition:.25s}
+.seg button.active{background:var(--ink);color:var(--paper);box-shadow:0 5px 14px rgba(27,26,21,.2)}
+
+/* 汇总暗卡 */
+.sum{margin-top:14px;background:var(--ink);color:var(--paper);border-radius:22px;padding:18px 20px 16px;position:relative;overflow:hidden}
+.sum-top{display:flex;align-items:center;justify-content:space-between}
+.sum-date{font:500 11px var(--mono);letter-spacing:.14em;color:var(--paper-on-ink)}
+.sum-tag{font:500 9px var(--mono);letter-spacing:.24em;color:rgba(244,241,233,.35)}
+.sum-grid{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.sum-cell .lb{display:flex;align-items:center;gap:6px;font:400 11px var(--sans);color:var(--paper-on-ink)}
+.sum-cell .lb i{width:6px;height:6px;border-radius:50%}
+.sum-cell.exp .lb i{background:var(--coral-lt)}
+.sum-cell.inc .lb i{background:var(--lime)}
+.sum-cell .v{margin-top:7px;font:600 31px/1 var(--num);letter-spacing:-.025em;font-feature-settings:"tnum"}
+.sum-cell.exp .v{color:var(--coral-lt)}
+.sum-cell.inc .v{color:var(--lime)}
+.sum-cell .d{margin-top:6px;font:400 10px var(--mono);letter-spacing:.06em;color:rgba(244,241,233,.38)}
+.sum-div{margin:15px 0 12px;height:1px;background:rgba(244,241,233,.14)}
+.sum-foot{display:flex;align-items:center;justify-content:space-between;font:400 11px var(--sans);color:var(--paper-on-ink)}
+.sum-foot b{font:600 14px var(--num);color:var(--paper);letter-spacing:-.01em}
+.bars{margin-top:14px;display:grid;grid-template-columns:repeat(7,1fr);gap:7px;align-items:end;height:34px}
+.bars i{border-radius:3px 3px 0 0;background:rgba(244,241,233,.18);height:var(--h);transition:height .5s cubic-bezier(.22,1,.36,1)}
+.bars i.now{background:var(--lime)}
+.bars-lb{margin-top:6px;display:grid;grid-template-columns:repeat(7,1fr);gap:7px;font:400 8.5px var(--mono);color:rgba(244,241,233,.35);text-align:center;letter-spacing:.06em}
+
+/* 日期导航 */
+.dnav{margin:16px auto 4px;display:flex;align-items:center;justify-content:center;gap:18px}
+.dnav button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line-2);display:grid;place-items:center;color:var(--ink-2);transition:.15s}
+.dnav button:active{transform:scale(.9);background:var(--paper-2)}
+.dnav button svg{width:14px;height:14px}
+.dnav .lb{font:600 15px var(--serif);letter-spacing:.06em;min-width:132px;text-align:center}
+
+/* 明细头 + 视图切换 */
+.sec-lb{margin:16px 2px 6px;display:flex;justify-content:space-between;align-items:center;font:500 10px var(--mono);letter-spacing:.2em;color:var(--muted)}
+.view-seg{display:flex;background:var(--paper-2);border-radius:9px;padding:2.5px;gap:2px}
+.view-seg button{width:32px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--muted);transition:.2s}
+.view-seg button.active{background:var(--ink);color:var(--paper)}
+.view-seg svg{width:13px;height:13px}
+
+/* 列表视图 */
+.tx{border-top:1px solid var(--line)}
+.tx-row{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line)}
+.tx-ico{position:relative;width:40px;height:40px;flex:none;border-radius:13px;background:var(--paper-2);display:grid;place-items:center;color:var(--ink-2)}
+.tx-ico svg{width:18px;height:18px}
+.tx-ico i{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--paper)}
+.tx-main{flex:1;min-width:0}
+.tx-t{font:500 14.5px var(--sans)}
+.tx-s{margin-top:2px;font:400 10.5px var(--mono);letter-spacing:.06em;color:var(--muted)}
+.tx-v{font:600 15.5px var(--num);letter-spacing:-.01em;font-feature-settings:"tnum"}
+.tx-v.exp{color:var(--coral)}
+.tx-v.inc{color:var(--green)}
+.empty{padding:34px 0;text-align:center;color:var(--muted);font:400 12px var(--sans)}
+
+/* 图表视图 */
+.chart-card{border:1px solid var(--line);border-radius:20px;background:var(--card);padding:20px 16px 6px;margin-top:4px}
+.donut-wrap{position:relative;width:188px;margin:0 auto}
+.donut-wrap svg{display:block;width:100%}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.dc-lb{font:500 9px var(--mono);letter-spacing:.22em;color:var(--muted)}
+.dc-v{font:600 21px var(--num);letter-spacing:-.02em;font-feature-settings:"tnum"}
+.dc-sub{font:400 9.5px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.legend{margin-top:16px}
+.lg-row{display:grid;grid-template-columns:auto 1fr auto auto;column-gap:10px;row-gap:8px;align-items:center;padding:12px 2px;border-top:1px solid var(--line)}
+.lg-dot{width:9px;height:9px;border-radius:3px}
+.lg-name{font:400 13px var(--sans)}
+.lg-name small{font:400 10px var(--mono);color:var(--muted);margin-left:6px;letter-spacing:.06em}
+.lg-pct{font:600 14px var(--num);letter-spacing:-.01em}
+.lg-amt{font:400 11px var(--mono);color:var(--muted)}
+.lg-bar{grid-column:1/-1;height:3px;border-radius:99px;background:var(--paper-2);overflow:hidden}
+.lg-bar i{display:block;height:100%;border-radius:99px}
+
+.tabbar{margin:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--ink);border-radius:28px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 6px 12px;gap:4px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(244,241,233,.5);font:500 9px var(--mono);letter-spacing:.16em}
+.tab::before{content:"";width:4px;height:4px;border-radius:50%;background:transparent}
+.tab svg{width:20px;height:20px}
+.tab.active{color:var(--lime)}
+.tab.active::before{background:var(--lime)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>16:40</span>
+    <span class="sb-icons">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.3" y="5" width="3" height="6" rx="1"/><rect x="8.6" y="2.5" width="3" height="8.5" rx="1"/><rect x="12.9" y="0" width="3" height="11" rx="1"/></svg>
+      <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.4 9.4 0 0 1 13 0"/><path d="M3.4 6.2a6 6 0 0 1 8.2 0"/><path d="M5.9 8.7a2.6 2.6 0 0 1 3.2 0"/><circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>
+      <svg width="20" height="11" viewBox="0 0 20 11" fill="none" stroke="currentColor"><rect x=".7" y=".7" width="16" height="9.6" rx="2.6"/><rect x="2.4" y="2.4" width="10" height="6.2" rx="1.2" fill="currentColor" stroke="none"/><path d="M18.6 3.6v3.8" stroke-linecap="round"/></svg>
+    </span>
+  </div>
+  <div class="screen">
+    <div class="body">
+      <header class="phead">
+        <div>
+          <div class="overline">STATS · LEDGER</div>
+          <h1>统计</h1>
+        </div>
+        <span class="range" id="rangeChip">2026 · 10</span>
+      </header>
+
+      <div class="seg" id="seg">
+        <button class="active" data-mode="day">日</button>
+        <button data-mode="month">月</button>
+        <button data-mode="year">年</button>
+      </div>
+
+      <section class="sum">
+        <div class="sum-top"><span class="sum-date" id="sumDate">2026·10·22 · 周四</span><span class="sum-tag" id="sumTag">ONE DAY</span></div>
+        <div class="sum-grid">
+          <div class="sum-cell exp">
+            <div class="lb"><i></i>支出</div>
+            <div class="v" id="expV">−48.50</div>
+            <div class="d" id="expD">上期无记录</div>
+          </div>
+          <div class="sum-cell inc">
+            <div class="lb"><i></i>收入</div>
+            <div class="v" id="incV">+578.27</div>
+            <div class="d" id="incD">上期无记录</div>
+          </div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-foot"><span>结余</span><b id="netV">+529.77</b></div>
+        <div class="bars" id="bars"></div>
+        <div class="bars-lb" id="barsLb"></div>
+      </section>
+
+      <div class="dnav">
+        <button id="prev" aria-label="上一期"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <span class="lb" id="dnavLb">10月22日 · 周四</span>
+        <button id="next" aria-label="下一期"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+
+      <div class="sec-lb">
+        <span>明细 · <span id="txCount">共 2 笔</span></span>
+        <div class="view-seg" id="viewSeg" role="tablist" aria-label="明细视图">
+          <button class="active" data-view="list" aria-label="列表视图">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+          </button>
+          <button data-view="chart" aria-label="图表视图">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chart-card" id="chartView" hidden>
+        <div class="donut-wrap">
+          <svg id="donut" viewBox="0 0 190 190" aria-label="支出分类占比"></svg>
+          <div class="donut-center">
+            <span class="dc-lb">总支出</span>
+            <span class="dc-v" id="dcV">¥48.50</span>
+            <span class="dc-sub" id="dcSub">1 个分类</span>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="tx" id="txList"></div>
+    </div>
+
+    <nav class="tabbar">
+      <a class="tab" href="01-record-sheet.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span>ACCT</span></a>
+      <a class="tab" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="16" x="3" y="6" rx="2"/><path d="M3 10h18"/></svg>
+        <span>CAL</span></a>
+      <a class="tab active" href="03-stats.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-4"/></svg>
+        <span>STATS</span></a>
+      <a class="tab" href="02-assets.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+        <span>MINE</span></a>
+    </nav>
+  </div>
+</div>
+<script>
+(function(){
+  var PALETTE=["#CE5A4C","#D9A441","#CDF25A","#4E9B72","#8D897C","#1B1A15"];
+  var ICONS={
+    food:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
+    wage:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>',
+    car:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
+    bag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+    game:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59c-.01.05-.01.1-.02.15C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.42.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.54-.6-6.58-.69-7.26-.01-.05-.01-.1-.02-.15A4 4 0 0 0 17.32 5z"/></svg>'
+  };
+  var DATA={
+    day:{
+      range:"2026 · 10", tag:"ONE DAY",
+      labels:["10月21日 · 周三","10月22日 · 周四","10月23日 · 周五"],
+      dates:["2026·10·21 · 周三","2026·10·22 · 周四","2026·10·23 · 周五"],
+      sets:[
+        {exp:"−0.00",inc:"+0.00",expD:"上期 −48.50",incD:"上期 +578.27",net:"0.00",tx:[],cats:[]},
+        {exp:"−48.50",inc:"+578.27",expD:"上期无记录",incD:"上期无记录",net:"+529.77",tx:[
+          {ico:"food",dot:"#CE5A4C",t:"餐饮",s:"湖景午饭",v:"−48.50",cls:"exp"},
+          {ico:"wage",dot:"#4E9B72",t:"工资池",s:"工资联动 · 日抽",v:"+578.27",cls:"inc"}],
+          cats:[{n:"餐饮",c:1,a:48.50}]},
+        {exp:"−0.00",inc:"−0.00",expD:"上期 −48.50",incD:"上期 +578.27",net:"0.00",tx:[],cats:[]}
+      ],
+      bars:[8,0,22,5,0,14,30], barLb:["四","五","六","日","一","二","三"]
+    },
+    month:{
+      range:"2026", tag:"ONE MONTH",
+      labels:["9月","10月","11月"],
+      dates:["2026·09","2026·10","2026·11"],
+      sets:[
+        {exp:"−3,842.10",inc:"+12,000.00",expD:"环比 +6.2%",incD:"环比 0.0%",net:"+8,157.90",tx:[
+          {ico:"food",dot:"#CE5A4C",t:"餐饮",s:"32 笔",v:"−1,286.40",cls:"exp"},
+          {ico:"car",dot:"#CE5A4C",t:"交通",s:"9 笔",v:"−486.00",cls:"exp"},
+          {ico:"wage",dot:"#4E9B72",t:"工资",s:"2 笔",v:"+12,000.00",cls:"inc"}],
+          cats:[{n:"餐饮",c:32,a:1286.40},{n:"购物",c:14,a:1069.70},{n:"交通",c:9,a:486.00},{n:"娱乐",c:6,a:600.00},{n:"其他",c:11,a:400.00}]},
+        {exp:"−1,286.40",inc:"+12,568.06",expD:"环比 −66.5%",incD:"环比 +4.7%",net:"+11,281.66",tx:[
+          {ico:"food",dot:"#CE5A4C",t:"餐饮",s:"18 笔",v:"−686.40",cls:"exp"},
+          {ico:"bag",dot:"#CE5A4C",t:"购物",s:"6 笔",v:"−300.00",cls:"exp"},
+          {ico:"car",dot:"#CE5A4C",t:"交通",s:"5 笔",v:"−300.00",cls:"exp"},
+          {ico:"wage",dot:"#4E9B72",t:"工资",s:"2 笔",v:"+12,568.06",cls:"inc"}],
+          cats:[{n:"餐饮",c:18,a:686.40},{n:"购物",c:6,a:300.00},{n:"交通",c:5,a:300.00}]},
+        {exp:"−0.00",inc:"−0.00",expD:"—",incD:"—",net:"0.00",tx:[],cats:[]}
+      ],
+      bars:[42,55,38,60,47,70,52,64,45,58], barLb:["1","4","7","10","13","16","19","22","25","28"]
+    },
+    year:{
+      range:"ALL", tag:"ONE YEAR",
+      labels:["2025","2026","2027"],
+      dates:["2025","2026","2027"],
+      sets:[
+        {exp:"−41,208.55",inc:"+138,400.00",expD:"—",incD:"—",net:"+97,191.45",tx:[
+          {ico:"food",dot:"#CE5A4C",t:"餐饮",s:"312 笔",v:"−14,208.75",cls:"exp"},
+          {ico:"wage",dot:"#4E9B72",t:"工资",s:"24 笔",v:"+138,400.00",cls:"inc"}],
+          cats:[{n:"餐饮",c:312,a:14208.75},{n:"购物",c:96,a:9486.00},{n:"交通",c:87,a:8120.40},{n:"娱乐",c:40,a:5393.40},{n:"其他",c:33,a:4000.00}]},
+        {exp:"−14,208.75",inc:"+98,568.06",expD:"环比 −65.5%",incD:"环比 −28.8%",net:"+84,359.31",tx:[
+          {ico:"food",dot:"#CE5A4C",t:"餐饮",s:"186 笔",v:"−6,842.35",cls:"exp"},
+          {ico:"car",dot:"#CE5A4C",t:"交通",s:"54 笔",v:"−3,120.40",cls:"exp"},
+          {ico:"bag",dot:"#CE5A4C",t:"购物",s:"41 笔",v:"−2,486.00",cls:"exp"},
+          {ico:"wage",dot:"#4E9B72",t:"工资",s:"10 笔",v:"+98,568.06",cls:"inc"}],
+          cats:[{n:"餐饮",c:186,a:6842.35},{n:"交通",c:54,a:3120.40},{n:"购物",c:41,a:2486.00},{n:"娱乐",c:12,a:980.00},{n:"其他",c:9,a:780.00}]},
+        {exp:"−0.00",inc:"−0.00",expD:"—",incD:"—",net:"0.00",tx:[],cats:[]}
+      ],
+      bars:[30,44,38,52,47,60,55,68,50,62,45,58], barLb:["1","2","3","4","5","6","7","8","9","10","11","12"]
+    }
+  };
+  var mode="day", idx=1, view="list";
+  var $=function(id){return document.getElementById(id);};
+  function money(n){return n.toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function renderBars(b,lb){
+    var max=Math.max.apply(null,b.concat([1]));
+    $("bars").innerHTML=b.map(function(h,i){
+      return '<i class="'+(i===b.length-1?'now':'')+'" style="--h:'+Math.max(8,Math.round(h/max*100))+'%"></i>';
+    }).join("");
+    $("barsLb").innerHTML=lb.map(function(x){return "<span>"+x+"</span>";}).join("");
+    $("bars").style.gridTemplateColumns="repeat("+b.length+",1fr)";
+    $("barsLb").style.gridTemplateColumns="repeat("+b.length+",1fr)";
+  }
+  function renderChart(cats){
+    var svg=$("donut"), legend=$("legend");
+    if(!cats.length){
+      svg.innerHTML='<circle cx="95" cy="95" r="70" fill="none" stroke="#ECE8DD" stroke-width="26"/>';
+      $("dcV").textContent="¥0.00"; $("dcSub").textContent="暂无支出";
+      legend.innerHTML='<div class="empty">这一期还没有支出分类</div>';
+      return;
+    }
+    var total=cats.reduce(function(s,c){return s+c.a;},0);
+    var C=2*Math.PI*70, off=0, out="";
+    cats.forEach(function(c,i){
+      var len=c.a/total*C;
+      out+='<circle cx="95" cy="95" r="70" fill="none" stroke="'+PALETTE[i%PALETTE.length]+'" stroke-width="26" stroke-dasharray="'+(len-1.2)+' '+(C-len+1.2)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 95 95)"/>';
+      off+=len;
+    });
+    svg.innerHTML=out;
+    $("dcV").textContent="¥"+money(total);
+    $("dcSub").textContent=cats.length+" 个分类";
+    legend.innerHTML=cats.map(function(c,i){
+      var pct=(c.a/total*100).toFixed(1);
+      var col=PALETTE[i%PALETTE.length];
+      return '<div class="lg-row"><span class="lg-dot" style="background:'+col+'"></span>'+
+        '<span class="lg-name">'+c.n+'<small>'+c.c+' 笔</small></span>'+
+        '<span class="lg-pct">'+pct+'%</span>'+
+        '<span class="lg-amt">−¥'+money(c.a)+'</span>'+
+        '<span class="lg-bar"><i style="width:'+pct+'%;background:'+col+'"></i></span></div>';
+    }).join("");
+  }
+  function render(){
+    var d=DATA[mode], s=d.sets[idx];
+    $("rangeChip").textContent=d.range;
+    $("sumTag").textContent=d.tag;
+    $("sumDate").textContent=d.dates[idx];
+    $("dnavLb").textContent=d.labels[idx];
+    $("expV").textContent=s.exp; $("incV").textContent=s.inc;
+    $("expD").textContent=s.expD; $("incD").textContent=s.incD;
+    $("netV").textContent=s.net;
+    $("txCount").textContent="共 "+s.tx.length+" 笔";
+    $("txList").innerHTML = s.tx.length ? s.tx.map(function(t){
+      return '<div class="tx-row"><span class="tx-ico">'+ICONS[t.ico]+'<i style="background:'+t.dot+'"></i></span>'+
+        '<span class="tx-main"><span class="tx-t" style="display:block">'+t.t+'</span><span class="tx-s">'+t.s+'</span></span>'+
+        '<span class="tx-v '+t.cls+'">'+t.v+'</span></div>';
+    }).join("") : '<div class="empty">这一天还没有记录 · 去记一笔</div>';
+    renderChart(s.cats);
+    $("chartView").hidden = view!=="chart";
+    renderBars(d.bars,d.barLb);
+  }
+  $("seg").addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    mode=b.dataset.mode; idx=1;
+    document.querySelectorAll("#seg button").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active"); render();
+  });
+  $("viewSeg").addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    view=b.dataset.view;
+    document.querySelectorAll("#viewSeg button").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active"); render();
+  });
+  $("prev").addEventListener("click",function(){ idx=(idx+DATA[mode].sets.length-1)%DATA[mode].sets.length; render(); });
+  $("next").addEventListener("click",function(){ idx=(idx+1)%DATA[mode].sets.length; render(); });
+  render();
+})();
+</script>
+</body>
+</html>

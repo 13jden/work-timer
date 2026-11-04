@@ -131,8 +131,8 @@ describe('JourneyDetailPage · 记录区', () => {
       target!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    // 点 chip 上的 ✕（aria-label="移除旅游记录"）解除关联
-    const removeBtn = host.querySelector('span[aria-label="移除旅游记录"]') as HTMLElement;
+    // 点 chip 上的 ✕（aria-label="移除一程"）解除关联
+    const removeBtn = host.querySelector('span[aria-label="移除一程"]') as HTMLElement;
     expect(removeBtn).toBeTruthy();
     act(() => {
       removeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
