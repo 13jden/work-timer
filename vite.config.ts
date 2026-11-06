@@ -138,7 +138,8 @@ export default defineConfig({
     watch: {
       // v3.0:排除 src-tauri —— Android/Gradle 构建会生成并锁住大量报告文件
       // (problems-report.html 等),Vite 监听它们时会抛 EBUSY 导致 dev server 崩溃
-      ignored: ['**/src-tauri/**'],
+      // v3.1:同样排除 dist-android —— APK 打包产物会被占用,监听时抛 EBUSY
+      ignored: ['**/src-tauri/**', '**/dist-android/**'],
     },
   },
   build: {

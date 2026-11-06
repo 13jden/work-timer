@@ -1,9 +1,9 @@
 {
     "sizeLabel":  "11.7 MB",
-    "version":  "3.0.0",
-    "updated":  "2026-10-22",
-    "apk":  "/downloads/SalaryTimer-3.0.0-arm64.apk",
-    "sha256":  "e09aee37f2935ec5511a3f3260e2412add2f814889e2c07bf4ce54ef563a4496",
-    "build":  "3.0.0",
+    "version":  "3.1.0",
+    "updated":  "2026-11-04",
+    "apk":  "/downloads/SalaryTimer-3.1.0-arm64.apk",
+    "sha256":  "27ba8339b7232a30b1e907b23d41ce2fa81e7f184bbd3baa492d5d47f1bc748e",
+    "build":  "3.1.0",
     "size":  12281081
 }

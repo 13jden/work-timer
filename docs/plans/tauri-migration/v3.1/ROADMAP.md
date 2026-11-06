@@ -33,6 +33,8 @@ v3.1 做一件事：**把「一程」当成一个人的旅行手账来做**。
 |---|---|---|---|
 | TASK-063 | 一程命名重写 + 列表/详情 UI 重设计 | ✅ 已完成 | [`TASK-063-v3.1-oneway-ui.md`](./TASK-063-v3.1-oneway-ui.md) |
 | TASK-064 | MINE 页布局重排（双入口卡 + 设置下放） | ✅ 已完成 | [`TASK-064-v3.1-mine-layout.md`](./TASK-064-v3.1-mine-layout.md) |
+| TASK-065 | 统计页汇总带重设计 | ✅ 已完成 | [`TASK-065-v3.1-stats-summary-band.md`](./TASK-065-v3.1-stats-summary-band.md) |
+| TASK-066 | Android APK 重打包 (3.1.0) | ⏳ 待验收 | [`TASK-066-v3.1-apk-repack.md`](./TASK-066-v3.1-apk-repack.md) |
 
 ---
 

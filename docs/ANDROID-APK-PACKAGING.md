@@ -1,7 +1,48 @@
 # Android APK 打包指南 · Salary Timer
 
 > 环境: Windows 11 · Tauri 2.x · Rust 1.82+ · Android SDK build-tools 35 · JDK 17
-> 当前版本: 3.0.0 (参见 tauri.conf.json 的 version)
+> 当前版本: 3.1.0 (参见 tauri.conf.json 的 version)
+
+---
+
+## ⚠️ v3.1 新增:`local.properties` 的 `ndk.dir` 必须用正斜杠
+
+Java `.properties` 里 `\` 是转义符,`\U` `\n` `\2` 会被直接丢弃。
+如果写成 `ndk.dir=C:\Users\admin\AppData\Local\Android\ndk\29.0.13846066`,
+Gradle 读到的实际路径是 `C:UsersadminAppDataLocalAndroidndk29.0.13846066`,构建直接失败:
+
+```
+[CXX1102] Location specified by ndk.dir (...) did not contain a valid NDK and couldn't be used
+```
+
+正确写法(正斜杠,无转义歧义):
+
+```properties
+sdk.dir=C:/Users/admin/AppData/Local/Android/Sdk
+ndk.dir=C:/Users/admin/AppData/Local/Android/ndk/29.0.13846066
+```
+
+---
+
+## ⚠️ v3.1 新增:只构建 arm64,不需要 `aapt remove` 精简
+
+`src-tauri/gen/android/app/build.gradle.kts` 的 `defaultConfig` 已经限定了架构:
+
+```kotlin
+ndk { abiFilters += listOf("arm64-v8a") }
+```
+
+所以用 `--target aarch64` 构建出来的 APK **本来就只含 arm64**,
+`aapt list` 实测只有 `lib/arm64-v8a/libapp_lib.so` 一项。
+下面「Step 7 · arm64 精简」是 `abiFilters` 还没限定时的历史流程,现在跑 `aapt remove` 只会报找不到文件。
+
+**推荐做法(一步出包)**:
+
+```powershell
+npx tauri android build --apk --target aarch64 --ci
+```
+
+构建产物直接就是 arm64 包,只需 zipalign + apksigner。
 
 ---
 
@@ -206,6 +247,10 @@ $env:JAVA_HOME    = "E:\environment\jdk17"
 
 ### Step 7 · arm64 精简版 (35 MB → 12 MB，推荐)
 
+> **v3.1 起已不需要这一步**: `build.gradle.kts` 的 `ndk { abiFilters += listOf("arm64-v8a") }`
+> 已经把架构限定为 arm64,`--target aarch64` 构建出来的 APK 直接就是 arm64 精简版。
+> 以下流程适用于 `abiFilters` 未限定的旧版本构建产物。
+
 目前 99% 的手机都是 arm64-v8a，去掉 lib/armeabi-v7a、lib/x86、lib/x86_64 可以大幅减小体积。
 
 > **重要**: 不要用 yazl/yauzl 重新打包！会破坏 resources.arsc 的对齐，导致安装失败。
@@ -267,8 +312,7 @@ Remove-Item dist-android\arm64-unsigned.apk, dist-android\universal-unsigned.apk
 
 | 文件 | 大小 | 说明 |
 |------|------|------|
-| **SalaryTimer-3.0.0-arm64.apk** | **11.71 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
-| SalaryTimer-3.0.0-universal.apk | 35.97 MB | 全架构(含 x86 模拟器),仅调试用 |
+| **SalaryTimer-3.1.0-arm64.apk** | **11.71 MB** | 推荐，覆盖 99% 手机(仅含 arm64) |
 
 > 产物命名规则:`SalaryTimer-<version>-arm64.apk`，version 与 tauri.conf.json 一致。
 
@@ -388,7 +432,49 @@ unsigned APK → zipalign → apksigner → 最终 APK
 
 ---
 
-## 一键打包脚本 (适合 PowerShell，复制即用)
+## 推荐打包脚本 (v3.1 实测可用, 复制即用)
+
+> 相比下面的「历史一键脚本」,这个版本更短、更准:
+> 一步出 arm64 包(靠 `abiFilters`),不用 `aapt remove`,不用手建 jniLibs 目录。
+
+```powershell
+cd d:\MyProject\work-timer
+
+# 1 构建前端 (必须 build:tauri!普通 build 会把旧 APK 留在 dist/ 里)
+npm run build:tauri
+
+# 2 Tauri Android 构建 (Rust 编译 .so + Gradle 打包, 一步出 arm64 包)
+$env:ANDROID_HOME = "C:\Users\admin\AppData\Local\Android\Sdk"
+$env:JAVA_HOME    = "E:\environment\jdk17"
+npx tauri android build --apk --target aarch64 --ci
+
+# 3 zipalign 4 字节对齐 + apksigner v2/v3 签名
+$bt = "C:\Users\admin\AppData\Local\Android\Sdk\build-tools\35.0.0"
+$src = "src-tauri\gen\android\app\build\outputs\apk\universal\release\app-universal-release-unsigned.apk"
+$out = "dist-android\SalaryTimer-3.1.0-arm64.apk"
+New-Item dist-android -Force | Out-Null
+& "$bt\zipalign.exe" -f 4 $src $out
+& "$bt\apksigner.bat" sign --ks release.keystore --ks-key-alias salary-timer `
+  --ks-pass pass:SalaryTimer2026 --key-pass pass:SalaryTimer2026 `
+  --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true $out
+
+# 4 验证
+& "$bt\apksigner.bat" verify --verbose $out | Select-String "Verified using"
+& "$bt\zipalign.exe" -c -v 4 $out | Select-String "resources.arsc"
+& "$bt\aapt.exe" dump badging $out | Select-String "package:"
+Get-ChildItem dist-android\*.apk | Select-Object Name, @{N='MB';E={[math]::Round($_.Length/1MB,2)}}
+```
+
+### 若 jniLibs symlink 报「此操作需要管理员权限」
+
+回退到 HardLink 方案(见下方历史脚本 Step 2 / Step 4):
+先删 `jniLibs` / `build` / `target` 并建 4 个空目录,
+再把 `src-tauri/target/<triple>/release/libapp_lib.so` 硬链接到对应架构目录,
+然后用 `.\gradlew :app:assembleUniversalRelease -x ":app:rustBuildXxxRelease"` 打包。
+
+---
+
+## 历史一键脚本 (旧版四架构流程, 保留备查)
 
 ```powershell
 cd d:\MyProject\work-timer
@@ -427,4 +513,4 @@ Get-ChildItem dist-android\*.apk | Select-Object Name, @{N='MB';E={[math]::Round
 
 ---
 
-*最后更新: 2026-08-31 · 补充打包踩坑记录 (aapt remove 替代 yazl / alias 修正 / 签名顺序)*
+*最后更新: 2026-11-04 · v3.1: 新增 local.properties `ndk.dir` 转义坑 + 修正 arm64 精简流程(abiFilters 已限定 arm64)+ 一步出包脚本*

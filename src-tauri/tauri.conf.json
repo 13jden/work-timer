@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Salary Timer",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "identifier": "com.salary-timer.dev",
   "build": {
     "frontendDist": "../dist",
