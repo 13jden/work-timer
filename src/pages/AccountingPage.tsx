@@ -60,6 +60,8 @@ export function AccountingPage() {
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const [addCategoryDefaultType, setAddCategoryDefaultType] = useState<'expense' | 'income'>('expense');
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
+  /** 从分类详情页「添加记录」进入时预填的分类 */
+  const [prefillCategoryId, setPrefillCategoryId] = useState<string | undefined>(undefined);
   const [activeId, setActiveId] = useState<string | null>(null);
   // v2.5-patch11：保留 folderReorderMode（排序按钮启用）；移除 recordDragMode（归类直接拖）
   const [folderReorderMode, setFolderReorderMode] = useState(false);
@@ -88,12 +90,14 @@ export function AccountingPage() {
   const closeEditor = () => {
     setModalOpen(false);
     setEditingRecord(null);
+    setPrefillCategoryId(undefined);
   };
 
   const handlePickRecord = (recordId: string) => {
     const record = useAccountStore.getState().records.find((item) => item.id === recordId);
     if (!record) return;
     setEditingRecord(record);
+    setPrefillCategoryId(undefined);
     setModalOpen(true);
   };
 
@@ -109,14 +113,20 @@ export function AccountingPage() {
     const state = useAccountStore.getState();
     const category = state.categories.find((item) => item.id === categoryId);
     if (!category) return;
-    if (state.records.some((record) => record.categoryId === categoryId)) {
-      window.alert('该分类还有记录，不能删除');
-      return;
-    }
-    if (window.confirm(`删除分类「${category.name}」？`)) {
-      state.deleteCategory(categoryId);
-      setDetailCategoryId(null);
-    }
+    const count = state.records.filter((record) => record.categoryId === categoryId).length;
+    const msg = count > 0
+      ? `删除分类「${category.name}」？该分类下的 ${count} 条记录也会一并删除。`
+      : `删除分类「${category.name}」？`;
+    if (!window.confirm(msg)) return;
+    state.deleteCategoryWithRecords(categoryId);
+    setDetailCategoryId(null);
+  };
+
+  /** 从分类详情页「添加记录」进入：打开记一笔弹窗并预填分类 */
+  const handleAddRecord = (categoryId: string) => {
+    setEditingRecord(null);
+    setPrefillCategoryId(categoryId);
+    setModalOpen(true);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -285,7 +295,14 @@ export function AccountingPage() {
           />
         </section>
 
-        <AddRecordModal open={modalOpen} editingRecord={editingRecord} onClose={closeEditor} />
+        {!detailCategoryId && (
+          <AddRecordModal
+            open={modalOpen}
+            editingRecord={editingRecord}
+            defaultCategoryId={prefillCategoryId}
+            onClose={closeEditor}
+          />
+        )}
         <AddCategoryModal
           open={addCategoryOpen}
           defaultType={addCategoryDefaultType}
@@ -308,10 +325,16 @@ export function AccountingPage() {
             monthKey={monthKey}
             onClose={handleCloseCategory}
             onPickRecord={handlePickRecord}
+            onAddRecord={handleAddRecord}
             onDeleteCategory={handleEditCategory}
             onShowAllRecords={(categoryId) => setAllRecordsCategoryId(categoryId)}
           />
-          <AddRecordModal open={modalOpen} editingRecord={editingRecord} onClose={closeEditor} />
+          <AddRecordModal
+            open={modalOpen}
+            editingRecord={editingRecord}
+            defaultCategoryId={prefillCategoryId}
+            onClose={closeEditor}
+          />
         </div>
       )}
       {allRecordsCategoryId && (

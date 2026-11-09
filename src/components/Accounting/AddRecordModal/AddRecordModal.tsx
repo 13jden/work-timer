@@ -39,6 +39,8 @@ interface AddRecordModalProps {
   defaultAccountId?: string;
   /** v3.0 TASK-059：从一程详情页添加时预填所属一程 */
   defaultJourneyId?: string;
+  /** 预填分类 ID（从分类详情页「添加记录」进入时使用） */
+  defaultCategoryId?: string;
   onClose: () => void;
   /** 保存成功 */
   onSaved?: (recordId: string) => void;
@@ -51,6 +53,7 @@ export function AddRecordModal({
   defaultType,
   defaultAccountId,
   defaultJourneyId,
+  defaultCategoryId,
   onClose,
   onSaved,
 }: AddRecordModalProps) {
@@ -94,6 +97,12 @@ export function AddRecordModal({
   const previewUrlRef = useRef<string | null>(null);
 
   const amountRef = useRef<HTMLInputElement>(null);
+  /**
+   * 预填分类的 categoryId。
+   * 用于抑制「类型切换时重置分类」的 effect —— 预填生效后分类应保持不变，
+   * 直到用户手动切换类型（此时会清空该 ref，恢复常规重置逻辑）。
+   */
+  const presetCategoryRef = useRef<string | null>(null);
 
   // 初始化表单
   useEffect(() => {
@@ -109,8 +118,13 @@ export function AddRecordModal({
       setJourneyId(editingRecord.journeyId ?? '');
     } else {
       setAmountStr('');
-      setType(defaultType ?? 'expense');
-      setCategoryId('');
+      // 预填分类时同步切换类型（分类的 type 决定），避免被下面「类型切换重置分类」的 effect 清掉
+      const preset = defaultCategoryId
+        ? useAccountStore.getState().categories.find((c) => c.id === defaultCategoryId)
+        : undefined;
+      setType(preset ? preset.type : (defaultType ?? 'expense'));
+      presetCategoryRef.current = preset ? preset.id : null;
+      setCategoryId(preset ? preset.id : '');
       setNote('');
       setDateKey(defaultDate ?? getTodayKey());
       // v3.0 TASK-057：钱包关闭时 accountId 恒为 ''（不展示账户选择器）；
@@ -139,7 +153,7 @@ export function AddRecordModal({
     setError(null);
     const id = setTimeout(() => amountRef.current?.focus(), 350);
     return () => clearTimeout(id);
-  }, [open, editingRecord, defaultDate, defaultType, accounts]);
+  }, [open, editingRecord, defaultDate, defaultType, defaultCategoryId, accounts]);
 
   /**
    * v2.5-patch6 N-491:mobile 键盘弹起→收起后,grid item 行高偶发被压缩 / gap 失效
@@ -171,12 +185,20 @@ export function AddRecordModal({
     [categories, type],
   );
 
-  // 类型切换时重置分类选择
+  // 类型切换时重置分类选择（预填分类时保持预填值）
   useEffect(() => {
+    const presetId = presetCategoryRef.current;
+    if (presetId) {
+      const preset = categories.find((c) => c.id === presetId);
+      if (preset && preset.type === type) {
+        if (categoryId !== presetId) setCategoryId(presetId);
+        return;
+      }
+    }
     if (!categoryId || !filteredCategories.find((c) => c.id === categoryId)) {
       setCategoryId(filteredCategories[0]?.id ?? '');
     }
-  }, [type, filteredCategories, categoryId]);
+  }, [type, filteredCategories, categoryId, categories]);
 
   // v3.0 TASK-059：类型切换时清空 journeyId（一程类型必须匹配）
   const journeys = useAccountStore((s) => s.journeys);
@@ -460,7 +482,10 @@ export function AddRecordModal({
           <button
             type="button"
             className={`${styles.typeBtn} ${type === 'expense' ? styles.typeBtnExpenseActive : ''}`}
-            onClick={() => setType('expense')}
+            onClick={() => {
+              presetCategoryRef.current = null;
+              setType('expense');
+            }}
           >
             <span className={styles.typeSign}>−</span>
             <span>支出</span>
@@ -468,7 +493,10 @@ export function AddRecordModal({
           <button
             type="button"
             className={`${styles.typeBtn} ${type === 'income' ? styles.typeBtnIncomeActive : ''}`}
-            onClick={() => setType('income')}
+            onClick={() => {
+              presetCategoryRef.current = null;
+              setType('income');
+            }}
           >
             <span className={styles.typeSign}>+</span>
             <span>收入</span>
@@ -483,7 +511,10 @@ export function AddRecordModal({
                 key={cat.id}
                 type="button"
                 className={`${styles.catGridCell} ${categoryId === cat.id ? styles.catGridCellActive : ''}`}
-                onClick={() => setCategoryId(cat.id)}
+                onClick={() => {
+                  presetCategoryRef.current = null;
+                  setCategoryId(cat.id);
+                }}
                 style={{
                   borderColor: categoryId === cat.id ? cat.color : undefined,
                   backgroundColor: categoryId === cat.id ? cat.color : undefined,

@@ -3,7 +3,7 @@ import { useAccountStore } from '../../../store/accountStore';
 import { useConfigStore } from '../../../store/configStore';
 import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
 import type { AccountRecord } from '../../../lib/types';
-import { X } from '@phosphor-icons/react';
+import { CategoryActionSheet } from '../CategoryActionSheet';
 import { IconByKey } from '../../IconByKey';
 import styles from './CategoryDetailPanel.module.css';
 
@@ -14,7 +14,8 @@ interface CategoryDetailPanelProps {
   monthKey: string;
   onClose: () => void;
   onPickRecord?: (recordId: string) => void;
-  onEditCategory?: (categoryId: string) => void;
+  /** 在该分类下新增一条记录（预填分类） */
+  onAddRecord?: (categoryId: string) => void;
   onDeleteCategory?: (categoryId: string) => void;
   /** v2.2 TASK-038：查看全部记录入口（分类记录页） */
   onShowAllRecords?: (categoryId: string) => void;
@@ -26,7 +27,7 @@ export function CategoryDetailPanel({
   monthKey,
   onClose,
   onPickRecord,
-  onEditCategory,
+  onAddRecord,
   onDeleteCategory,
   onShowAllRecords,
 }: CategoryDetailPanelProps) {
@@ -40,6 +41,7 @@ export function CategoryDetailPanel({
   const [dragRecordId, setDragRecordId] = useState<string | null>(null);
   const [dragOverDateKey, setDragOverDateKey] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
   const category = useMemo(
     () => categories.find((item) => item.id === categoryId) ?? null,
@@ -98,7 +100,7 @@ export function CategoryDetailPanel({
   const isExpense = category.type === 'expense';
   const sign = isExpense ? '-' : '+';
 
-  const hasAnyRecord = records.some((record) => record.categoryId === category.id);
+  const categoryRecordCount = records.filter((record) => record.categoryId === category.id).length;
 
   const handleRecordDragStart = (event: React.DragEvent, recordId: string) => {
     event.dataTransfer.setData(RECORD_DRAG_MIME, recordId);
@@ -122,21 +124,37 @@ export function CategoryDetailPanel({
       <div className={styles.header}>
         <button className={styles.backBtn} onClick={onClose} aria-label="返回">‹</button>
         <span className={styles.title}>{category.name}</span>
-        {onDeleteCategory && !hasAnyRecord ? (
-          <button className={styles.moreBtn} onClick={() => setConfirmOpen(true)} aria-label="删除分类">
-            <X size={16} weight="regular" />
-          </button>
-        ) : (
-          <button className={styles.moreBtn} onClick={() => onEditCategory?.(category.id)} aria-label="更多">⋯</button>
-        )}
+        <button
+          className={styles.moreBtn}
+          onClick={() => setActionSheetOpen(true)}
+          aria-label="更多"
+        >
+          ⋯
+        </button>
       </div>
+
+      <CategoryActionSheet
+        open={actionSheetOpen}
+        onClose={() => setActionSheetOpen(false)}
+        onAddRecord={() => {
+          setActionSheetOpen(false);
+          onAddRecord?.(category.id);
+        }}
+        onDelete={() => {
+          setActionSheetOpen(false);
+          setConfirmOpen(true);
+        }}
+      />
 
       {/* v2.1 TASK-037:删除分类确认弹窗(替代 window.confirm) */}
       {confirmOpen && (
         <div className={styles.confirmOverlay} onClick={() => setConfirmOpen(false)}>
           <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
             <div className={styles.confirmTitle}>删除这个分类？</div>
-            <div className={styles.confirmText}>「{category.name}」将被删除，删除后不可恢复。</div>
+            <div className={styles.confirmText}>
+              「{category.name}」将被删除，删除后不可恢复。
+              {categoryRecordCount > 0 && ` 该分类下的 ${categoryRecordCount} 条记录也会一并删除。`}
+            </div>
             <div className={styles.confirmBtns}>
               <button type="button" className={styles.confirmCancel} onClick={() => setConfirmOpen(false)}>
                 取消

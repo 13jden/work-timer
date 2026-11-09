@@ -99,6 +99,12 @@ interface AccountStore {
   addCategory: (category: Omit<Category, 'id'>) => Category;
   updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => void;
   deleteCategory: (id: string) => void;
+  /**
+   * 删除分类并连带删除其全部记录（不再把记录标记为未分类）。
+   * 每条记录复用 deleteRecord 逻辑（回退账户余额 / 目标进度 / 池关联 / 孤儿图片）。
+   * @returns 被删除的记录条数
+   */
+  deleteCategoryWithRecords: (id: string) => number;
   reorderCategories: (type: 'income' | 'expense', ids: string[]) => void;
 
   // ── Folder 操作 ──
@@ -509,8 +515,20 @@ export const useAccountStore = create<AccountStore>()(
         }));
       },
 
-      reorderCategories: (type, ids) => {
+      /** 删除分类并连带删除其全部记录 */
+      deleteCategoryWithRecords: (id) => {
+        const affected = get().records.filter((r) => r.categoryId === id);
+        for (const r of affected) {
+          get().deleteRecord(r.id);
+        }
         set((s) => ({
+          categories: s.categories.filter((c) => c.id !== id),
+          folders: s.folders.filter((f) => f.categoryId !== id),
+        }));
+        return affected.length;
+      },
+
+      reorderCategories: (type, ids) => {        set((s) => ({
           categories: s.categories.map((c) => {
             if (c.type !== type) return c;
             const idx = ids.indexOf(c.id);
