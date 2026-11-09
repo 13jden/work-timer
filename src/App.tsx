@@ -31,6 +31,7 @@ import { DesktopSidebar, type DesktopTabId } from './components/DesktopSidebar';
 import { DesktopRightPanel } from './components/DesktopRightPanel';
 import { SettingsDrawer } from './components/SettingsDrawer';
 import { SalaryLinkageSync } from './hooks/useSalaryLinkageSync';
+import { useDailyPing } from './hooks/useDailyPing';
 import './styles/tokens.css';
 import styles from './App.module.css';
 
@@ -95,6 +96,8 @@ export function App() {
   const isDesktop = useIsDesktop();
   const theme = useThemeStore((s) => s.theme);
   const scale = useDesktopScale();
+  // v3.2：App 打开时上报一次日活（每天仅一次）
+  useDailyPing();
   // v2.1 TASK-037:移动端双主题;tabIndex 跨主题保持索引对应
   const mode = useAppModeStore((s) => s.mode);
   const setMode = useAppModeStore((s) => s.setMode);

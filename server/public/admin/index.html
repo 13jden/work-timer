@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="paper">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Salary Timer · 数据后台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink: #0F0F0F;
+  --ink-muted: #6B6B6B;
+  --muted: #8B8B82;
+  --paper: #F5F2EA;
+  --paper-2: #ECEAE0;
+  --paper-3: #F9F7F0;
+  --paper-4: #FFFDF6;
+  --accent: #C8FF00;
+  --accent-deep: #9FCC00;
+  --line: #E5E2D8;
+  --line-soft: #EFEEE6;
+  --danger: #E5484D;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Figtree', -apple-system, 'PingFang SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 20px 60px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 880px; margin: 0 auto; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 6px 0 2px;
+}
+.sub { font-size: 13px; color: var(--ink-muted); margin-bottom: 28px; }
+
+/* 登录 */
+.loginCard {
+  background: var(--paper-4);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 12px; color: var(--ink-muted); }
+.input {
+  border: 1px solid var(--line);
+  background: var(--paper-3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+.input:focus { border-color: var(--ink); }
+.btn {
+  border: none;
+  background: var(--ink);
+  color: var(--paper-4);
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover { background: #2A2A2A; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btnGhost {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+.err { font-size: 12px; color: var(--danger); min-height: 16px; }
+
+/* 统计 */
+.statsRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+@media (max-width: 640px) { .statsRow { grid-template-columns: 1fr; } }
+.stat {
+  background: var(--paper-4);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.statValue {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.statHint { font-size: 11px; color: var(--ink-muted); }
+
+.panel {
+  background: var(--paper-4);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+.panelHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.panelTitle { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+.panelMeta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 0; font-size: 13px; }
+th { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+tr + tr td { border-top: 1px solid var(--line-soft); }
+
+.bar { height: 6px; border-radius: 3px; background: var(--accent); min-width: 2px; }
+.barTrack { width: 140px; background: var(--paper-2); border-radius: 3px; }
+
+.topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">salary timer · analytics</div>
+      <div class="title">数据后台</div>
+    </div>
+    <button id="logout" class="btn btnGhost" style="display:none">退出</button>
+  </div>
+
+  <!-- 登录 -->
+  <div id="loginView" class="loginCard">
+    <div class="field">
+      <label class="label" for="u">账号</label>
+      <input id="u" class="input" autocomplete="username" placeholder="admin" />
+    </div>
+    <div class="field">
+      <label class="label" for="p">密码</label>
+      <input id="p" class="input" type="password" autocomplete="current-password" placeholder="••••••••" />
+    </div>
+    <button id="loginBtn" class="btn">登录</button>
+    <div id="loginErr" class="err"></div>
+  </div>
+
+  <!-- 数据 -->
+  <div id="dashView" style="display:none">
+    <div class="statsRow">
+      <div class="stat">
+        <div class="statLabel">Total Users · 总用户</div>
+        <div class="statValue" id="totalUsers">—</div>
+        <div class="statHint">历史去重设备数</div>
+      </div>
+      <div class="stat">
+        <div class="statLabel">Today Active · 今日活跃</div>
+        <div class="statValue" id="todayActive">—</div>
+        <div class="statHint">今日上报过的设备</div>
+      </div>
+      <div class="stat">
+        <div class="statLabel">New Users · 今日新增</div>
+        <div class="statValue" id="todayNew">—</div>
+        <div class="statHint">首次出现的设备</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panelHead">
+        <div class="panelTitle">最近 7 天</div>
+        <div class="panelMeta" id="updatedAt">—</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>日期</th><th>活跃</th><th>新增</th><th style="width:160px">活跃占比</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN_KEY = 'st_admin_token';
+const $ = (id) => document.getElementById(id);
+
+function token() { return sessionStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
+
+async function loadStats() {
+  const res = await fetch('/api/stats', { headers: { 'x-admin-token': token() } });
+  if (res.status === 401) { clearToken(); showLogin(); return; }
+  const data = await res.json();
+  if (!data.ok) return;
+
+  $('totalUsers').textContent = data.totalUsers;
+  $('todayActive').textContent = data.todayActive;
+  $('todayNew').textContent = data.todayNewUsers;
+
+  const max = Math.max(1, ...data.last7Days.map((d) => d.active));
+  $('rows').innerHTML = data.last7Days.map((d) => `
+    <tr>
+      <td>${d.day}</td>
+      <td class="num">${d.active}</td>
+      <td class="num">${d.newUsers}</td>
+      <td><div class="barTrack"><div class="bar" style="width:${Math.round((d.active / max) * 100)}%"></div></div></td>
+    </tr>
+  `).join('');
+
+  $('updatedAt').textContent = 'updated ' + new Date().toLocaleTimeString('zh-CN');
+  $('loginView').style.display = 'none';
+  $('dashView').style.display = '';
+  $('logout').style.display = '';
+}
+
+function showLogin() {
+  $('loginView').style.display = '';
+  $('dashView').style.display = 'none';
+  $('logout').style.display = 'none';
+}
+
+$('loginBtn').onclick = async () => {
+  $('loginErr').textContent = '';
+  $('loginBtn').disabled = true;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: $('u').value, password: $('p').value }),
+    });
+    const data = await res.json();
+    if (!data.ok) { $('loginErr').textContent = data.error || '登录失败'; return; }
+    setToken(data.token);
+    await loadStats();
+  } catch (e) {
+    $('loginErr').textContent = '网络错误，请稍后再试';
+  } finally {
+    $('loginBtn').disabled = false;
+  }
+};
+
+$('p').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('logout').onclick = () => { clearToken(); showLogin(); };
+
+if (token()) loadStats();
+else showLogin();
+</script>
+</body>
+</html>

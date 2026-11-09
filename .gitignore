@@ -65,5 +65,10 @@ dist-desktop/
 # CodeGraph 索引缓存
 .codegraph/
 
+# 后端(server)运行时数据与依赖
+server/data/
+server/node_modules/
+server/dist/
+
 # 桌面端 todo 独立实验项目（非本项目代码）
 desktop-todo/

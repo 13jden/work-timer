@@ -299,6 +299,268 @@
   align-items: stretch;
 }
 
+/* ── v3.2：打赏作者（DonateSheet）──────────────── */
+
+.donateModal {
+  width: 100%;
+  background: var(--paper);
+  border-radius: 20px 20px 0 0;
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: donateSlideUp 280ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes donateSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.donateTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  letter-spacing: -0.3px;
+}
+
+.donateSub {
+  margin-top: -10px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* 金额卡：小红花 / 咖啡 */
+.tipGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tipCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--paper-3);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  transition: border-color 160ms, background 160ms, transform 160ms;
+}
+
+.tipCard:hover {
+  border-color: var(--ink);
+}
+
+.tipCard:active {
+  transform: scale(0.985);
+}
+
+.tipCardActive {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper-3));
+}
+
+.tipIcon {
+  display: flex;
+  color: var(--ink-muted);
+  margin-bottom: 2px;
+}
+
+.tipCardActive .tipIcon {
+  color: var(--ink);
+}
+
+.tipAmount {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.tipLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tipNote {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* 支付方式切换 */
+.payTabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--paper-2);
+  border-radius: 12px;
+}
+
+.payTab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  padding: 8px 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+
+.payTabActive {
+  background: var(--paper-4);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* 收据 */
+.receipt {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-4);
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.receiptRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.receiptMono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 打孔撕线 */
+.receiptPerf {
+  height: 1px;
+  margin: 3px 0;
+  background-image: linear-gradient(to right, var(--line) 0 6px, transparent 6px 12px);
+  background-size: 12px 1px;
+  background-repeat: repeat-x;
+}
+
+.receiptQr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0 2px;
+}
+
+.qrImage {
+  width: 168px;
+  height: 168px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.qrPlaceholder {
+  width: 168px;
+  height: 168px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.qrPlaceholderHint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.receiptFoot {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* MINE 页的「打赏作者」入口行 */
+.donateEntry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-3);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  transition: border-color 160ms, background 160ms;
+}
+
+.donateEntry:hover {
+  border-color: var(--ink);
+}
+
+.donateEntryText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.donateEntryTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.donateEntryHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.donateEntryRight {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--muted);
+  display: flex;
+}
+
 /* ── v3.1 TASK-064：页面底部两行设置 ────────── */
 .settingsList {
   display: flex;

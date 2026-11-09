@@ -1,4 +1,22 @@
 services:
+  api:
+    build:
+      context: ./server
+    image: work-timer-api:latest
+    container_name: work-timer-api
+    environment:
+      PORT: "8787"
+      DB_PATH: "/data/salary-timer.db"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-2018Skskwain}"
+      SESSION_SECRET: "${SESSION_SECRET:-salary-timer-dev-secret}"
+    volumes:
+      # SQLite 数据必须持久化,容器重建不能丢用户统计
+      - api_data:/data
+    restart: unless-stopped
+    expose:
+      - "8787"
+
   work-timer:
     build: .
     image: work-timer:latest
@@ -29,3 +47,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  api_data:

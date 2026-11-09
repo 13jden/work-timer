@@ -135,6 +135,11 @@ export default defineConfig({
   server: {
     port: 5176,
     host: true,
+    // v3.2：本地开发把 /api 与 /admin 反代到后端服务（server/，默认 :8787）
+    proxy: {
+      '/api': { target: 'http://localhost:8787', changeOrigin: true },
+      '/admin': { target: 'http://localhost:8787', changeOrigin: true },
+    },
     watch: {
       // v3.0:排除 src-tauri —— Android/Gradle 构建会生成并锁住大量报告文件
       // (problems-report.html 等),Vite 监听它们时会抛 EBUSY 导致 dev server 崩溃

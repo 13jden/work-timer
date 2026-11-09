@@ -7,12 +7,22 @@
 # 前提:阿里云安全组放行 80 和 443;域名 A 记录指向本机(已确认 persecond.work -> 47.104.228.220)。
 #
 # 端口归属:阿里云建站产品曾以容器形式抢占 80/443,deploy.yml 会在 compose up 之前
-# 停掉占用这两个端口的非 work-timer 容器并禁止其自启,因此这里 80/443 都归 Caddy。
+# 停掉占用这两个端口的非 work-timer 容器并禁止其自启,因此 80/443 都归 Caddy。
 #
 # 想临时用自签证书(比如域名还没解析好):把下面 tls 块整段替换成 `tls internal` 即可。
+#
+# ── 路由结构(v3.2)────────────────────────────────────────
+# 所有请求都走 handle 块,块与块之间互斥,按匹配器具体度排序:
+#   /api/*  → api 容器(Node + SQLite)
+#   /admin* → api 容器(管理后台静态页)
+#   /health → api 容器(存活探针)
+#   其余    → 静态站点(SPA fallback)
+#
+# 注意:不要把 try_files / file_server 提到 handle 块外面。
+# Caddy 的指令顺序里 try_files 排在 handle 之前,那样 /api/ping 会被
+# try_files 重写成 /index.html,永远到不了后端。
 
 {$SITE_ADDRESS:persecond.work} {
-	root * /srv
 	encode zstd gzip
 
 	# PWA:Service Worker 与 manifest 必须每次回源校验,否则新版本永远发不到客户端
@@ -30,7 +40,25 @@
 	}
 	header @static Cache-Control "public, max-age=31536000, immutable"
 
-	# 目录索引优先(/download/ → /download/index.html),然后 SPA 路由回 index.html
-	try_files {path} {path}/index.html /index.html
-	file_server
+	# ── 后端 API 反代 ──
+	handle /api/* {
+		reverse_proxy api:8787
+	}
+
+	handle /admin* {
+		reverse_proxy api:8787
+	}
+
+	handle /health {
+		reverse_proxy api:8787
+	}
+
+	# ── 静态站点(SPA fallback)──
+	handle {
+		root * /srv
+
+		# 目录索引优先(/download/ → /download/index.html),然后 SPA 路由回 index.html
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
 }
