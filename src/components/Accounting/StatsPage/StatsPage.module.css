@@ -7,9 +7,11 @@
   gap: 10px;
 }
 
-/* 顶部日/月/年 页签（页面级控件，通栏细线语言） */
+/* 顶部日/月/年 页签（页面级控件，通栏细线语言）
+ * 满宽通栏：靠 margin: 0 -16px 出血到屏幕两侧，再用 padding: 0 16px 还原内容栏位。
+ * 注意：不能加 width: 100%——box-sizing: border-box 下 width 已等于父级内容宽度，
+ * 负 margin 的右侧 16px 会失效，导致整组比页面内容栏（16 → W-16）左偏 32px。 */
 .viewSwitcher {
-  width: 100%;
   margin: 0 -16px;
   padding: 0 16px;
 }
