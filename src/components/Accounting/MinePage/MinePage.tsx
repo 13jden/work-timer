@@ -28,6 +28,7 @@ import { HideTimerSetting } from './HideTimerSetting';
 // v3.2：「更多」入口 + 弹层（打赏作者 / 使用指南 / 检查更新）
 import { MoreSheet } from './MoreSheet';
 import { DonateSheet } from './DonateSheet';
+import { FeedbackSheet } from './FeedbackSheet';
 // v3.0 TASK-058：PoolSection → RecurringSection（去池化）
 // v3.1 TASK-064：定期账 → 入口卡 + 独立全屏页
 import { RecurringEntryCard } from '../PoolPage/RecurringEntryCard';
@@ -46,6 +47,8 @@ export function MinePage() {
   // v3.2：「更多」弹层 + 打赏弹层开关
   const [moreOpen, setMoreOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
+  // v3.2：意见反馈弹层开关
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // v3.0 TASK-059：旅游记录页面独立全屏（不再内嵌于 MINE）
   if (pageMode !== 'mine') {
@@ -113,13 +116,15 @@ export function MinePage() {
         <JourneySection onOpen={() => setPageMode('list')} />
         <RecurringEntryCard onOpen={() => setPageMode('recurring')} />
       </div>
-      {/* v3.2：「更多」弹层 + 打赏弹层 */}
+      {/* v3.2：「更多」弹层 + 打赏弹层 + 意见反馈弹层 */}
       <MoreSheet
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         onOpenDonate={() => setDonateOpen(true)}
+        onOpenFeedback={() => setFeedbackOpen(true)}
       />
       <DonateSheet open={donateOpen} onClose={() => setDonateOpen(false)} />
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
 
     </div>

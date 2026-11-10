@@ -1,11 +1,12 @@
 /**
  * Salary Timer 后端 — 数据库层
  *
- * 四张表：
+ * 五张表：
  * - users         每个匿名设备一行（首次出现时间 = 新用户判定依据）
  * - daily_active  (day, user_id) 主键 → 同一天同一设备只算一次活跃
  * - notices       公告 / 更新（type 区分），支持版本号与草稿
  * - settings      单行 key-value 配置（站点配置、当前版本号等）
+ * - feedbacks     用户意见反馈（只增不改内容，只流转状态）
  *
  * 用 SQLite 单文件存储，部署时用 docker volume 持久化。
  */
@@ -53,6 +54,31 @@ export interface NoticeInput {
   published?: boolean;
 }
 
+/** 反馈处理状态：new = 新反馈；reviewing = 处理中；done = 已处理 */
+export type FeedbackStatus = 'new' | 'reviewing' | 'done';
+
+export interface Feedback {
+  id: number;
+  /** 反馈内容（用户原文，不做改写） */
+  content: string;
+  /** 用户自愿留下的联系方式（邮箱 / 微信 / 手机号），可为空 */
+  contact: string;
+  /** 来源平台：app / web */
+  platform: ClientPlatform;
+  /** 反馈者匿名 ID（用于关联同一设备，不含个人信息） */
+  userId: string;
+  status: FeedbackStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FeedbackInput {
+  content: string;
+  contact?: string;
+  platform?: ClientPlatform;
+  userId?: string;
+}
+
 export function createDb(file: string): Database.Database {
   mkdirSync(dirname(file), { recursive: true });
   const db = new Database(file);
@@ -88,10 +114,23 @@ export function createDb(file: string): Database.Database {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS feedbacks (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      content    TEXT NOT NULL,
+      contact    TEXT NOT NULL DEFAULT '',
+      platform   TEXT NOT NULL DEFAULT 'web',
+      user_id    TEXT NOT NULL DEFAULT '',
+      status     TEXT NOT NULL DEFAULT 'new',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_daily_active_day ON daily_active(day);
     CREATE INDEX IF NOT EXISTS idx_users_first_day ON users(first_day);
     CREATE INDEX IF NOT EXISTS idx_notices_type ON notices(type);
     CREATE INDEX IF NOT EXISTS idx_notices_published ON notices(published);
+    CREATE INDEX IF NOT EXISTS idx_feedbacks_created ON feedbacks(created_at);
+    CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status);
   `);
 
   // ── 迁移：users.platform（老库没有这一列）────────────────
@@ -278,6 +317,86 @@ export function queryNoticesForClient(
   });
 }
 
+// ── 意见反馈 ───────────────────────────────────────────────
+
+/**
+ * 列出反馈（管理端用）
+ *
+ * @param opts.status  按状态过滤；不传则返回全部
+ * @param opts.limit   最多返回条数（默认 200，防止一次性拉爆内存）
+ */
+export function listFeedbacks(
+  db: Database.Database,
+  opts: { status?: FeedbackStatus; limit?: number } = {},
+): Feedback[] {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (opts.status) {
+    where.push('status = ?');
+    params.push(opts.status);
+  }
+  const limit = Math.min(Math.max(opts.limit ?? 200, 1), 1000);
+  const sql =
+    `SELECT * FROM feedbacks` +
+    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
+    ` ORDER BY created_at DESC LIMIT ${limit}`;
+
+  const rows = db.prepare(sql).all(...(params as never[])) as FeedbackRow[];
+  return rows.map(toFeedback);
+}
+
+export function getFeedback(db: Database.Database, id: number): Feedback | null {
+  const row = db.prepare('SELECT * FROM feedbacks WHERE id = ?').get(id) as
+    | FeedbackRow
+    | undefined;
+  return row ? toFeedback(row) : null;
+}
+
+/** 新建一条反馈 */
+export function createFeedback(db: Database.Database, input: FeedbackInput): Feedback {
+  const ts = Date.now();
+  const result = db
+    .prepare(
+      `INSERT INTO feedbacks (content, contact, platform, user_id, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'new', ?, ?)`,
+    )
+    .run(
+      input.content,
+      input.contact ?? '',
+      input.platform ?? 'web',
+      input.userId ?? '',
+      ts,
+      ts,
+    );
+  return getFeedback(db, Number(result.lastInsertRowid))!;
+}
+
+/**
+ * 更新反馈状态
+ *
+ * 只允许流转到合法状态；内容与联系方式不可改（反馈是用户原话）。
+ */
+export function updateFeedbackStatus(
+  db: Database.Database,
+  id: number,
+  status: FeedbackStatus,
+): Feedback | null {
+  const existing = getFeedback(db, id);
+  if (!existing) return null;
+
+  db.prepare('UPDATE feedbacks SET status = ?, updated_at = ? WHERE id = ?').run(
+    status,
+    Date.now(),
+    id,
+  );
+  return getFeedback(db, id);
+}
+
+/** 删除反馈 */
+export function deleteFeedback(db: Database.Database, id: number): boolean {
+  return db.prepare('DELETE FROM feedbacks WHERE id = ?').run(id).changes > 0;
+}
+
 // ── 配置 ───────────────────────────────────────────────────
 
 export function getSetting(db: Database.Database, key: string): string | null {
@@ -341,6 +460,17 @@ interface NoticeRow {
   updated_at: number;
 }
 
+interface FeedbackRow {
+  id: number;
+  content: string;
+  contact: string;
+  platform: string;
+  user_id: string;
+  status: string;
+  created_at: number;
+  updated_at: number;
+}
+
 function toNotice(row: NoticeRow): Notice {
   return {
     id: row.id,
@@ -349,6 +479,21 @@ function toNotice(row: NoticeRow): Notice {
     body: row.body,
     version: row.version,
     published: row.published === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toFeedback(row: FeedbackRow): Feedback {
+  const status: FeedbackStatus =
+    row.status === 'done' ? 'done' : row.status === 'reviewing' ? 'reviewing' : 'new';
+  return {
+    id: row.id,
+    content: row.content,
+    contact: row.contact,
+    platform: row.platform === 'app' ? 'app' : 'web',
+    userId: row.user_id,
+    status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

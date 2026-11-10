@@ -540,6 +540,70 @@ body {
 .pill.draft { color: var(--text-mute); }
 .pill.ver { color: var(--amber); border-color: #E8D2A6; background: var(--amber-dim); }
 
+/* ── 意见反馈 ─────────────────────────────────────────────
+   反馈是「用户原话」，所以正文用等宽体 + 左侧竖线，
+   视觉上明确区别于公告那种编辑部排版的展示型内容。 */
+.fbFilters { display: flex; gap: 6px; flex-wrap: wrap; }
+.fbChip {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 20px;
+  padding: 4px 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
+  cursor: pointer;
+  transition: background 130ms ease, color 130ms ease, border-color 130ms ease;
+}
+.fbChip:hover { border-color: var(--text-dim); color: var(--text-dim); }
+.fbChip.on {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+.fbChip span { opacity: 0.6; margin-left: 3px; }
+
+.fbQuote {
+  margin-top: 7px;
+  padding-left: 12px;
+  border-left: 2px solid var(--raised-2);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.fbContact {
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--amber);
+  overflow-wrap: anywhere;
+}
+.fbContact::before {
+  content: '↗ ';
+  opacity: 0.7;
+}
+.pill.fb-new { color: var(--signal); border-color: #B7DCC5; background: var(--signal-dim); }
+.pill.fb-reviewing { color: var(--amber); border-color: #E8D2A6; background: var(--amber-dim); }
+.pill.fb-done { color: var(--text-mute); background: var(--raised); }
+.fbActions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.fbSelect {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: border-color 130ms ease;
+}
+.fbSelect:hover { border-color: var(--text-dim); }
+.fbSelect:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
 /* toggle switch */
 .switch {
   position: relative;
@@ -842,6 +906,13 @@ body {
         <span class="count" id="navCountUpd">0</span>
       </button>
 
+      <div class="navLabel">社区</div>
+      <button class="navItem" data-view="feedbacks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
+        反馈
+        <span class="count" id="navCountFb">0</span>
+      </button>
+
       <div class="navLabel">系统</div>
       <button class="navItem" data-view="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a1.7 1.7 0 0 0-1.5-1H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 3.6V3a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -1000,6 +1071,36 @@ body {
       </div>
     </section>
 
+    <!-- Feedback -->
+    <section class="view" id="view-feedbacks">
+      <div class="pageHead">
+        <div>
+          <h1 class="pageTitle">用户<em>反馈</em></h1>
+          <p class="pageDesc">用户在「我的 → 更多 → 意见反馈」提交的原话。只增不改内容，只流转处理状态。</p>
+        </div>
+        <div class="pageActions">
+          <button class="btn" id="refreshFeedbacks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            刷新
+          </button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="panel">
+          <div class="panelHead">
+            <div class="panelTitle">反馈列表</div>
+            <div class="fbFilters" id="fbFilters">
+              <button class="fbChip on" data-status="" type="button">全部</button>
+              <button class="fbChip" data-status="new" type="button">新反馈 <span id="fbCountNew">0</span></button>
+              <button class="fbChip" data-status="reviewing" type="button">处理中 <span id="fbCountReviewing">0</span></button>
+              <button class="fbChip" data-status="done" type="button">已处理 <span id="fbCountDone">0</span></button>
+            </div>
+          </div>
+          <div class="noticeList" id="fbList"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section class="view" id="view-settings">
       <div class="pageHead">
@@ -1126,6 +1227,8 @@ const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 let token = null;
 let notices = [];
+let feedbacks = [];
+let fbFilter = '';
 let editingId = null;
 let editingType = 'announcement';
 let pendingDelete = null;
@@ -1215,7 +1318,7 @@ $('#logoutBtn').addEventListener('click', () => {
 
 // ── data loading ─────────────────────────────────────────
 async function refreshAll() {
-  await Promise.all([loadStats(), loadNotices(), loadSettings()]);
+  await Promise.all([loadStats(), loadNotices(), loadSettings(), loadFeedbacks()]);
   tickClock();
 }
 
@@ -1328,13 +1431,112 @@ function renderNoticeList(type, sel) {
     </div>`).join('');
 }
 
+// ── 意见反馈 ─────────────────────────────────────────────
+async function loadFeedbacks() {
+  try {
+    const data = await api('/api/feedbacks');
+    feedbacks = data.feedbacks || [];
+    renderFeedbacks();
+  } catch (err) {
+    setHealth(false, err.message);
+  }
+}
+
+const FB_STATUS_LABEL = { new: '新反馈', reviewing: '处理中', done: '已处理' };
+
+function renderFeedbacks() {
+  const box = $('#fbList');
+  if (!box) return;
+
+  // 计数（不受筛选影响）
+  const countOf = (s) => feedbacks.filter((f) => f.status === s).length;
+  $('#navCountFb').textContent = countOf('new');
+  $('#fbCountNew').textContent = countOf('new');
+  $('#fbCountReviewing').textContent = countOf('reviewing');
+  $('#fbCountDone').textContent = countOf('done');
+
+  const list = fbFilter ? feedbacks.filter((f) => f.status === fbFilter) : feedbacks;
+
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">
+      <div class="emptyTitle">${fbFilter ? '这个状态下没有反馈' : '还没有收到反馈'}</div>
+      <div class="emptyDesc">用户从「我的 → 更多 → 意见反馈」提交的内容会出现在这里</div>
+    </div>`;
+    return;
+  }
+
+  box.innerHTML = list.map((f) => `
+    <div class="notice" data-fb-id="${f.id}">
+      <div class="noticeIcon ${f.platform === 'app' ? 'update' : 'announcement'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="noticeMain">
+        <div class="noticeTitle">
+          <span class="pill fb-${f.status}">${FB_STATUS_LABEL[f.status] || f.status}</span>
+          <span class="pill">${f.platform === 'app' ? 'App' : 'Web'}</span>
+        </div>
+        <div class="fbQuote">${esc(f.content)}</div>
+        ${f.contact ? `<div class="fbContact">${esc(f.contact)}</div>` : ''}
+        <div class="noticeMeta">
+          <span>#${f.id}</span>
+          <span>${fmtTime(f.createdAt)}</span>
+        </div>
+      </div>
+      <div class="fbActions">
+        <select class="fbSelect" data-fb-act="status">
+          <option value="new"${f.status === 'new' ? ' selected' : ''}>新反馈</option>
+          <option value="reviewing"${f.status === 'reviewing' ? ' selected' : ''}>处理中</option>
+          <option value="done"${f.status === 'done' ? ' selected' : ''}>已处理</option>
+        </select>
+        <button class="btn sm danger" data-fb-act="del">删除</button>
+      </div>
+    </div>`).join('');
+}
+
+document.addEventListener('change', async (e) => {
+  const sel = e.target.closest('[data-fb-act="status"]');
+  if (!sel) return;
+  const id = Number(sel.closest('.notice').dataset.fbId);
+  try {
+    await api('/api/feedbacks/' + id, { method: 'PATCH', body: { status: sel.value } });
+    toast('已标记为「' + (FB_STATUS_LABEL[sel.value] || sel.value) + '」');
+    await loadFeedbacks();
+  } catch (err) {
+    toast(err.message, true);
+    await loadFeedbacks();
+  }
+});
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-fb-act="del"]');
+  if (!btn) return;
+  const id = Number(btn.closest('.notice').dataset.fbId);
+  try {
+    await api('/api/feedbacks/' + id, { method: 'DELETE' });
+    toast('反馈已删除');
+    await loadFeedbacks();
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
+
+// 状态筛选
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('#fbFilters .fbChip');
+  if (!chip) return;
+  fbFilter = chip.dataset.status || '';
+  $$('#fbFilters .fbChip').forEach((c) => c.classList.toggle('on', c === chip));
+  renderFeedbacks();
+});
+
+$('#refreshFeedbacks')?.addEventListener('click', () => loadFeedbacks());
+
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
   const id = Number(btn.closest('.notice').dataset.id);
   const n = notices.find((x) => x.id === id);
   if (!n) return;
-
   if (btn.dataset.act === 'toggle') {
     try {
       await api('/api/notices/' + id, { method: 'PATCH', body: { published: !n.published } });

@@ -3,6 +3,7 @@
  *
  * 路由：
  * - POST /api/ping          客户端每日心跳（记录活跃 + 新用户）
+ * - POST /api/feedback      客户端提交意见反馈（无需鉴权）
  * - GET  /api/notice        客户端拉取公告 / 更新（无需鉴权）
  * - GET  /api/config        客户端拉取公开配置（无需鉴权）
  * - GET  /api/stats         管理统计（需 token）
@@ -10,6 +11,9 @@
  * - POST /api/notices       管理端：新建（需 token）
  * - PATCH /api/notices/:id  管理端：编辑（需 token）
  * - DELETE /api/notices/:id 管理端：删除（需 token）
+ * - GET  /api/feedbacks     管理端：反馈列表（需 token）
+ * - PATCH /api/feedbacks/:id 管理端：更新反馈状态（需 token）
+ * - DELETE /api/feedbacks/:id 管理端：删除反馈（需 token）
  * - GET  /api/settings      管理端：读取配置（需 token）
  * - PUT  /api/settings      管理端：写入配置（需 token）
  * - POST /api/auth/login    管理后台登录
@@ -29,8 +33,13 @@ import {
   queryNoticesForClient,
   getAllSettings,
   setSetting,
+  listFeedbacks,
+  createFeedback,
+  updateFeedbackStatus,
+  deleteFeedback,
   type NoticeType,
   type ClientPlatform,
+  type FeedbackStatus,
 } from './db.js';
 import { loadAdminConfig, login, verifyToken } from './auth.js';
 
@@ -91,6 +100,62 @@ app.post('/api/ping', (req, res) => {
     req.body?.platform === 'app' ? 'app' : 'web';
   const { isNewUser } = recordPing(db, userId, new Date(), platform);
   res.json({ ok: true, isNewUser });
+});
+
+/**
+ * 客户端提交意见反馈
+ *
+ * POST /api/feedback  body { content, contact?, platform?, userId? }
+ *
+ * 这是一个**公开写接口**，所以要防刷：
+ * - 单条内容长度上限（1~2000 字）
+ * - 联系方式长度上限（0~120 字）
+ * - 同一 userId 60 秒内最多提交 3 条（内存计数，进程重启即失效，够用）
+ */
+const FEEDBACK_MAX_LEN = 2000;
+const FEEDBACK_MAX_CONTACT_LEN = 120;
+const FEEDBACK_RATE_WINDOW_MS = 60_000;
+const FEEDBACK_RATE_MAX = 3;
+
+/** userId → 最近提交时间戳数组（滑动窗口） */
+const feedbackHits = new Map<string, number[]>();
+
+function feedbackRateLimited(userId: string, now: number): boolean {
+  const list = (feedbackHits.get(userId) ?? []).filter((t) => now - t < FEEDBACK_RATE_WINDOW_MS);
+  if (list.length >= FEEDBACK_RATE_MAX) {
+    feedbackHits.set(userId, list);
+    return true;
+  }
+  list.push(now);
+  feedbackHits.set(userId, list);
+  return false;
+}
+
+app.post('/api/feedback', (req, res) => {
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+  if (!content) {
+    res.status(400).json({ ok: false, error: 'content is required' });
+    return;
+  }
+  if (content.length > FEEDBACK_MAX_LEN) {
+    res.status(400).json({ ok: false, error: `content too long (max ${FEEDBACK_MAX_LEN})` });
+    return;
+  }
+
+  const contact =
+    typeof req.body?.contact === 'string' ? req.body.contact.trim().slice(0, FEEDBACK_MAX_CONTACT_LEN) : '';
+  const platform: ClientPlatform = req.body?.platform === 'app' ? 'app' : 'web';
+  const userId =
+    typeof req.body?.userId === 'string' ? req.body.userId.trim().slice(0, 64) : '';
+
+  // 没带 userId 的请求不做限流（无法定位来源），但内容长度限制仍然生效
+  if (userId && feedbackRateLimited(userId, Date.now())) {
+    res.status(429).json({ ok: false, error: 'too many submissions, please slow down' });
+    return;
+  }
+
+  const feedback = createFeedback(db, { content, contact, platform, userId });
+  res.status(201).json({ ok: true, feedback });
 });
 
 /**
@@ -194,6 +259,52 @@ app.delete('/api/notices/:id', requireAdmin, (req, res) => {
     return;
   }
   if (!deleteNotice(db, id)) {
+    res.status(404).json({ ok: false, error: 'not found' });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+/** 反馈列表 */
+app.get('/api/feedbacks', requireAdmin, (req, res) => {
+  const statusRaw = req.query.status;
+  const status =
+    statusRaw === 'new' || statusRaw === 'reviewing' || statusRaw === 'done'
+      ? (statusRaw as FeedbackStatus)
+      : undefined;
+  const limitRaw = Number(req.query.limit);
+  const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
+  res.json({ ok: true, feedbacks: listFeedbacks(db, { status, limit }) });
+});
+
+/** 更新反馈状态（new / reviewing / done） */
+app.patch('/api/feedbacks/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ ok: false, error: 'invalid id' });
+    return;
+  }
+  const status = req.body?.status;
+  if (status !== 'new' && status !== 'reviewing' && status !== 'done') {
+    res.status(400).json({ ok: false, error: 'status must be new, reviewing or done' });
+    return;
+  }
+  const feedback = updateFeedbackStatus(db, id, status);
+  if (!feedback) {
+    res.status(404).json({ ok: false, error: 'not found' });
+    return;
+  }
+  res.json({ ok: true, feedback });
+});
+
+/** 删除反馈 */
+app.delete('/api/feedbacks/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ ok: false, error: 'invalid id' });
+    return;
+  }
+  if (!deleteFeedback(db, id)) {
     res.status(404).json({ ok: false, error: 'not found' });
     return;
   }

@@ -190,5 +190,89 @@ const del = await fetch(base + '/api/notices/' + annId, {
 });
 check('删除公告', del.status === 200);
 
+// ── 意见反馈 ──────────────────────────────────────────────
+const FB = `u-smoke-fb-${RUN}`;
+
+// 20. 提交反馈
+const fb1 = await post('/api/feedback', {
+  content: '计时页的秒数跳动太快了',
+  contact: 'test@example.com',
+  platform: 'app',
+  userId: FB,
+});
+check(
+  '提交反馈',
+  fb1.status === 201 && fb1.data.feedback?.id > 0 && fb1.data.feedback.content === '计时页的秒数跳动太快了',
+  JSON.stringify(fb1.data),
+);
+const fbId = fb1.data.feedback.id;
+
+// 20b. 空内容 → 400
+const fbEmpty = await post('/api/feedback', { content: '   ' });
+check('反馈空内容 400', fbEmpty.status === 400, `status=${fbEmpty.status}`);
+
+// 20c. 超长内容 → 400
+const fbLong = await post('/api/feedback', { content: 'x'.repeat(2001) });
+check('反馈超长 400', fbLong.status === 400, `status=${fbLong.status}`);
+
+// 20d. 反馈列表需要鉴权
+const fbList0 = await get('/api/feedbacks');
+check('反馈列表未授权 401', fbList0.status === 401, `status=${fbList0.status}`);
+
+// 21. 管理端能看到反馈
+const fbList = await get('/api/feedbacks', token);
+check(
+  '反馈列表可读',
+  fbList.status === 200 && (fbList.data.feedbacks || []).some((f) => f.id === fbId),
+  JSON.stringify(fbList.data),
+);
+
+// 22. 默认状态是 new
+const fbNew = (fbList.data.feedbacks || []).find((f) => f.id === fbId);
+check('反馈默认状态 new', fbNew?.status === 'new', fbNew?.status);
+
+// 23. 更新状态 → done
+const fbPatch = await fetch(base + '/api/feedbacks/' + fbId, {
+  method: 'PATCH',
+  headers: { 'content-type': 'application/json', 'x-admin-token': token },
+  body: JSON.stringify({ status: 'done' }),
+});
+const fbPatchData = await fbPatch.json();
+check('更新反馈状态', fbPatch.status === 200 && fbPatchData.feedback?.status === 'done', JSON.stringify(fbPatchData));
+
+// 23b. 非法状态 → 400
+const fbBad = await fetch(base + '/api/feedbacks/' + fbId, {
+  method: 'PATCH',
+  headers: { 'content-type': 'application/json', 'x-admin-token': token },
+  body: JSON.stringify({ status: 'bogus' }),
+});
+check('非法反馈状态 400', fbBad.status === 400, `status=${fbBad.status}`);
+
+// 24. 按状态过滤
+const fbDone = await get('/api/feedbacks?status=done', token);
+check(
+  '按状态过滤反馈',
+  (fbDone.data.feedbacks || []).every((f) => f.status === 'done'),
+  JSON.stringify(fbDone.data),
+);
+
+// 25. 限流：同一 userId 60 秒内第 4 条被拒
+const rateStatus = [];
+for (let i = 0; i < 4; i += 1) {
+  const r = await post('/api/feedback', { content: `限流测试 ${i}`, userId: `${FB}-rate` });
+  rateStatus.push(r.status);
+}
+check(
+  '反馈限流生效',
+  rateStatus[0] === 201 && rateStatus[1] === 201 && rateStatus[2] === 201 && rateStatus[3] === 429,
+  rateStatus.join(','),
+);
+
+// 26. 删除反馈
+const fbDel = await fetch(base + '/api/feedbacks/' + fbId, {
+  method: 'DELETE', headers: { 'x-admin-token': token },
+});
+check('删除反馈', fbDel.status === 200);
+
 console.log(failed === 0 ? '\nALL PASS' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

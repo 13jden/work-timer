@@ -335,11 +335,41 @@
   text-align: center;
 }
 
-/* 金额卡：小红花 / 咖啡 */
+/* 金额卡：小红花 / 咖啡 / 自定义 */
 .tipGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+/* 自定义卡横跨两列 —— 它是一个「入口」，不是同级金额 */
+.tipCardWide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.tipCardWide .tipIcon {
+  margin-bottom: 0;
+}
+
+.tipCardWide .tipAmount {
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.tipCardWide .tipLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.tipCardWide .tipNote {
+  margin-left: auto;
 }
 
 .tipCard {
@@ -400,6 +430,110 @@
   font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.02em;
+}
+
+/* ── 自定义打赏：金额 + 留言 ── */
+.donateCustom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px dashed var(--line);
+  border-radius: 13px;
+  background: var(--paper-3);
+}
+
+.donateField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.donateFieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.donateOptional {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* 金额输入：¥ 前缀 + 等宽数字，像收据上的金额栏 */
+.donateAmountRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-4);
+  padding: 0 11px;
+  transition: border-color 150ms;
+}
+
+.donateAmountRow:focus-within {
+  border-color: var(--ink);
+}
+
+.donateAmountPrefix {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.donateAmountInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 10px 0;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.donateAmountInput::placeholder {
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.donateNoteInput {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-4);
+  outline: none;
+  padding: 9px 11px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  transition: border-color 150ms;
+}
+
+.donateNoteInput::placeholder {
+  color: var(--faint);
+}
+
+.donateNoteInput:focus {
+  border-color: var(--ink);
+}
+
+.donateError {
+  font-size: 11.5px;
+  color: var(--danger);
+  line-height: 1.5;
 }
 
 /* 支付方式切换 */

@@ -1,10 +1,11 @@
 /**
  * MoreSheet — 「更多」底部弹层（v3.2）
  *
- * MINE 页的「更多」入口触发，三个动作：
+ * MINE 页的「更多」入口触发，四个动作：
  * 1. 打赏作者 —— 打开 DonateSheet（金额 / 微信 / 支付宝）
- * 2. 使用指南 —— 打开 GuideSheet（复制链接 / 直接打开）
- * 3. 检查更新 —— 手动拉一次公告 / 更新，结果交给全局 NoticeModal 展示
+ * 2. 意见反馈 —— 打开 FeedbackSheet（内容存后端，管理后台可看）
+ * 3. 使用指南 —— 打开 GuideSheet（复制链接 / 直接打开）
+ * 4. 检查更新 —— 手动拉一次公告 / 更新，结果交给全局 NoticeModal 展示
  *
  * 设计要点：
  * - 不新增全局 toast 体系，提示就地展示在弹层里（保持改动收敛）
@@ -20,6 +21,7 @@ import {
   Coffee,
   Copy,
   FlowerLotus,
+  ChatCircleText,
 } from '@phosphor-icons/react';
 import { fetchNotices } from '../../../lib/notice';
 import { fetchPublicConfig, normalizeGuideUrl } from '../../../lib/config';
@@ -30,6 +32,8 @@ interface MoreSheetProps {
   onClose: () => void;
   /** 点击「打赏作者」时通知外部打开 DonateSheet */
   onOpenDonate: () => void;
+  /** 点击「意见反馈」时通知外部打开 FeedbackSheet */
+  onOpenFeedback: () => void;
 }
 
 /** 弹层内的子视图 */
@@ -81,7 +85,7 @@ async function copyText(text: string): Promise<boolean> {
   return false;
 }
 
-export function MoreSheet({ open, onClose, onOpenDonate }: MoreSheetProps) {
+export function MoreSheet({ open, onClose, onOpenDonate, onOpenFeedback }: MoreSheetProps) {
   const [view, setView] = useState<View>('menu');
 
   // ── 使用指南 ──
@@ -203,6 +207,24 @@ export function MoreSheet({ open, onClose, onOpenDonate }: MoreSheetProps) {
                     <span className={styles.actionHint}>小红花 ¥2 · 咖啡 ¥9.9</span>
                   </span>
                   <FlowerLotus size={16} weight="regular" className={styles.actionArrow} />
+                </button>
+
+                {/* ── 意见反馈 ── */}
+                <button
+                  type="button"
+                  className={styles.actionBtn}
+                  onClick={() => {
+                    onOpenFeedback();
+                    onClose();
+                  }}
+                >
+                  <span className={styles.actionIcon}>
+                    <ChatCircleText size={19} weight="regular" />
+                  </span>
+                  <span className={styles.actionMain}>
+                    <span className={styles.actionLabel}>意见反馈</span>
+                    <span className={styles.actionHint}>哪儿不顺手，说一声</span>
+                  </span>
                 </button>
 
                 {/* ── 使用指南 ── */}
