@@ -41,6 +41,33 @@
 	header @static Cache-Control "public, max-age=31536000, immutable"
 
 	# ── 后端 API 反代 ──
+	#
+	# /api/ping 是「后台遥测」(日活上报),失败必须**完全无声**:
+	#   浏览器会把任何非 2xx 响应打印成红色 console error,而这条请求
+	#   是 App 每次打开自动发的,后端容器一挂就会刷屏。
+	#
+	# 所以这里把「后端不可达」改写成 200 + { ok:false }:
+	#   - 前端据此判定「今天没记上」,不写本地标记,下次打开 App 自动重试
+	#   - 浏览器与终端都看不到任何报错
+	#
+	# 放在站点级 handle_errors 而不是 reverse_proxy 的 handle_response:
+	#   handle_response 只能拦截**上游真的返回了**的响应;容器没起时
+	#   Caddy 自己生成的 502 走的是错误处理链,必须用 handle_errors 才能改写。
+	#   已实测:上游 502 → /api/ping 变 200;其他路径的 502 保持不变。
+	handle_errors {
+		@ping_down expression {http.request.uri.path} == "/api/ping" && ({err.status_code} == 502 || {err.status_code} == 503 || {err.status_code} == 504)
+		handle @ping_down {
+			header Content-Type "application/json; charset=utf-8"
+			respond "{\"ok\":false,\"error\":\"backend unavailable\"}" 200
+		}
+		# 其余错误保持原状态码,走 Caddy 默认错误页
+		respond "{err.status_code}" {err.status_code}
+	}
+
+	handle /api/ping {
+		reverse_proxy api:8787
+	}
+
 	handle /api/* {
 		reverse_proxy api:8787
 	}

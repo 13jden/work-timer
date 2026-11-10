@@ -28,7 +28,9 @@ import {
   Coffee,
   Palette,
   ClockCounterClockwise,
+  DownloadSimple,
 } from '@phosphor-icons/react';
+import { fetchNotices, currentVersion as getAppVersion } from '../lib/notice';
 import styles from './SettingsPage.module.css';
 
 const MONTH_NAMES_CN = [
@@ -91,6 +93,9 @@ export function SettingsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [restCalendarOpen, setRestCalendarOpen] = useState(false);
   const [restCalendarMonth, setRestCalendarMonth] = useState(() => new Date());
+  // v3.2：检查更新
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateHint, setUpdateHint] = useState('');
   // v1.3.5:第一个模板就是默认/全局工时。跟随 workTemplates[0] 重新计算,
   // 用户增删模板后仍指向有效 id（且不会被「继承全局」这种哑选项污染）。
   const firstTemplateId = draft.workTemplates[0]?.id ?? '';
@@ -259,6 +264,29 @@ export function SettingsPage() {
       window.setTimeout(() => {
         if (el && el.textContent !== '保存配置') el.textContent = '保存配置';
       }, 1200);
+    }
+  };
+
+  // ── v3.2：检查更新 ──
+  // 手动拉一次公告 / 更新。结果通过全局事件广播给 NoticeModal 展示，
+  // 这样设置页本身不用管理弹窗状态（桌面抽屉和移动页面都能复用）。
+  const handleCheckUpdate = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    setUpdateHint('');
+    try {
+      const list = await fetchNotices(true);
+      if (list.length === 0) {
+        setUpdateHint('已是最新版本');
+      } else {
+        window.dispatchEvent(
+          new CustomEvent('st:notices', { detail: { notices: list } }),
+        );
+      }
+    } catch {
+      setUpdateHint('检查失败，请稍后再试');
+    } finally {
+      setCheckingUpdate(false);
     }
   };
 
@@ -602,6 +630,35 @@ export function SettingsPage() {
                     ))}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* ─ 检查更新 ─ */}
+            <div className={styles.subGroup}>
+              <div className={styles.subGroupEyebrow}>
+                <DownloadSimple size={11} weight="regular" style={{ verticalAlign: -1, marginRight: 4 }} />
+                关于 · About
+              </div>
+              <div className={styles.card}>
+                <div className={styles.row}>
+                  <span className={styles.label}>检查更新</span>
+                  <span className={styles.value}>
+                    {getAppVersion() && (
+                      <span className={styles.versionTag}>v{getAppVersion()}</span>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.checkUpdateBtn}
+                      onClick={handleCheckUpdate}
+                      disabled={checkingUpdate}
+                    >
+                      {checkingUpdate ? '检查中…' : '检查更新'}
+                    </button>
+                  </span>
+                </div>
+                {updateHint && (
+                  <div className={styles.updateHint}>{updateHint}</div>
+                )}
               </div>
             </div>
 

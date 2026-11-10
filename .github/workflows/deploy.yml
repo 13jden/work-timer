@@ -41,6 +41,71 @@ jobs:
             rm -rf dist
             echo "=== repo synced to $(git rev-parse --short HEAD) ==="
 
+      # 2.5 准备后端环境变量
+      #
+      # docker-compose.yml 里 ADMIN_PASSWORD / SESSION_SECRET 用了 `:?` 语法:
+      # 变量缺失时 `docker compose up` 直接报错退出。这是刻意的 ——
+      # 旧版本把弱口令 `2018Skskwain` 写死在 compose 里并提交进了 git,
+      # 等于把管理后台口令公开。
+      #
+      # 所以这里在部署前自动补齐:
+      #   - SESSION_SECRET: 随机生成(不存在任何风险,自动生成即可)
+      #   - ADMIN_PASSWORD: 随机生成并**打印在部署日志里**(见下方警告)
+      #     首次部署后请立刻登录 /admin 改掉它
+      # 已存在的值一律保留,不会覆盖(.env 不在 git 里,git reset 也不会动它)
+      - name: Ensure backend env
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 5m
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ secrets.SERVER_PROJECT_DIR }}
+            ENV_FILE=".env"
+            touch "$ENV_FILE"
+
+            # SESSION_SECRET:缺失就随机生成
+            if ! grep -qE '^SESSION_SECRET=.+' "$ENV_FILE"; then
+              SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+              printf 'SESSION_SECRET=%s\n' "$SECRET" >> "$ENV_FILE"
+              echo "已自动生成 SESSION_SECRET"
+            fi
+
+            # ADMIN_PASSWORD:缺失就随机生成一个强口令
+            if ! grep -qE '^ADMIN_PASSWORD=.+' "$ENV_FILE"; then
+              # 取 18 个随机字节 → base64 → 只留字母数字,截到 20 位。
+              # 不用 head -c 20 截 base64(可能把 = 填充和 + / 截掉后长度不够),
+              # 而是先过滤再截,保证长度稳定。
+              PW=$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')
+              PW="${PW:0:20}"
+              printf 'ADMIN_PASSWORD=%s\n' "$PW" >> "$ENV_FILE"
+              echo ""
+              echo "╔══════════════════════════════════════════════════════╗"
+              echo "║  首次部署:已自动生成管理后台密码                          ║"
+              echo "╠══════════════════════════════════════════════════════╣"
+              echo "║  ADMIN_USERNAME: admin                                  ║"
+              echo "║  ADMIN_PASSWORD: $PW"
+              echo "╚══════════════════════════════════════════════════════╝"
+              echo "请立刻登录 https://<你的域名>/admin 用这个密码登录,"
+              echo "并在服务器项目目录的 .env 里改成你自己的口令。"
+              echo "⚠️  这行密码会留在本次部署日志里,请尽快更换。"
+              echo ""
+            else
+              echo "ADMIN_PASSWORD 已存在,保持不变"
+              # 旧版本把弱口令写死在 compose 里,不是 .env;这里只做提示
+              if grep -qE '^ADMIN_PASSWORD=2018Skskwain$' "$ENV_FILE"; then
+                echo "⚠️ 警告:ADMIN_PASSWORD 仍是仓库里公开过的弱口令,建议更换"
+              fi
+            fi
+
+            echo "=== .env 现有键(值已脱敏) ==="
+            sed -E 's/^((ADMIN_PASSWORD|SESSION_SECRET)=).+$/\1<hidden>/' "$ENV_FILE" | grep -E '^[A-Z_]+=' || true
+
       # 3. 上传 dist 到服务器项目目录(落地为 <SERVER_PROJECT_DIR>/dist)
       - name: Upload dist to server
         uses: appleboy/scp-action@v1
@@ -55,6 +120,11 @@ jobs:
           target: "${{ secrets.SERVER_PROJECT_DIR }}"
 
       # 4. 构建镜像(只 COPY dist,秒级)并重建容器
+      #
+      #    注意 `docker compose up -d --build` 会构建并启动**所有**服务,
+      #    包括后端 api 容器(server/Dockerfile)。后端镜像要编译
+      #    better-sqlite3 原生模块(alpine 无预编译包),比前端慢不少,
+      #    所以这里的 command_timeout 放宽到 25m。
       - name: Build image and recreate container
         uses: appleboy/ssh-action@v1.2.5
         with:
@@ -63,7 +133,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          command_timeout: 10m
+          command_timeout: 25m
           script_stop: true
           script: |
             set -e
@@ -75,7 +145,7 @@ jobs:
             HOLDERS=$( { docker ps -aq --filter publish=80; docker ps -aq --filter publish=443; } | sort -u )
             for cid in $HOLDERS; do
               name=$(docker inspect -f '{{.Name}}' "$cid" 2>/dev/null | tr -d '/')
-              if [ "$name" = "work-timer" ]; then continue; fi
+              if [ "$name" = "work-timer" ] || [ "$name" = "work-timer-api" ]; then continue; fi
               echo "停止占用 80/443 的容器: $name ($cid)"
               docker update --restart=no "$cid" >/dev/null 2>&1 || true
               docker stop -t 5 "$cid" || true
@@ -105,14 +175,50 @@ jobs:
             docker image prune -f
             echo "=== Deploy done ==="
             docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-            sleep 5
 
-            if ! docker ps --filter name=work-timer --filter status=running | grep -q work-timer; then
-              echo "DEPLOY FAILED: container not running,最后 40 行日志:"
-              docker compose logs --tail=40 work-timer || true
+            # ── 容器健康检查 ──────────────────────────────────────
+            #
+            # ⚠️ 不要用 `docker ps --filter name=work-timer`:
+            #    那是**子串匹配**,会同时匹配到 work-timer-api,
+            #    结果就是后端挂了、前端容器也没起,这个检查照样判"通过"。
+            #    这里用 docker inspect 按**精确容器名**逐个查。
+            echo ""
+            echo "=== 容器健康检查 ==="
+            FAILED=0
+            for cname in work-timer work-timer-api; do
+              state=$(docker inspect -f '{{.State.Status}}' "$cname" 2>/dev/null || echo "missing")
+              running=$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null || echo "false")
+              if [ "$state" != "running" ] || [ "$running" != "true" ]; then
+                echo "DEPLOY FAILED: 容器 $cname 未正常运行 (state=$state running=$running),最后 40 行日志:"
+                docker logs --tail=40 "$cname" 2>&1 || true
+                FAILED=1
+              else
+                echo "✓ 容器 $cname 运行中"
+              fi
+            done
+            [ "$FAILED" = "0" ] || exit 1
+
+            # 后端容器带 healthcheck,等它变 healthy(最多 90 秒)
+            echo ""
+            echo "=== 等待后端健康 ==="
+            HEALTHY=""
+            for i in $(seq 1 45); do
+              h=$(docker inspect -f '{{.State.Health.Status}}' work-timer-api 2>/dev/null || echo "none")
+              if [ "$h" = "healthy" ]; then HEALTHY=1; break; fi
+              if [ "$h" = "unhealthy" ]; then
+                echo "后端健康检查失败(unhealthy),最后 40 行日志:"
+                docker logs --tail=40 work-timer-api 2>&1 || true
+                exit 1
+              fi
+              sleep 2
+            done
+            if [ -z "$HEALTHY" ]; then
+              echo "警告: 后端 90 秒内没变成 healthy,当前状态:"
+              docker inspect -f '{{.State.Health.Status}}' work-timer-api 2>/dev/null || true
+              docker logs --tail=40 work-timer-api 2>&1 || true
               exit 1
             fi
-            echo "CONTAINER RUNNING OK"
+            echo "✓ 后端健康检查通过"
 
             # 证书签发情况(看到 certificate obtained / already have a certificate 才算签下来)
             docker compose logs --tail=80 work-timer | grep -iE "certificate|acme|alpn|error|panic" | tail -20 || true
@@ -134,10 +240,56 @@ jobs:
             echo "按顺序排查: 1) 阿里云安全组是否放行 443  2) DNS 是否指向本机  3) 服务器上 docker compose logs --tail=80 work-timer 看 acme 报错"
             exit 1
           fi
-          echo "HTTPS OK"
+          echo "✓ HTTPS OK"
           echo "--- 首页响应头 ---"
           curl -sSI --max-time 10 "https://$DOMAIN/" | head -10
           echo "--- sw.js 缓存头(应为 no-cache/no-store) ---"
           curl -sSI --max-time 10 "https://$DOMAIN/sw.js" | grep -i "cache-control" || true
           echo "--- http 跳转(由宿主机 OpenResty 的 301 完成) ---"
           curl -sSI --max-time 10 "http://$DOMAIN/" | head -4 || true
+
+      # 6. 从公网验证后端可达
+      #
+      #    这一步是「后端真的跑起来了」的最终确认。
+      #
+      #    用 /api/config 而不是 /api/ping 做探针 —— /api/ping 会**真的往
+      #    生产 SQLite 里写一条用户记录**,每次部署都写一条会把总用户数和
+      #    日活统计污染掉(而且 ci-deploy-probe 会一直算作活跃用户)。
+      #    /api/config 同样走完整链路(Caddy 反代 → api 容器 → Express → SQLite 读),
+      #    但只读不写。写入路径由 CI 的冒烟测试覆盖。
+      - name: Verify backend from outside
+        env:
+          DOMAIN: ${{ vars.SITE_DOMAIN || 'persecond.work' }}
+        run: |
+          echo "从 GitHub runner 验证后端 https://$DOMAIN/health ..."
+          ok=""
+          for i in $(seq 1 10); do
+            if curl -sSf --max-time 10 "https://$DOMAIN/health" | grep -q '"ok":true'; then ok=1; break; fi
+            echo "  第 $i 次未通过,5s 后重试"
+            sleep 5
+          done
+          if [ -z "$ok" ]; then
+            echo "VERIFY FAILED: https://$DOMAIN/health 不可达"
+            echo "排查: 服务器上 docker compose ps / docker logs --tail=50 work-timer-api"
+            exit 1
+          fi
+          echo "✓ 后端 /health 正常"
+
+          echo "--- /api/config 端到端(只读,不污染统计)---"
+          CONFIG=$(curl -sS --max-time 10 "https://$DOMAIN/api/config" || true)
+          echo "$CONFIG"
+          if echo "$CONFIG" | grep -q '"ok":true'; then
+            echo "✓ 后端配置接口正常(Caddy → api 容器 → SQLite 全链路通)"
+          else
+            echo "VERIFY FAILED: /api/config 未返回 ok:true"
+            exit 1
+          fi
+
+          echo "--- 管理后台静态页 ---"
+          ADMIN_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$DOMAIN/admin" || true)
+          echo "/admin HTTP $ADMIN_CODE"
+          if [ "$ADMIN_CODE" != "200" ] && [ "$ADMIN_CODE" != "301" ] && [ "$ADMIN_CODE" != "302" ]; then
+            echo "VERIFY FAILED: /admin 不可达 (HTTP $ADMIN_CODE)"
+            exit 1
+          fi
+          echo "✓ 管理后台可访问"

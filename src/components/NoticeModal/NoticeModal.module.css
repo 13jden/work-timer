@@ -1,0 +1,175 @@
+/* NoticeModal — 公告 / 更新弹窗(v3.2)
+   沿用主应用的纸张卡片语言,与 SettingsPage 的弹窗保持一致。 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 15, 15, 0.42);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 180ms ease both;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 84vh;
+  overflow-y: auto;
+  background: var(--paper-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 26px 24px 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  animation: rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.leaving {
+  animation: sink 140ms ease both;
+}
+
+.close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.close:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+/* ══ eyebrow ══ */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  margin-bottom: 10px;
+}
+
+/* ══ title ══ */
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.22;
+  letter-spacing: -0.3px;
+  margin: 0 0 12px;
+  color: var(--ink);
+  padding-right: 22px;
+}
+
+/* ══ version row ══ */
+.versionRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+.version {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+.versionHint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ══ body ══ */
+.body {
+  font-size: 14px;
+  line-height: 1.68;
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 20px;
+}
+
+/* ══ actions ══ */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 120ms ease, opacity 120ms ease, background 140ms ease;
+}
+.primary {
+  background: var(--ink);
+  color: var(--paper-4);
+}
+.primary:hover { opacity: 0.86; }
+.secondary {
+  background: transparent;
+  color: var(--ink-muted);
+  border-color: var(--line);
+}
+.secondary:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+.primary:active,
+.secondary:active { transform: scale(0.98); }
+.primary:focus-visible,
+.secondary:focus-visible,
+.close:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sink {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .card,
+  .leaving { animation: none; }
+}

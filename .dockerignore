@@ -4,6 +4,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# 后端(server/)—— 前端镜像完全用不到它
+#
+# 不排除的话,每次构建 work-timer 镜像都要把 server/node_modules
+# (本机约 100+ MB)塞进构建上下文上传给 docker daemon,纯浪费。
+# 后端镜像有自己的构建上下文(server/ 目录 + server/.dockerignore)。
+server/
+
 # 构建产物
 # 注意:dist/ 不能被忽略!Dockerfile 直接 COPY CI 构建好的 dist
 dist-android/

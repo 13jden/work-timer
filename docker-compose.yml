@@ -7,20 +7,46 @@ services:
     environment:
       PORT: "8787"
       DB_PATH: "/data/salary-timer.db"
+      # ⚠️ 这三个变量**必须**由服务器项目目录的 .env 提供,不再有仓库内的弱默认值。
+      #   旧版本把 ADMIN_PASSWORD=2018Skskwain 写死在 compose 里并提交进了 git,
+      #   等于把管理后台口令公开 —— 任何人都能拿它登录 /admin。
+      #   现在用 `:?` 语法:变量缺失时 docker compose 直接报错退出,不会带着弱口令上线。
+      #   首次部署请在服务器项目目录建 .env(照抄 .env.example):
+      #     ADMIN_USERNAME=admin
+      #     ADMIN_PASSWORD=<你自己的强口令>
+      #     SESSION_SECRET=<随机长串>
+      #   deploy.yml 会在检测到缺失时自动补齐 SESSION_SECRET(随机生成)并提示补 ADMIN_PASSWORD。
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-2018Skskwain}"
-      SESSION_SECRET: "${SESSION_SECRET:-salary-timer-dev-secret}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD 未设置：请在服务器项目目录的 .env 里写上强口令}"
+      SESSION_SECRET: "${SESSION_SECRET:?SESSION_SECRET 未设置：请在服务器项目目录的 .env 里写上随机长串}"
     volumes:
       # SQLite 数据必须持久化,容器重建不能丢用户统计
       - api_data:/data
     restart: unless-stopped
     expose:
       - "8787"
+    # 后端容器自带健康检查:compose 能感知它真的起来了,deploy 也能据此判断成败
+    # 用 node 自带的 fetch 探活,而不是 wget —— node:alpine 一定有 node,
+    # 而 busybox 的 wget --spider 在不同 alpine 版本上行为不一致。
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   work-timer:
     build: .
     image: work-timer:latest
     container_name: work-timer
+    # 等 api 容器**启动**（不是 healthy）再起 Caddy。
+    #
+    # 为什么不用 `condition: service_healthy`：后端万一起不来，
+    # 那就连**前端站点**也一起起不来 —— 整个站不可访问。
+    # 只等 started 的代价仅仅是刚启动的几秒内 /api/* 可能 502，
+    # 而 Caddy 的 handle_errors 已经把 /api/ping 的 502 改写成 200 了。
+    depends_on:
+      - api
     ports:
       # 80: Caddy 自动把 http 308 跳到 https,并供 Let's Encrypt HTTP-01 验证
       # 443: HTTPS 主入口

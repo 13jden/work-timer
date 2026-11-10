@@ -204,6 +204,47 @@
   font-family: var(--font-mono);
 }
 
+/* ══ Check for updates (v3.2) ══ */
+.versionTag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.checkUpdateBtn {
+  border: 1px solid var(--line);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, opacity 140ms ease;
+}
+.checkUpdateBtn:hover:not(:disabled) {
+  background: var(--accent-tint);
+  border-color: var(--accent-deep);
+}
+.checkUpdateBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.checkUpdateBtn:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+.updateHint {
+  padding: 10px 16px;
+  font-size: 12.5px;
+  color: var(--muted);
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+}
+
 /* ══ Save button ══ */
 .saveBtn {
   display: block;

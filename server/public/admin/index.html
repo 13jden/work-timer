@@ -1,279 +1,1501 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="paper">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Salary Timer · 数据后台</title>
+<title>Salary Timer · Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
+/* ─────────────────────────────────────────────────────────
+   Console design tokens
+   A light "technical manual" for one operator: warm paper
+   panels, deep green for live state, dark amber reserved for
+   pending updates, Instrument Serif as the editorial masthead.
+   ───────────────────────────────────────────────────────── */
 :root {
-  --ink: #0F0F0F;
-  --ink-muted: #6B6B6B;
-  --muted: #8B8B82;
-  --paper: #F5F2EA;
-  --paper-2: #ECEAE0;
-  --paper-3: #F9F7F0;
-  --paper-4: #FFFDF6;
-  --accent: #C8FF00;
-  --accent-deep: #9FCC00;
-  --line: #E5E2D8;
-  --line-soft: #EFEEE6;
-  --danger: #E5484D;
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Figtree', -apple-system, 'PingFang SC', sans-serif;
+  --void:      #F6F5F1;
+  --panel:     #FFFFFF;
+  --raised:    #F1EFEA;
+  --raised-2:  #E7E4DC;
+  --line:      #D9D5CB;
+  --line-soft: #E9E6DE;
+  --text:      #1B1A17;
+  --text-dim:  #55524B;
+  --text-mute: #8B857A;
+
+  --signal:    #1F9254;
+  --signal-dim:#E2F1E8;
+  --amber:     #B0720E;
+  --amber-dim: #FBF0DB;
+  --danger:    #C0392E;
+  --danger-dim:#FBEAE7;
+
+  --font-display: 'Instrument Serif', 'Songti SC', serif;
+  --font-body: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  --rail-w: 244px;
+  --radius: 12px;
 }
+
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0;
-  padding: 40px 20px 60px;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--void);
+  color: var(--text);
   font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-.wrap { max-width: 880px; margin: 0 auto; }
+::selection { background: var(--signal); color: var(--void); }
 
-.eyebrow {
+/* ── App shell ─────────────────────────────────────────── */
+#app { display: none; min-height: 100%; }
+#app.ready { display: block; }
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* ── Left rail ─────────────────────────────────────────── */
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--line-soft);
+}
+.railHead {
+  padding: 26px 22px 22px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.brandMark {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.brandMark em {
+  font-style: italic;
+  color: var(--signal);
+}
+.brandVer {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-mute);
+  text-transform: uppercase;
+}
+.brandSub {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-mute);
+  letter-spacing: 0.02em;
+}
+
+.nav { padding: 16px 12px; flex: 1; overflow-y: auto; }
+.navLabel {
+  padding: 10px 12px 7px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.navItem:hover { background: var(--raised); color: var(--text); }
+.navItem.on { background: var(--raised-2); color: var(--text); }
+.navItem.on::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--signal);
+  border-radius: 0 2px 2px 0;
+}
+.navItem svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; }
+.navItem .count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-mute);
+  background: var(--raised-2);
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+.navItem.on .count { color: var(--signal); background: var(--signal-dim); }
+
+.railFoot {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--raised-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-dim);
 }
-.title {
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin: 6px 0 2px;
-}
-.sub { font-size: 13px; color: var(--ink-muted); margin-bottom: 28px; }
-
-/* 登录 */
-.loginCard {
-  background: var(--paper-4);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.field { display: flex; flex-direction: column; gap: 6px; }
-.label { font-size: 12px; color: var(--ink-muted); }
-.input {
-  border: 1px solid var(--line);
-  background: var(--paper-3);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--ink);
-  outline: none;
-}
-.input:focus { border-color: var(--ink); }
-.btn {
-  border: none;
-  background: var(--ink);
-  color: var(--paper-4);
-  border-radius: 10px;
-  padding: 11px 16px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn:hover { background: #2A2A2A; }
-.btn:disabled { opacity: 0.5; cursor: default; }
-.btnGhost {
+.railFootName { font-size: 12.5px; color: var(--text-dim); }
+.railFootName small { display: block; font-size: 10.5px; color: var(--text-mute); }
+.railFoot button {
+  margin-left: auto;
+  border: 0;
   background: transparent;
-  color: var(--ink-muted);
-  border: 1px solid var(--line);
-  font-weight: 500;
+  color: var(--text-mute);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
 }
-.err { font-size: 12px; color: var(--danger); min-height: 16px; }
+.railFoot button:hover { color: var(--danger); background: var(--danger-dim); }
 
-/* 统计 */
-.statsRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-@media (max-width: 640px) { .statsRow { grid-template-columns: 1fr; } }
+/* ── Main ──────────────────────────────────────────────── */
+.main { min-width: 0; display: flex; flex-direction: column; }
+
+/* Signature element: live system status strip */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 9px 30px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.stripItem { display: flex; align-items: center; gap: 7px; }
+.stripVal { color: var(--text-dim); }
+.pulse {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 0 rgba(31, 146, 84, 0.45);
+  animation: pulse 2.4s infinite;
+}
+.pulse.warn { background: var(--amber); box-shadow: 0 0 0 0 rgba(176, 114, 14, 0.45); }
+.pulse.off  { background: var(--danger); box-shadow: none; animation: none; }
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(31,146,84,0.4); }
+  70%  { box-shadow: 0 0 0 6px rgba(31,146,84,0); }
+  100% { box-shadow: 0 0 0 0 rgba(31,146,84,0); }
+}
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* Page header */
+.pageHead {
+  padding: 34px 30px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+}
+.pageTitle em { font-style: italic; color: var(--signal); }
+.pageDesc {
+  margin: 7px 0 0;
+  font-size: 13px;
+  color: var(--text-mute);
+  max-width: 60ch;
+}
+.pageActions { display: flex; gap: 9px; align-items: center; }
+
+.content { padding: 26px 30px 56px; flex: 1; }
+.view { display: none; }
+.view.on { display: block; animation: rise 240ms ease both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .view.on { animation: none; } }
+
+/* ── Stat cards ────────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 26px;
+}
 .stat {
-  background: var(--paper-4);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--line);
+}
+.stat.hot::after { background: var(--signal); }
+.stat.new::after { background: var(--amber); }
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.statVal {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  margin-top: 10px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stat.hot .statVal { color: var(--signal); }
+.stat.new .statVal { color: var(--amber); }
+.statFoot {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-mute);
+}
+
+/* ── 用户构成（App / Web 拆分） ── */
+.splitRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+.splitItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
-.statLabel {
+.splitLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.splitVal {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.splitBar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--raised-2);
+  overflow: hidden;
+}
+.splitFill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  transition: width 320ms cubic-bezier(0.22,1,0.36,1);
+}
+@media (max-width: 720px) {
+  .splitRow { grid-template-columns: 1fr; }
+}
+
+/* ── Panels ────────────────────────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.panelTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: -0.1px;
+}
+.panelTitle em { font-style: italic; color: var(--signal); }
+.panelHint {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-left: auto;
+}
+.panelBody { padding: 20px; }
+
+/* ── Chart (7d activity) ───────────────────────────────── */
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 190px;
+  padding: 6px 4px 0;
+}
+.chartCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 9px;
+  height: 100%;
+}
+.chartBars { display: flex; align-items: flex-end; gap: 3px; height: 100%; width: 100%; }
+.chartBar {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  transition: height 400ms cubic-bezier(0.22,1,0.36,1);
+}
+.chartBar.act { background: var(--signal); opacity: 0.9; }
+.chartBar.new { background: var(--amber); opacity: 0.85; }
+.chartLegend { display: flex; gap: 16px; font-size: 11.5px; color: var(--text-mute); }
+.chartLegend span { display: flex; align-items: center; gap: 6px; }
+.chartLegend i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+.chartDay { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); }
+.chartDay.today { color: var(--signal); }
+
+/* ── Buttons ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--raised-2); color: var(--text); border-color: #C7C2B5; }
+.btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.btn.primary {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.btn.primary:hover { background: #178046; border-color: #178046; color: #FFFFFF; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); border-color: #E8C9C4; }
+.btn.danger:hover { background: var(--danger-dim); color: var(--danger); }
+.btn.sm { padding: 5px 10px; font-size: 11.5px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn svg { width: 14px; height: 14px; }
+
+/* ── Tabs / filter ─────────────────────────────────────── */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--raised);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+}
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 6px 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 130ms ease, color 130ms ease;
+}
+.tab:hover { color: var(--text-dim); }
+.tab.on { background: var(--raised-2); color: var(--text); }
+.tab .count { font-family: var(--font-mono); font-size: 10.5px; opacity: 0.65; margin-left: 4px; }
+
+/* ── Notice list ───────────────────────────────────────── */
+.noticeList { display: flex; flex-direction: column; }
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 130ms ease;
+}
+.notice:last-child { border-bottom: 0; }
+.notice:hover { background: var(--raised); }
+.noticeIcon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--raised-2);
+  color: var(--text-dim);
+}
+.noticeIcon.announcement { color: var(--signal); background: var(--signal-dim); }
+.noticeIcon.update { color: var(--amber); background: var(--amber-dim); }
+.noticeIcon svg { width: 16px; height: 16px; }
+.noticeMain { min-width: 0; flex: 1; }
+.noticeTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.noticeBody {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-mute);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.noticeMeta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-mute);
+}
+.noticeActions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  color: var(--text-mute);
+}
+.pill.live { color: var(--signal); border-color: #B7DCC5; background: var(--signal-dim); }
+.pill.draft { color: var(--text-mute); }
+.pill.ver { color: var(--amber); border-color: #E8D2A6; background: var(--amber-dim); }
+
+/* toggle switch */
+.switch {
+  position: relative;
+  width: 34px; height: 19px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--raised-2);
+  cursor: pointer;
+  padding: 0;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--text-mute);
+  transition: transform 160ms cubic-bezier(0.22,1,0.36,1), background 160ms ease;
+}
+.switch.on { background: var(--signal-dim); border-color: #A9D3BB; }
+.switch.on::after { transform: translateX(15px); background: var(--signal); }
+
+/* ── Forms ─────────────────────────────────────────────── */
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.label {
+  display: block;
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-mute);
+  margin-bottom: 7px;
 }
-.statValue {
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+.input, .textarea, .select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--void);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
-.statHint { font-size: 11px; color: var(--ink-muted); }
+.input:focus, .textarea:focus, .select:focus {
+  outline: none;
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px rgba(31, 146, 84, 0.12);
+}
+.textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+.select { appearance: none; cursor: pointer; }
+.input::placeholder, .textarea::placeholder { color: #A9A49A; }
 
-.panel {
-  background: var(--paper-4);
+.typePick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.typeOpt {
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--void);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.typeOpt:hover { border-color: #C7C2B5; }
+.typeOpt.on { border-color: var(--signal); background: rgba(31,146,84,0.05); }
+.typeOpt.on.update { border-color: var(--amber); background: rgba(176,114,14,0.05); }
+.typeOpt strong { display: block; font-size: 13px; font-weight: 500; color: var(--text); }
+.typeOpt span { display: block; font-size: 11.5px; color: var(--text-mute); margin-top: 3px; }
+
+.checkRow { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.checkRow input { accent-color: var(--signal); width: 15px; height: 15px; cursor: pointer; }
+.checkRow span { font-size: 13px; color: var(--text-dim); }
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modalWrap {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 37, 32, 0.42);
+  backdrop-filter: blur(3px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 60;
+}
+.modalWrap.on { display: flex; }
+.modal {
+  width: 100%;
+  max-width: 540px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 18px;
+  box-shadow: 0 24px 60px rgba(40, 36, 28, 0.18);
 }
-.panelHead {
-  display: flex; align-items: baseline; justify-content: space-between;
+.modalHead {
+  padding: 20px 22px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.modalTitle { font-family: var(--font-display); font-size: 23px; font-weight: 400; margin: 0; }
+.modalDesc { margin: 6px 0 0; font-size: 12.5px; color: var(--text-mute); }
+.modalBody { padding: 20px 22px; }
+.modalFoot {
+  padding: 14px 22px 20px;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line-soft);
+}
+.iconBtn {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 0;
+}
+.iconBtn:hover { color: var(--text); background: var(--raised-2); }
+
+/* ── Toast ─────────────────────────────────────────────── */
+.toasts {
+  position: fixed;
+  right: 22px; bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 90;
+}
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--signal);
+  border-radius: 9px;
+  padding: 11px 15px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(40, 36, 28, 0.14);
+  animation: toastIn 220ms cubic-bezier(0.22,1,0.36,1) both;
+  max-width: 320px;
+}
+.toast.err { border-left-color: var(--danger); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* ── Empty state ───────────────────────────────────────── */
+.empty {
+  padding: 52px 20px;
+  text-align: center;
+}
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.emptyDesc { font-size: 12.5px; color: var(--text-mute); }
+.emptyDesc button {
+  border: 0;
+  background: none;
+  color: var(--signal);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* ── Login ─────────────────────────────────────────────── */
+#login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(900px 500px at 22% 8%, rgba(31,146,84,0.07), transparent 62%),
+    radial-gradient(700px 480px at 88% 92%, rgba(176,114,14,0.06), transparent 60%),
+    var(--void);
+}
+.loginCard {
+  width: 100%;
+  max-width: 372px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 32px 30px;
+  box-shadow: 0 20px 60px rgba(40, 36, 28, 0.16);
+}
+.loginBrand {
+  font-family: var(--font-display);
+  font-size: 29px;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+.loginBrand em { font-style: italic; color: var(--signal); }
+.loginSub {
+  margin: 7px 0 24px;
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+.loginErr {
+  display: none;
   margin-bottom: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--danger-dim);
+  border: 1px solid #E8C9C4;
+  color: var(--danger);
+  font-size: 12.5px;
 }
-.panelTitle { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
-.panelMeta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.loginErr.on { display: block; }
+.loginCard .btn { width: 100%; justify-content: center; margin-top: 6px; padding: 10px; }
 
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 8px 0; font-size: 13px; }
-th { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
-td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
-tr + tr td { border-top: 1px solid var(--line-soft); }
-
-.bar { height: 6px; border-radius: 3px; background: var(--accent); min-width: 2px; }
-.barTrack { width: 140px; background: var(--paper-2); border-radius: 3px; }
-
-.topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .railHead { border-bottom: 0; padding: 14px 18px; flex-shrink: 0; }
+  .brandSub { display: none; }
+  .nav { display: flex; gap: 4px; padding: 10px; flex-shrink: 0; }
+  .navLabel { display: none; }
+  .navItem { white-space: nowrap; padding: 8px 12px; }
+  .navItem.on::before { left: 0; top: auto; bottom: -10px; width: auto; height: 2px; right: 0; }
+  .navItem .count { display: none; }
+  .railFoot { display: none; }
+  .pageHead { padding: 24px 18px 0; }
+  .content { padding: 20px 18px 44px; }
+  .strip { padding: 9px 18px; }
+  .pageTitle { font-size: 29px; }
+  .typePick { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar">
-    <div>
-      <div class="eyebrow">salary timer · analytics</div>
-      <div class="title">数据后台</div>
-    </div>
-    <button id="logout" class="btn btnGhost" style="display:none">退出</button>
-  </div>
 
-  <!-- 登录 -->
-  <div id="loginView" class="loginCard">
+<!-- ══ Login ══ -->
+<div id="login">
+  <form class="loginCard" id="loginForm">
+    <h1 class="loginBrand">Salary <em>Timer</em></h1>
+    <p class="loginSub">控制台 · Console</p>
+    <div class="loginErr" id="loginErr">账号或密码不正确</div>
     <div class="field">
       <label class="label" for="u">账号</label>
-      <input id="u" class="input" autocomplete="username" placeholder="admin" />
+      <input class="input" id="u" name="username" autocomplete="username" placeholder="admin" />
     </div>
     <div class="field">
       <label class="label" for="p">密码</label>
-      <input id="p" class="input" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <input class="input" id="p" name="password" type="password" autocomplete="current-password" placeholder="••••••••" />
     </div>
-    <button id="loginBtn" class="btn">登录</button>
-    <div id="loginErr" class="err"></div>
-  </div>
+    <button class="btn primary" type="submit" id="loginBtn">进入控制台</button>
+  </form>
+</div>
 
-  <!-- 数据 -->
-  <div id="dashView" style="display:none">
-    <div class="statsRow">
-      <div class="stat">
-        <div class="statLabel">Total Users · 总用户</div>
-        <div class="statValue" id="totalUsers">—</div>
-        <div class="statHint">历史去重设备数</div>
+<!-- ══ Console ══ -->
+<div id="app">
+<div class="shell">
+
+  <!-- Left rail -->
+  <aside class="rail">
+    <div class="railHead">
+      <div class="brand">
+        <span class="brandMark">Salary <em>Timer</em></span>
+        <span class="brandVer">console</span>
       </div>
-      <div class="stat">
-        <div class="statLabel">Today Active · 今日活跃</div>
-        <div class="statValue" id="todayActive">—</div>
-        <div class="statHint">今日上报过的设备</div>
-      </div>
-      <div class="stat">
-        <div class="statLabel">New Users · 今日新增</div>
-        <div class="statValue" id="todayNew">—</div>
-        <div class="statHint">首次出现的设备</div>
-      </div>
+      <div class="brandSub">运营控制台</div>
     </div>
 
-    <div class="panel">
-      <div class="panelHead">
-        <div class="panelTitle">最近 7 天</div>
-        <div class="panelMeta" id="updatedAt">—</div>
+    <nav class="nav" id="nav">
+      <div class="navLabel">数据</div>
+      <button class="navItem on" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 7h8V3h-8zM3 21h8v-4H3z"/></svg>
+        概览
+      </button>
+
+      <div class="navLabel">内容</div>
+      <button class="navItem" data-view="announcements">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6a8 8 0 0 1 0 12"/></svg>
+        公告
+        <span class="count" id="navCountAnn">0</span>
+      </button>
+      <button class="navItem" data-view="updates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        更新
+        <span class="count" id="navCountUpd">0</span>
+      </button>
+
+      <div class="navLabel">系统</div>
+      <button class="navItem" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a1.7 1.7 0 0 0-1.5-1H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 3.6V3a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        配置
+      </button>
+    </nav>
+
+    <div class="railFoot">
+      <div class="avatar">A</div>
+      <div class="railFootName">admin<small>管理员</small></div>
+      <button id="logoutBtn" title="退出登录" aria-label="退出登录">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Signature: live status strip -->
+    <div class="strip">
+      <div class="stripItem"><span class="pulse" id="healthDot"></span><span class="stripVal" id="healthText">连接中…</span></div>
+      <div class="stripItem">DB <span class="stripVal" id="stripDb">sqlite</span></div>
+      <div class="stripItem">当前版本 <span class="stripVal" id="stripVersion">—</span></div>
+      <div class="stripItem">已发布公告 <span class="stripVal" id="stripPublished">—</span></div>
+      <div class="stripItem" style="margin-left:auto"><span id="stripClock">—</span></div>
+    </div>
+
+    <!-- Overview -->
+    <section class="view on" id="view-overview">
+      <div class="pageHead">
+        <div>
+          <h1 class="pageTitle">运营<em>概览</em></h1>
+          <p class="pageDesc">每日打开应用即上报一次活跃，同一设备同一天只计一次。</p>
+        </div>
+        <div class="pageActions">
+          <button class="btn" id="refreshStats">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            刷新
+          </button>
+          <button class="btn primary" id="newAnnouncement">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            新建公告
+          </button>
+        </div>
       </div>
-      <table>
-        <thead>
-          <tr><th>日期</th><th>活跃</th><th>新增</th><th style="width:160px">活跃占比</th></tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
+      <div class="content">
+        <div class="stats">
+          <div class="stat">
+            <div class="statLabel">总用户数</div>
+            <div class="statVal" id="sTotal">—</div>
+            <div class="statFoot">累计注册设备</div>
+          </div>
+          <div class="stat hot">
+            <div class="statLabel">今日活跃</div>
+            <div class="statVal" id="sActive">—</div>
+            <div class="statFoot">今天打开过应用</div>
+          </div>
+          <div class="stat new">
+            <div class="statLabel">今日新增</div>
+            <div class="statVal" id="sNew">—</div>
+            <div class="statFoot">首次出现的设备</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:26px">
+          <div class="panelHead">
+            <div class="panelTitle">用户<em>构成</em></div>
+            <div class="panelHint">按首次上报时的客户端类型归类</div>
+          </div>
+          <div class="panelBody">
+            <div class="splitRow">
+              <div class="splitItem">
+                <span class="splitLabel">App 端</span>
+                <span class="splitVal" id="sApp">—</span>
+                <span class="splitBar">
+                  <span class="splitFill" id="sAppBar" style="background:var(--signal)"></span>
+                </span>
+              </div>
+              <div class="splitItem">
+                <span class="splitLabel">Web 端</span>
+                <span class="splitVal" id="sWeb">—</span>
+                <span class="splitBar">
+                  <span class="splitFill" id="sWebBar" style="background:var(--amber)"></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHead">
+            <div class="panelTitle">近 7 日<em>活跃</em></div>
+            <div class="panelHint">
+              <span class="chartLegend">
+                <span><i style="background:var(--signal)"></i>活跃</span>
+                <span><i style="background:var(--amber)"></i>新增</span>
+              </span>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="chart" id="chart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Announcements -->
+    <section class="view" id="view-announcements">
+      <div class="pageHead">
+        <div>
+          <h1 class="pageTitle"><em>公告</em>管理</h1>
+          <p class="pageDesc">公告为纯展示内容。用户查看一次后不再提示。</p>
+        </div>
+        <div class="pageActions">
+          <button class="btn primary" data-new="announcement">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            新建公告
+          </button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="panel">
+          <div class="panelHead">
+            <div class="panelTitle">全部公告</div>
+            <div class="panelHint">共 <span id="annCount">0</span> 条</div>
+          </div>
+          <div class="noticeList" id="annList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Updates -->
+    <section class="view" id="view-updates">
+      <div class="pageHead">
+        <div>
+          <h1 class="pageTitle"><em>更新</em>发布</h1>
+          <p class="pageDesc">
+            Web 端等同公告，看过即不提示。App 端会比对版本号，未升级到目标版本时每天提示一次。
+          </p>
+        </div>
+        <div class="pageActions">
+          <button class="btn primary" data-new="update">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            发布更新
+          </button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="panel">
+          <div class="panelHead">
+            <div class="panelTitle">更新记录</div>
+            <div class="panelHint">共 <span id="updCount">0</span> 条</div>
+          </div>
+          <div class="noticeList" id="updList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <div class="pageHead">
+        <div>
+          <h1 class="pageTitle">系统<em>配置</em></h1>
+          <p class="pageDesc">影响客户端行为的站点级配置，保存后立即生效。</p>
+        </div>
+      </div>
+      <div class="content">
+        <div class="panel" style="max-width:640px">
+          <div class="panelHead"><div class="panelTitle">站点配置</div></div>
+          <div class="panelBody">
+            <div class="field">
+              <label class="label" for="cfgCurrent">当前发布版本号</label>
+              <input class="input" id="cfgCurrent" placeholder="3.1.0" />
+              <div style="font-size:11.5px;color:var(--text-mute);margin-top:6px">
+                App 端收到版本更新提示时，会用这个版本号和客户端版本比对。
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="cfgGuide">使用指南链接</label>
+              <input class="input" id="cfgGuide" placeholder="https://example.com/guide" />
+              <div style="font-size:11.5px;color:var(--text-mute);margin-top:6px">
+                客户端「我的 → 更多 → 使用指南」会读取这个链接，支持复制或直接打开。留空则该入口提示未配置。
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="cfgNotice">默认公告内容（可选）</label>
+              <textarea class="textarea" id="cfgNotice" placeholder="留空则不展示默认公告"></textarea>
+            </div>
+            <div class="field">
+              <label class="label" for="cfgFoot">页脚文案</label>
+              <input class="input" id="cfgFoot" placeholder="例：反馈邮箱 support@example.com" />
+            </div>
+            <button class="btn primary" id="saveSettings">保存配置</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<!-- ══ Editor modal ══ -->
+<div class="modalWrap" id="editorModal">
+  <div class="modal">
+    <div class="modalHead">
+      <div style="min-width:0">
+        <h2 class="modalTitle" id="edTitle">新建公告</h2>
+        <p class="modalDesc" id="edDesc">填写内容后保存，可选择是否立即发布。</p>
+      </div>
+      <button class="iconBtn" id="edClose" aria-label="关闭">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modalBody">
+      <div class="field">
+        <span class="label">类型</span>
+        <div class="typePick" id="edTypePick">
+          <button class="typeOpt on" data-type="announcement" type="button">
+            <strong>公告</strong>
+            <span>纯展示，看过一次不再提示</span>
+          </button>
+          <button class="typeOpt update" data-type="update" type="button">
+            <strong>更新</strong>
+            <span>App 端比对版本，每日可提示</span>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="edName">标题</label>
+        <input class="input" id="edName" placeholder="例：v3.2.0 更新说明" />
+      </div>
+      <div class="field">
+        <label class="label" for="edBody">正文</label>
+        <textarea class="textarea" id="edBody" placeholder="支持换行"></textarea>
+      </div>
+      <div class="field" id="edVerField" style="display:none">
+        <label class="label" for="edVer">目标版本号</label>
+        <input class="input" id="edVer" placeholder="例：3.2.0" />
+        <div style="font-size:11.5px;color:var(--text-mute);margin-top:6px">
+          只有当客户端版本低于此版本号时才会提示更新。
+        </div>
+      </div>
+      <div class="field">
+        <label class="checkRow">
+          <input type="checkbox" id="edPublished" />
+          <span>立即发布（不勾选则保存为草稿）</span>
+        </label>
+      </div>
+    </div>
+    <div class="modalFoot">
+      <button class="btn ghost" id="edCancel">取消</button>
+      <button class="btn primary" id="edSave">保存</button>
     </div>
   </div>
 </div>
 
-<script>
-const TOKEN_KEY = 'st_admin_token';
-const $ = (id) => document.getElementById(id);
+<!-- ══ Confirm modal ══ -->
+<div class="modalWrap" id="confirmModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modalHead">
+      <div>
+        <h2 class="modalTitle" id="cfTitle">确认删除</h2>
+        <p class="modalDesc" id="cfDesc">删除后无法恢复。</p>
+      </div>
+    </div>
+    <div class="modalFoot">
+      <button class="btn ghost" id="cfCancel">取消</button>
+      <button class="btn danger" id="cfOk">删除</button>
+    </div>
+  </div>
+</div>
 
-function token() { return sessionStorage.getItem(TOKEN_KEY) || ''; }
-function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
-function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
+<div class="toasts" id="toasts"></div>
+
+<script>
+'use strict';
+
+const TOKEN_KEY = 'st_admin_token';
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+let token = null;
+let notices = [];
+let editingId = null;
+let editingType = 'announcement';
+let pendingDelete = null;
+
+// ── helpers ───────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+function toast(msg, isErr) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+async function api(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (token) headers['x-admin-token'] = token;
+  if (opts.body !== undefined) headers['content-type'] = 'application/json';
+  const res = await fetch(path, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+  });
+  let data = null;
+  try { data = await res.json(); } catch { /* ignore */ }
+  if (!res.ok) {
+    const msg = (data && data.error) || `HTTP ${res.status}`;
+    throw new Error(msg === 'unauthorized' ? '登录已过期，请重新登录' : msg);
+  }
+  return data;
+}
+
+// ── login ─────────────────────────────────────────────────
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#loginBtn');
+  btn.disabled = true;
+  btn.textContent = '登录中…';
+  try {
+    const data = await api('/api/auth/login', {
+      method: 'POST',
+      body: { username: $('#u').value, password: $('#p').value },
+    });
+    token = data.token;
+    localStorage.setItem(TOKEN_KEY, token);
+    $('#loginErr').classList.remove('on');
+    showApp();
+    await refreshAll();
+  } catch (err) {
+    $('#loginErr').classList.add('on');
+    $('#loginErr').textContent = err.message || '登录失败';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '进入控制台';
+  }
+});
+
+function showApp() {
+  $('#login').style.display = 'none';
+  $('#app').classList.add('ready');
+}
+
+// ── nav ───────────────────────────────────────────────────
+$$('#nav .navItem').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#nav .navItem').forEach((b) => b.classList.toggle('on', b === btn));
+    const v = btn.dataset.view;
+    $$('.view').forEach((s) => s.classList.toggle('on', s.id === 'view-' + v));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+$('#logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem(TOKEN_KEY);
+  token = null;
+  location.reload();
+});
+
+// ── data loading ─────────────────────────────────────────
+async function refreshAll() {
+  await Promise.all([loadStats(), loadNotices(), loadSettings()]);
+  tickClock();
+}
 
 async function loadStats() {
-  const res = await fetch('/api/stats', { headers: { 'x-admin-token': token() } });
-  if (res.status === 401) { clearToken(); showLogin(); return; }
-  const data = await res.json();
-  if (!data.ok) return;
-
-  $('totalUsers').textContent = data.totalUsers;
-  $('todayActive').textContent = data.todayActive;
-  $('todayNew').textContent = data.todayNewUsers;
-
-  const max = Math.max(1, ...data.last7Days.map((d) => d.active));
-  $('rows').innerHTML = data.last7Days.map((d) => `
-    <tr>
-      <td>${d.day}</td>
-      <td class="num">${d.active}</td>
-      <td class="num">${d.newUsers}</td>
-      <td><div class="barTrack"><div class="bar" style="width:${Math.round((d.active / max) * 100)}%"></div></div></td>
-    </tr>
-  `).join('');
-
-  $('updatedAt').textContent = 'updated ' + new Date().toLocaleTimeString('zh-CN');
-  $('loginView').style.display = 'none';
-  $('dashView').style.display = '';
-  $('logout').style.display = '';
-}
-
-function showLogin() {
-  $('loginView').style.display = '';
-  $('dashView').style.display = 'none';
-  $('logout').style.display = 'none';
-}
-
-$('loginBtn').onclick = async () => {
-  $('loginErr').textContent = '';
-  $('loginBtn').disabled = true;
   try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: $('u').value, password: $('p').value }),
-    });
-    const data = await res.json();
-    if (!data.ok) { $('loginErr').textContent = data.error || '登录失败'; return; }
-    setToken(data.token);
-    await loadStats();
-  } catch (e) {
-    $('loginErr').textContent = '网络错误，请稍后再试';
-  } finally {
-    $('loginBtn').disabled = false;
+    const s = await api('/api/stats');
+    $('#sTotal').textContent = fmtNum(s.totalUsers);
+    $('#sActive').textContent = fmtNum(s.todayActive);
+    $('#sNew').textContent = fmtNum(s.todayNewUsers);
+
+    // 用户构成：App / Web
+    const appUsers = Number(s.appUsers ?? 0);
+    const webUsers = Number(s.webUsers ?? 0);
+    $('#sApp').textContent = fmtNum(appUsers);
+    $('#sWeb').textContent = fmtNum(webUsers);
+    const total = appUsers + webUsers;
+    const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+    $('#sAppBar').style.width = pct(appUsers) + '%';
+    $('#sWebBar').style.width = pct(webUsers) + '%';
+
+    renderChart(s.last7Days || []);
+  } catch (err) {
+    setHealth(false, err.message);
   }
-};
+}
+function fmtNum(n) {
+  return Number(n ?? 0).toLocaleString('en-US');
+}
 
-$('p').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loginBtn').click(); });
-$('logout').onclick = () => { clearToken(); showLogin(); };
+function renderChart(days) {
+  const chart = $('#chart');
+  if (!days.length) { chart.innerHTML = '<div class="emptyDesc">暂无数据</div>'; return; }
+  const max = Math.max(1, ...days.map((d) => Math.max(d.active, d.newUsers)));
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-if (token()) loadStats();
-else showLogin();
+  chart.innerHTML = days.map((d) => {
+    const isToday = d.day === todayKey;
+    const ah = Math.max(3, Math.round((d.active / max) * 100));
+    const nh = d.newUsers > 0 ? Math.max(3, Math.round((d.newUsers / max) * 100)) : 0;
+    const wd = '日一二三四五六'[new Date(d.day + 'T00:00:00').getDay()];
+    return `<div class="chartCol">
+      <div class="chartBars">
+        <div class="chartBar act" style="height:${ah}%" title="活跃 ${d.active}"></div>
+        ${nh ? `<div class="chartBar new" style="height:${nh}%" title="新增 ${d.newUsers}"></div>` : ''}
+      </div>
+      <div class="chartDay${isToday ? ' today' : ''}">${wd}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadNotices() {
+  try {
+    const data = await api('/api/notices?includeDrafts=true');
+    notices = data.notices || [];
+    renderNotices();
+    const anns = notices.filter((n) => n.type === 'announcement');
+    const upds = notices.filter((n) => n.type === 'update');
+    $('#navCountAnn').textContent = anns.length;
+    $('#navCountUpd').textContent = upds.length;
+    $('#annCount').textContent = anns.length;
+    $('#updCount').textContent = upds.length;
+    $('#stripPublished').textContent = notices.filter((n) => n.published).length;
+    const latestUpd = upds.find((n) => n.published);
+    $('#stripVersion').textContent = (latestUpd && latestUpd.version) || (settings.currentVersion || '—');
+  } catch (err) {
+    setHealth(false, err.message);
+  }
+}
+
+function renderNotices() {
+  renderNoticeList('announcement', '#annList');
+  renderNoticeList('update', '#updList');
+}
+
+function renderNoticeList(type, sel) {
+  const list = notices.filter((n) => n.type === type);
+  const box = $(sel);
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">
+      <div class="emptyTitle">还没有${type === 'announcement' ? '公告' : '更新'}</div>
+      <div class="emptyDesc">点右上角「新建${type === 'announcement' ? '公告' : '更新'}」创建第一条</div>
+    </div>`;
+    return;
+  }
+  box.innerHTML = list.map((n) => `
+    <div class="notice" data-id="${n.id}">
+      <div class="noticeIcon ${n.type}">
+        ${n.type === 'announcement'
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>'}
+      </div>
+      <div class="noticeMain">
+        <div class="noticeTitle">
+          ${esc(n.title)}
+          ${n.published ? '<span class="pill live">已发布</span>' : '<span class="pill draft">草稿</span>'}
+          ${n.type === 'update' && n.version ? `<span class="pill ver">v${esc(n.version)}</span>` : ''}
+        </div>
+        ${n.body ? `<div class="noticeBody">${esc(n.body).replace(/\n/g, '<br>')}</div>` : ''}
+        <div class="noticeMeta">
+          <span>#${n.id}</span>
+          <span>${fmtTime(n.createdAt)}</span>
+        </div>
+      </div>
+      <div class="noticeActions">
+        <button class="switch${n.published ? ' on' : ''}" data-act="toggle" title="${n.published ? '下线' : '发布'}" aria-label="${n.published ? '下线' : '发布'}"></button>
+        <button class="btn sm" data-act="edit">编辑</button>
+        <button class="btn sm danger" data-act="del">删除</button>
+      </div>
+    </div>`).join('');
+}
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const id = Number(btn.closest('.notice').dataset.id);
+  const n = notices.find((x) => x.id === id);
+  if (!n) return;
+
+  if (btn.dataset.act === 'toggle') {
+    try {
+      await api('/api/notices/' + id, { method: 'PATCH', body: { published: !n.published } });
+      toast(n.published ? '已下线' : '已发布');
+      await loadNotices();
+    } catch (err) { toast(err.message, true); }
+  } else if (btn.dataset.act === 'edit') {
+    openEditor(n);
+  } else if (btn.dataset.act === 'del') {
+    pendingDelete = n;
+    $('#cfTitle').textContent = '删除「' + n.title + '」';
+    $('#cfDesc').textContent = '删除后无法恢复。';
+    $('#confirmModal').classList.add('on');
+  }
+});
+
+// ── editor ────────────────────────────────────────────────
+/**
+ * 打开编辑器
+ * @param n        传入已有公告 = 编辑模式；传 null = 新建
+ * @param newType  新建时的默认类型（announcement / update）
+ */
+function openEditor(n, newType) {
+  editingId = n ? n.id : null;
+  editingType = n ? n.type : (newType || 'announcement');
+  $('#edTitle').textContent = n ? '编辑' + (n.type === 'update' ? '更新' : '公告') : '新建' + (editingType === 'update' ? '更新' : '公告');
+  $('#edDesc').textContent = n ? '修改后保存立即生效。' : '填写内容后保存，可选择是否立即发布。';
+  $('#edName').value = n ? n.title : '';
+  $('#edBody').value = n ? n.body : '';
+  $('#edVer').value = n && n.version ? n.version : '';
+  // 新建时默认立即发布（草稿需要主动取消勾选）
+  $('#edPublished').checked = n ? n.published : true;
+  setEditorType(editingType);
+  $('#editorModal').classList.add('on');
+  setTimeout(() => $('#edName').focus(), 60);
+}
+function setEditorType(t) {
+  editingType = t;
+  $$('#edTypePick .typeOpt').forEach((b) => b.classList.toggle('on', b.dataset.type === t));
+  $('#edVerField').style.display = t === 'update' ? '' : 'none';
+  if (t === 'update' && !$('#edVer').value) $('#edVer').value = '3.2.0';
+}
+$$('#edTypePick .typeOpt').forEach((b) => {
+  b.addEventListener('click', () => setEditorType(b.dataset.type));
+});
+$('#edClose').addEventListener('click', () => $('#editorModal').classList.remove('on'));
+$('#edCancel').addEventListener('click', () => $('#editorModal').classList.remove('on'));
+
+$('#edSave').addEventListener('click', async () => {
+  const title = $('#edName').value.trim();
+  if (!title) { toast('请填写标题', true); $('#edName').focus(); return; }
+  const body = {
+    type: editingType,
+    title,
+    body: $('#edBody').value,
+    version: editingType === 'update' ? ($('#edVer').value.trim() || null) : null,
+    published: $('#edPublished').checked,
+  };
+  const btn = $('#edSave');
+  btn.disabled = true;
+  try {
+    if (editingId) {
+      await api('/api/notices/' + editingId, { method: 'PATCH', body });
+      toast('已保存');
+    } else {
+      await api('/api/notices', { method: 'POST', body });
+      toast('已创建');
+    }
+    $('#editorModal').classList.remove('on');
+    await loadNotices();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$$('[data-new]').forEach((b) => {
+  b.addEventListener('click', () => openEditor(null, b.dataset.new));
+});
+$('#newAnnouncement').addEventListener('click', () => openEditor(null, 'announcement'));
+
+// ── confirm delete ────────────────────────────────────────
+$('#cfCancel').addEventListener('click', () => {
+  pendingDelete = null;
+  $('#confirmModal').classList.remove('on');
+});
+$('#cfOk').addEventListener('click', async () => {
+  if (!pendingDelete) return;
+  const id = pendingDelete.id;
+  pendingDelete = null;
+  $('#confirmModal').classList.remove('on');
+  try {
+    await api('/api/notices/' + id, { method: 'DELETE' });
+    toast('已删除');
+    await loadNotices();
+  } catch (err) { toast(err.message, true); }
+});
+
+// ── settings ──────────────────────────────────────────────
+let settings = {};
+async function loadSettings() {
+  try {
+    const data = await api('/api/settings');
+    settings = data.settings || {};
+    $('#cfgCurrent').value = settings.currentVersion || '';
+    $('#cfgGuide').value = settings.userGuideUrl || '';
+    $('#cfgNotice').value = settings.defaultNotice || '';
+    $('#cfgFoot').value = settings.footerText || '';
+  } catch (err) {
+    setHealth(false, err.message);
+  }
+}
+$('#saveSettings').addEventListener('click', async () => {
+  try {
+    const data = await api('/api/settings', {
+      method: 'PUT',
+      body: { settings: {
+        currentVersion: $('#cfgCurrent').value.trim(),
+        userGuideUrl: $('#cfgGuide').value.trim(),
+        defaultNotice: $('#cfgNotice').value,
+        footerText: $('#cfgFoot').value.trim(),
+      } },
+    });
+    settings = data.settings || settings;
+    toast('配置已保存');
+    await loadNotices();
+  } catch (err) { toast(err.message, true); }
+});
+
+// ── status strip ──────────────────────────────────────────
+function setHealth(ok, msg) {
+  const dot = $('#healthDot');
+  dot.className = 'pulse' + (ok ? '' : ' off');
+  $('#healthText').textContent = ok ? 'API 在线' : (msg || 'API 离线');
+}
+function tickClock() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  $('#stripClock').textContent = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+setInterval(tickClock, 1000);
+$('#refreshStats').addEventListener('click', async () => {
+  await Promise.all([loadStats(), loadNotices()]);
+  toast('已刷新');
+});
+
+// ── boot ──────────────────────────────────────────────────
+(async function boot() {
+  token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return;
+  try {
+    await api('/api/stats');
+    showApp();
+    await refreshAll();
+    setHealth(true);
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    token = null;
+  }
+})();
 </script>
 </body>
 </html>

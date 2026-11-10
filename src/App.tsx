@@ -32,6 +32,8 @@ import { DesktopRightPanel } from './components/DesktopRightPanel';
 import { SettingsDrawer } from './components/SettingsDrawer';
 import { SalaryLinkageSync } from './hooks/useSalaryLinkageSync';
 import { useDailyPing } from './hooks/useDailyPing';
+import { useNotices } from './hooks/useNotices';
+import { NoticeModal } from './components/NoticeModal/NoticeModal';
 import './styles/tokens.css';
 import styles from './App.module.css';
 
@@ -98,6 +100,8 @@ export function App() {
   const scale = useDesktopScale();
   // v3.2：App 打开时上报一次日活（每天仅一次）
   useDailyPing();
+  // v3.2：公告 / 更新队列（打开时静默拉一次）
+  const notices = useNotices();
   // v2.1 TASK-037:移动端双主题;tabIndex 跨主题保持索引对应
   const mode = useAppModeStore((s) => s.mode);
   const setMode = useAppModeStore((s) => s.setMode);
@@ -237,6 +241,9 @@ export function App() {
             <SettingsPage />
           </SettingsDrawer>
           </div>
+
+          {/* v3.2：公告 / 更新弹窗 */}
+          <NoticeModal notice={notices.current} onClose={notices.dismiss} />
         </div>
       </div>
     );
@@ -288,6 +295,9 @@ export function App() {
           if (idx >= 0) setTabIndex(idx);
         }}
       />
+
+      {/* v3.2：公告 / 更新弹窗 */}
+      <NoticeModal notice={notices.current} onClose={notices.dismiss} />
     </div>
   );
 }
