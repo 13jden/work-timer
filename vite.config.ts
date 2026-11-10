@@ -256,9 +256,43 @@ export default defineConfig({
         // 清理过期缓存(超过 30 个版本)
         cleanupOutdatedCaches: true,
         // SPA fallback:任何未知路由回 index.html
+        //
+        // ⚠️ navigateFallback 会捕获**所有**导航请求(navigate 类型的 fetch),
+        //    包括 /admin 和 /api/*。这会造成:
+        //    - 手机主屏 PWA 打开 /admin → 被 SW 重写成 /index.html,
+        //      用户看到的是首页而不是管理后台(普通浏览器标签页却正常,
+        //      因为没装 SW)—— 表现为「时好时坏」,极难排查。
+        //    - /api/* 的请求被 HTML 化,后端接口在 PWA 里全部拿不到 JSON。
+        //
+        // 所以这里必须用 denylist 把这两类路径排除在 fallback 之外,
+        // 让它们**直接走网络**,由服务端(Caddy → api 容器)处理。
         navigateFallback: '/index.html',
-        // 静态资源 cache-first
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin(\/|$)/],
+        // ── /api 与 /admin 显式走网络 ──────────────────────────
+        //
+        // navigateFallbackDenylist 只解决**导航请求**(浏览器地址栏跳转、
+        // 主屏图标启动)。但 App 里的 fetch(/api/ping) 这类
+        // **非导航**请求同样会被 SW 拦截,拿不到后端 JSON。
+        //
+        // workbox 的路由按注册顺序匹配,**先注册先生效**,
+        // 所以把这两条放在 runtimeCaching 开头,
+        // 就能抢在 NavigationRoute 之前接管:
+        //   - /admin → NetworkOnly(管理后台永远拿服务端最新版本)
+        //   - /api/* → NetworkOnly(接口数据绝不走缓存)
+        //
+        // NetworkOnly 而不是 NetworkFirst:缓存对管理后台和接口
+        // 没有任何价值,只会在后端短暂不可用时给出**误导性的旧数据**。
         runtimeCaching: [
+          {
+            urlPattern: ({ url, request }) =>
+              request.mode === 'navigate' && /^\/admin(\/|$)/.test(url.pathname),
+            handler: 'NetworkOnly',
+            method: 'GET',
+          },
+          {
+            urlPattern: ({ url }) => /^\/api\//.test(url.pathname),
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
