@@ -31,7 +31,6 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           command_timeout: 5m
-          script_stop: true
           script: |
             set -e
             cd ${{ secrets.SERVER_PROJECT_DIR }}
@@ -62,7 +61,6 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           command_timeout: 5m
-          script_stop: true
           script: |
             set -e
             cd ${{ secrets.SERVER_PROJECT_DIR }}
@@ -122,9 +120,16 @@ jobs:
       # 4. 构建镜像(只 COPY dist,秒级)并重建容器
       #
       #    注意 `docker compose up -d --build` 会构建并启动**所有**服务,
-      #    包括后端 api 容器(server/Dockerfile)。后端镜像要编译
-      #    better-sqlite3 原生模块(alpine 无预编译包),比前端慢不少,
-      #    所以这里的 command_timeout 放宽到 25m。
+      #    包括后端 api 容器(server/Dockerfile)。
+      #
+      #    ⚠️ 历史事故(2026-11-10 · Deploy #25):
+      #    这一步曾在 26m 处超时失败,导致后端容器没起来,
+      #    线上 /admin 和 /api/* 全部落回 SPA 首页。
+      #    根因是 alpine(musl) 拿不到 better-sqlite3 的预编译二进制,
+      #    回退 node-gyp 源码编译把构建拖到 25 分钟以上。
+      #    修法:server/Dockerfile 换成 node:22-slim(glibc,直接命中官方
+      #    linux-x64 预编译包)+ server/.npmrc 把二进制源指到 npmmirror。
+      #    现在构建只要 1~2 分钟,这里的 30m 是**兜底**,不是预期耗时。
       - name: Build image and recreate container
         uses: appleboy/ssh-action@v1.2.5
         with:
@@ -133,12 +138,104 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          command_timeout: 25m
-          script_stop: true
+          command_timeout: 30m
           script: |
             set -e
             cd ${{ secrets.SERVER_PROJECT_DIR }}
             test -f dist/index.html || { echo "DEPLOY FAILED: dist/index.html missing on server"; exit 1; }
+
+            # ── 后端镜像构建前的「源探测 + 预编译包预检」────────────
+            #
+            # 为什么要做这一段:
+            # better-sqlite3 是原生模块,预编译二进制托管在 GitHub Releases,
+            # 国内服务器拉不动就会回退 node-gyp 源码编译,把构建拖到 25 分钟
+            # 冲穿 timeout(Deploy #25 就是这么挂的)。
+            #
+            # 现在 server/Dockerfile 换成了 node:22-slim(glibc),
+            # server/.npmrc + ENV 把二进制源指到 npmmirror CDN,应该秒命中。
+            # 但「国内服务器连 npmmirror 稳不稳」本身就不确定,
+            # 所以这里**实测**一遍再决定用哪个源,把结论喂给 docker build。
+            #
+            # 三件事:
+            #   1) 探测 npm 源:npmjs.org / npmmirror,谁先通用谁
+            #   2) 校验 better-sqlite3 预编译包在 npmmirror CDN 上确实存在
+            #   3) 两者任一不过 → **立刻失败**,把问题暴露在部署最开始,
+            #      而不是等 25 分钟后拿一个 timeout 交差
+            #
+            # 注意 better-sqlite3 的版本要从 lock 文件里读,
+            # 写死会随依赖升级悄悄失效。
+            echo "=== npm 源探测 ==="
+            #
+            # 优先 npmmirror(国内 CDN,快),不通则退回官方 registry。
+            # 两个都探测不到就直接失败 —— 那说明服务器根本没网,
+            # 继续下去也只会浪费 30 分钟超时。
+            NPM_REGISTRY=""
+            for candidate in "https://registry.npmmirror.com" "https://registry.npmjs.org"; do
+              if curl -sSfL --max-time 20 -o /dev/null "${candidate}/better-sqlite3"; then
+                NPM_REGISTRY="$candidate"
+                echo "OK npm 源可用: $candidate"
+                break
+              else
+                echo "   npm 源不可用: $candidate"
+              fi
+            done
+            if [ -z "$NPM_REGISTRY" ]; then
+              echo "DEPLOY FAILED: 两个 npm 源都连不上,服务器网络异常"
+              exit 1
+            fi
+            # 把选定的源写进 .env,供 docker-compose 的 build args 读取
+            if grep -qE '^NPM_REGISTRY=' .env 2>/dev/null; then
+              sed -i "s|^NPM_REGISTRY=.*|NPM_REGISTRY=${NPM_REGISTRY}|" .env
+            else
+              echo "NPM_REGISTRY=${NPM_REGISTRY}" >> .env
+            fi
+            echo "  选定源: $NPM_REGISTRY"
+
+            echo "=== better-sqlite3 预编译包预检 ==="
+            #
+            # 版本与 ABI 都从仓库文件里**用 grep/awk 解析**,
+            # 不依赖服务器上装了 node(宿主机不一定有,node 只在容器里)。
+            #
+            #   better-sqlite3 版本 ← server/package-lock.json
+            #   Node ABI        ← server/Dockerfile 的 FROM node:XX
+            #
+            # 两者的对应关系是固定的(Node 的 ABI 号从 v18 起就没变过):
+            #   node 18 → 108    node 20 → 115    node 22 → 127
+            #   node 23 → 131    node 24 → 137
+            # Dockerfile 里实际用的是动态读取(process.versions.modules),
+            # 这里只是**提前**验一遍 CDN 上有没有对应的包,
+            # 免得真到了 docker build 才发现拉不到。
+            BS3_VER=$(grep -A3 '"node_modules/better-sqlite3"' server/package-lock.json \
+                      | grep -m1 '"version"' \
+                      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            NODE_MAJOR=$(grep -oE '^FROM node:[0-9]+' server/Dockerfile | head -1 | grep -oE '[0-9]+')
+            case "$NODE_MAJOR" in
+              18) BS3_ABI=108 ;;
+              20) BS3_ABI=115 ;;
+              22) BS3_ABI=127 ;;
+              23) BS3_ABI=131 ;;
+              24) BS3_ABI=137 ;;
+              *)  BS3_ABI="" ;;
+            esac
+
+            if [ -z "$BS3_VER" ] || [ -z "$BS3_ABI" ]; then
+              echo "DEPLOY FAILED: 解析 better-sqlite3 版本或 Node ABI 失败 (ver=$BS3_VER major=$NODE_MAJOR)"
+              echo "排查: server/package-lock.json 与 server/Dockerfile 是否被改动"
+              exit 1
+            fi
+
+            # URL 规则（见 prebuild-install/util.js 的 urlTemplate）:
+            #   {name}-v{version}-node-v{abi}-{platform}{libc}-{arch}.tar.gz
+            #   linux + glibc → platform=linux, libc=''
+            BS3_URL="https://cdn.npmmirror.com/binaries/better-sqlite3/v${BS3_VER}/better-sqlite3-v${BS3_VER}-node-v${BS3_ABI}-linux-x64.tar.gz"
+            echo "预编译包: $BS3_URL"
+            if curl -sSfL --max-time 30 -o /dev/null "$BS3_URL"; then
+              echo "✓ better-sqlite3 v${BS3_VER} (ABI ${BS3_ABI}) 预编译包可用(无需源码编译)"
+            else
+              echo "DEPLOY FAILED: better-sqlite3 v${BS3_VER} 的 node-v${BS3_ABI}-linux-x64 预编译包拉不到"
+              echo "排查: 1) 服务器到 cdn.npmmirror.com 的连通性 2) Node 版本是否与上面的 ABI 映射对应"
+              exit 1
+            fi
 
             # 阿里云建站产品以容器形式占着 80/443(平台内删不掉)→ 停掉并禁止自启,把端口还给我们
             # 用 docker 官方 --filter publish= 查端口归属,不解析 docker port 的文本输出
@@ -171,7 +268,35 @@ jobs:
             fi
             echo "前置条件: 阿里云安全组已放行 80 和 443;占用端口的建站容器已在上一步被停止"
 
-            docker compose up -d --build --force-recreate
+            # ── 后端镜像先单独构建 ──────────────────────────────────
+            #
+            # 为什么单独构建 api 再整体 up:
+            #   `docker compose up -d --build` 会**先构建所有服务**,
+            #   任一构建失败就整体退出 —— 前端容器 work-timer 不会被重建,
+            #   线上继续跑着**旧 Caddyfile**(没有 /admin 路由),
+            #   于是 /admin 依旧打不开,而且日志里只有一个笼统的失败。
+            #
+            #   先单独构建 api:构建失败 → 立刻报错,前端容器保持原样(线上不受影响);
+            #   构建成功 → 再整体 up,两个容器一起换新,路由立刻生效。
+            #
+            # 这一步顺带让「构建耗时」变得可见:
+            #   构建前打印时间戳,构建后打印耗时,超时前能看出卡在哪。
+            echo "=== 构建后端镜像(api) ==="
+            BUILD_START=$(date +%s)
+            docker compose build api
+            BUILD_END=$(date +%s)
+            echo "后端镜像构建耗时: $((BUILD_END - BUILD_START))s"
+
+            echo "=== 构建前端镜像(work-timer) ==="
+            # 前端镜像只 COPY dist + Caddyfile,构建是秒级的
+            # (dist 由 CI 构建好 scp 上来,服务器不跑 npm/vite)
+            BUILD_START=$(date +%s)
+            docker compose build work-timer
+            BUILD_END=$(date +%s)
+            echo "前端镜像构建耗时: $((BUILD_END - BUILD_START))s"
+
+            echo "=== 重建全部容器 ==="
+            docker compose up -d --force-recreate
             docker image prune -f
             echo "=== Deploy done ==="
             docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
@@ -286,10 +411,39 @@ jobs:
           fi
 
           echo "--- 管理后台静态页 ---"
+          #
+          # ⚠️ 这里**不能只看 HTTP 状态码**。
+          #
+          # 旧 Caddyfile 只有 `try_files {path} {path}/index.html /index.html`,
+          # 任何不存在的路径(包括 /admin 和 /api/*)都会被 SPA fallback
+          # 重写成**首页 HTML**,并且返回 **200**。
+          #
+          # 所以「/admin 返回 200」在路由没配好时同样成立 ——
+          # 这正是 Deploy #25 明明「验证通过」却让线上 /admin 打不开的原因。
+          #
+          # 正确做法:校验响应**内容**是不是管理后台页面。
+          # server/public/admin/index.html 里有特征性的登录表单 id(#u / #p)。
+          ADMIN_HTML=$(curl -sS --max-time 10 "https://$DOMAIN/admin" || true)
           ADMIN_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$DOMAIN/admin" || true)
-          echo "/admin HTTP $ADMIN_CODE"
-          if [ "$ADMIN_CODE" != "200" ] && [ "$ADMIN_CODE" != "301" ] && [ "$ADMIN_CODE" != "302" ]; then
+          echo "/admin HTTP $ADMIN_CODE,响应长度 ${#ADMIN_HTML}"
+          if [ "$ADMIN_CODE" != "200" ]; then
             echo "VERIFY FAILED: /admin 不可达 (HTTP $ADMIN_CODE)"
             exit 1
           fi
-          echo "✓ 管理后台可访问"
+          if echo "$ADMIN_HTML" | grep -q 'id="u"'; then
+            echo "✓ 管理后台可访问(返回的是管理页,不是 SPA 首页)"
+          else
+            echo "VERIFY FAILED: /admin 返回的不是管理后台页面"
+            echo "  典型原因: Caddyfile 的 handle /admin* 路由没生效,被 SPA fallback 吞掉了"
+            echo "  排查: 服务器上 docker compose logs --tail=50 work-timer 看 Caddy 路由配置"
+            exit 1
+          fi
+
+          echo "--- 后端接口不被 SPA 吞掉(回归检查)---"
+          # 同理,/api/* 也必须返回 JSON 而不是首页 HTML
+          API_BODY=$(curl -sS --max-time 10 "https://$DOMAIN/api/config" || true)
+          if echo "$API_BODY" | grep -q '<!DOCTYPE html>'; then
+            echo "VERIFY FAILED: /api/config 返回了 HTML,说明 /api 路由没生效"
+            exit 1
+          fi
+          echo "✓ /api 路由正常(返回 JSON)"

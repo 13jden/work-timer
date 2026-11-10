@@ -2,6 +2,16 @@ services:
   api:
     build:
       context: ./server
+      args:
+        # NPM_REGISTRY / NPM_REPLACE_REGISTRY_HOST 由 deploy.yml 在服务器上
+        # **实测连通性后**写入 .env 注入 —— 国内服务器访问
+        # registry.npmmirror.com 并不总是稳的，探测不通时自动切到官方 registry。
+        #
+        # 默认值取官方 registry（更稳，宁可慢一点也不要用时通时断的源）；
+        # npmmirror 只有在实测通过时才会被写进 .env 覆盖它。
+        # 详见 .github/workflows/deploy.yml 的「npm 源探测」一节。
+        NPM_REGISTRY: "${NPM_REGISTRY:-https://registry.npmjs.org}"
+        NPM_REPLACE_REGISTRY_HOST: "${NPM_REPLACE_REGISTRY_HOST:-always}"
     image: work-timer-api:latest
     container_name: work-timer-api
     environment:
