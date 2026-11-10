@@ -67,6 +67,7 @@ dist-desktop/
 
 # 后端(server)运行时数据与依赖
 server/data/
+server/.smoke/
 server/node_modules/
 server/dist/
 

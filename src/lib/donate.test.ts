@@ -1,13 +1,23 @@
 /**
  * Salary Timer — 打赏金额校验单测（v3.2）
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   validateDonation,
   formatAmount,
   DONATE_MAX_AMOUNT,
   DONATE_MAX_NOTE_LEN,
+  fetchDonatePayUrls,
+  isWechatBrowser,
+  EMPTY_PAY_URLS,
 } from './donate';
+import { request } from './api';
+
+vi.mock('./api', () => ({
+  request: vi.fn(),
+}));
+
+const mockedRequest = vi.mocked(request);
 
 describe('donate', () => {
   describe('validateDonation', () => {
@@ -93,6 +103,99 @@ describe('donate', () => {
     it('cleans up binary floating point artifacts', () => {
       // 0.1 + 0.2 在 IEEE754 下是 0.30000000000000004
       expect(formatAmount(0.1 + 0.2)).toBe('0.3');
+    });
+  });
+
+  describe('fetchDonatePayUrls', () => {
+    afterEach(() => {
+      mockedRequest.mockReset();
+    });
+
+    it('reads the alipay url from the config endpoint', async () => {
+      mockedRequest.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: {
+          ok: true,
+          config: {
+            alipayPayUrl: 'https://qr.alipay.com/fkx123',
+          },
+        },
+        error: null,
+      });
+
+      const urls = await fetchDonatePayUrls();
+      expect(urls.alipayUrl).toBe('https://qr.alipay.com/fkx123');
+    });
+
+    it('trims whitespace around the urls', async () => {
+      mockedRequest.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: {
+          ok: true,
+          config: { alipayPayUrl: '  https://qr.alipay.com/fkx123  ' },
+        },
+        error: null,
+      });
+
+      const urls = await fetchDonatePayUrls();
+      expect(urls.alipayUrl).toBe('https://qr.alipay.com/fkx123');
+    });
+
+    it('falls back to empty urls when the response has no config', async () => {
+      mockedRequest.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: { ok: true },
+        error: null,
+      });
+
+      expect(await fetchDonatePayUrls()).toEqual(EMPTY_PAY_URLS);
+    });
+
+    it('falls back to empty urls on a failed request', async () => {
+      mockedRequest.mockResolvedValue({
+        ok: false,
+        status: 500,
+        data: null,
+        error: 'HTTP 500',
+      });
+
+      expect(await fetchDonatePayUrls()).toEqual(EMPTY_PAY_URLS);
+    });
+
+    it('never throws when the request rejects', async () => {
+      mockedRequest.mockRejectedValue(new Error('network down'));
+
+      await expect(fetchDonatePayUrls()).resolves.toEqual(EMPTY_PAY_URLS);
+    });
+  });
+
+  describe('isWechatBrowser', () => {
+    const originalUA = navigator.userAgent;
+
+    afterEach(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        value: originalUA,
+        configurable: true,
+      });
+    });
+
+    it('detects the WeChat in-app browser', () => {
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (iPhone) MicroMessenger/8.0.30',
+        configurable: true,
+      });
+      expect(isWechatBrowser()).toBe(true);
+    });
+
+    it('returns false in a normal browser', () => {
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120',
+        configurable: true,
+      });
+      expect(isWechatBrowser()).toBe(false);
     });
   });
 });

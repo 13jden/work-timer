@@ -1135,6 +1135,15 @@ body {
               <label class="label" for="cfgFoot">页脚文案</label>
               <input class="input" id="cfgFoot" placeholder="例：反馈邮箱 support@example.com" />
             </div>
+            <div class="field">
+              <label class="label" for="cfgAlipay">支付宝收款链接</label>
+              <input class="input" id="cfgAlipay" placeholder="https://qr.alipay.com/fkx..." />
+              <div style="font-size:11.5px;color:var(--text-mute);margin-top:6px">
+                支付宝<strong>个人</strong>收款码解码后的 https 链接。填了之后，客户端「打赏作者」里
+                会出现「打开支付宝」按钮，点一下直接唤起 App 付款。
+                留空则不显示该按钮。
+              </div>
+            </div>
             <button class="btn primary" id="saveSettings">保存配置</button>
           </div>
         </div>
@@ -1646,6 +1655,7 @@ async function loadSettings() {
     $('#cfgGuide').value = settings.userGuideUrl || '';
     $('#cfgNotice').value = settings.defaultNotice || '';
     $('#cfgFoot').value = settings.footerText || '';
+    $('#cfgAlipay').value = settings.alipayPayUrl || '';
   } catch (err) {
     setHealth(false, err.message);
   }
@@ -1659,6 +1669,7 @@ $('#saveSettings').addEventListener('click', async () => {
         userGuideUrl: $('#cfgGuide').value.trim(),
         defaultNotice: $('#cfgNotice').value,
         footerText: $('#cfgFoot').value.trim(),
+        alipayPayUrl: $('#cfgAlipay').value.trim(),
       } },
     });
     settings = data.settings || settings;

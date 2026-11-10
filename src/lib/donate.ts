@@ -100,3 +100,53 @@ export async function reportDonation(
     return false;
   }
 }
+
+/**
+ * 打赏收款跳转链接（来自后台「系统配置」）。
+ *
+ * - `alipayUrl` —— 支付宝个人收款码解码后的 https 链接，
+ *   点一下可以直接唤起支付宝 App 付款。
+ *
+ * 这个字段是**可选**的：为空就不显示跳转按钮。
+ */
+export interface DonatePayUrls {
+  alipayUrl: string;
+}
+
+/** 空配置 */
+export const EMPTY_PAY_URLS: DonatePayUrls = { alipayUrl: '' };
+
+/**
+ * 拉取收款跳转链接。**永不抛错** —— 拿不到就返回空配置。
+ *
+ * 走 `/api/config`（后端公开配置接口，settings 表的白名单字段）。
+ * 之所以不用静态 JSON 文件：收款链接会变（换码、换服务商），
+ * 放后台就能随时改，不必重新部署前端。
+ */
+export async function fetchDonatePayUrls(): Promise<DonatePayUrls> {
+  try {
+    const res = await request<{ ok?: boolean; config?: Record<string, string> }>('/api/config');
+    const config = res.ok ? res.data?.config : null;
+    if (!config) return EMPTY_PAY_URLS;
+    return {
+      alipayUrl: (config.alipayPayUrl ?? '').trim(),
+    };
+  } catch {
+    return EMPTY_PAY_URLS;
+  }
+}
+
+/**
+ * 判断当前是否在微信内置浏览器里。
+ *
+ * 微信内打开支付宝链接会被拦截，所以那种场景不能直接跳，
+ * 得引导用户「复制到浏览器打开」。
+ */
+export function isWechatBrowser(): boolean {
+  try {
+    if (typeof navigator === 'undefined') return false;
+    return /micromessenger/i.test(navigator.userAgent);
+  } catch {
+    return false;
+  }
+}

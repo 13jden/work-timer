@@ -194,7 +194,17 @@ app.get('/api/notice', (req, res) => {
  * 只暴露少数「客户端需要知道」的白名单配置，不返回全部 settings
  * （避免把后台内部配置泄漏出去）。
  */
-const PUBLIC_SETTING_KEYS = ['userGuideUrl', 'currentVersion', 'footerText'] as const;
+const PUBLIC_SETTING_KEYS = [
+  'userGuideUrl',
+  'currentVersion',
+  'footerText',
+  // 打赏收款跳转链接(见 TASK-069)
+  // 支付宝个人收款码解码后是标准 https 链接(qr.alipay.com/...),
+  // 客户端拿到后可以直接跳转唤起支付宝 App。
+  // 微信那一档已经去掉 —— 微信个人收款码是 wxp:// 私有协议,
+  // 微信不允许第三方页面直接跳转唤起,只能扫码,既然不做二维码就没必要留。
+  'alipayPayUrl',
+] as const;
 
 app.get('/api/config', (_req, res) => {
   const all = getAllSettings(db);

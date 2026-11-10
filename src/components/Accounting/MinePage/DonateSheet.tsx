@@ -5,8 +5,7 @@
  *
  * 交互:
  * 1. 选金额（小红花 ¥2 / 咖啡 ¥9.9 / 自定义）
- * 2. 选支付方式（微信 / 支付宝）
- * 3. 展示对应收款码
+ * 2. 点「打开支付宝」直接唤起支付宝 App 付款
  *
  * 「自定义」是第三个选项：自己填金额 + 写一句留言，
  * 留言会印在收据的「留言」那一行上。
@@ -14,26 +13,65 @@
  * 视觉:延续项目的「纸感编辑风」——收据式卡片 + 打孔撕线 + 等宽数字,
  * 与 MINE 页的墨黑总资产卡形成一暗一亮的对位。
  *
- * 收款码:默认走 /donate/<method>-qr.png,图片缺失时回落成占位提示,
- * 作者把真实收款码丢进 public/donate/ 即可生效,无需改代码。
+ * 收款方式(TASK-069):
+ * - **只有支付宝**,没有二维码,点按钮直接跳转。
+ *   支付宝个人收款码解码后是标准 https 链接(qr.alipay.com/...),
+ *   浏览器直接跳就能唤起支付宝 App 的付款页。
+ * - 微信这一档被去掉了:微信**个人**收款码是 `wxp://` 私有协议,
+ *   微信官方不允许第三方页面直接跳转唤起,只能扫码。
+ *   既然不做二维码,微信就没有存在意义了。
+ *
+ * 金额说明:个人收款码**无法预置金额**,选了 ¥50 跳转后仍需自己输入 50 块。
+ * 这个错位必须在收据上写清楚,否则会造成「金额对不上」的误会。
  */
 import { useEffect, useState } from 'react';
-import { Coffee, FlowerLotus, HeartStraight, PencilSimple } from '@phosphor-icons/react';
+import { Coffee, FlowerLotus, HeartStraight, PencilSimple, ArrowSquareOut, Copy } from '@phosphor-icons/react';
 import {
   TIPS,
   CUSTOM_TIP_ID,
   validateDonation,
   formatAmount,
   DONATE_MAX_NOTE_LEN,
+  fetchDonatePayUrls,
+  isWechatBrowser,
+  EMPTY_PAY_URLS,
+  type DonatePayUrls,
 } from '../../../lib/donate';
 import styles from './MinePage.module.css';
 
-type PayMethod = 'wechat' | 'alipay';
+/**
+ * 复制文本到剪贴板（三级兜底，与 MoreSheet 同思路）。
+ *
+ * 微信内置浏览器里没法直接跳支付宝，只能让用户复制到系统浏览器打开，
+ * 所以这个兜底是刚需，不是装饰。
+ */
+async function copyText(text: string): Promise<boolean> {
+  if (!text) return false;
 
-const METHODS: { id: PayMethod; label: string }[] = [
-  { id: 'wechat', label: '微信' },
-  { id: 'alipay', label: '支付宝' },
-];
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* 失焦 / 权限不足 → 走下面的兜底 */
+  }
+
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 interface DonateSheetProps {
   open: boolean;
@@ -42,8 +80,10 @@ interface DonateSheetProps {
 
 export function DonateSheet({ open, onClose }: DonateSheetProps) {
   const [tip, setTip] = useState<string>('coffee');
-  const [method, setMethod] = useState<PayMethod>('wechat');
-  const [qrFailed, setQrFailed] = useState(false);
+
+  // ── 收款跳转链接（后台配置）──
+  const [payUrls, setPayUrls] = useState<DonatePayUrls>(EMPTY_PAY_URLS);
+  const [copied, setCopied] = useState(false);
 
   // ── 自定义打赏 ──
   const [customAmount, setCustomAmount] = useState('');
@@ -54,16 +94,34 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
   useEffect(() => {
     if (!open) return;
     setTip('coffee');
-    setMethod('wechat');
-    setQrFailed(false);
     setCustomAmount('');
     setCustomNote('');
     setCustomError('');
+    setCopied(false);
+    setPayUrls(EMPTY_PAY_URLS);
+    // 拉一次收款跳转链接（拿不到就保持空配置 = 不显示按钮）
+    void fetchDonatePayUrls().then(setPayUrls);
   }, [open]);
 
   if (!open) return null;
 
   const isCustom = tip === CUSTOM_TIP_ID;
+
+  /** 收款链接（空串 = 后台没配，不显示按钮） */
+  const payUrl = payUrls.alipayUrl;
+
+  /** 微信内置浏览器会拦截支付宝链接，只能引导复制出去 */
+  const blockedInWechat = isWechatBrowser();
+
+  /** 跳转付款 */
+  const handleOpenPay = () => {
+    if (!payUrl) return;
+    if (blockedInWechat) {
+      void copyText(payUrl).then((ok) => setCopied(ok));
+      return;
+    }
+    window.location.href = payUrl;
+  };
 
   /** 自定义金额校验 —— 选自定义时才需要 */
   const validateCustom = (): boolean => {
@@ -124,10 +182,9 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
                     <Coffee size={20} weight="regular" />
                   )}
                 </span>
-                <span className={styles.tipAmount}>¥{t.amount}</span>
-                <span className={styles.tipLabel}>{t.label}</span>
-                <span className={styles.tipNote}>{t.note}</span>
-              </button>
+            <span className={styles.tipAmount}>¥{t.amount}</span>
+            <span className={styles.tipLabel}>{t.label}</span>
+          </button>
             );
           })}
 
@@ -143,7 +200,6 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
             </span>
             <span className={styles.tipAmount}>自定义</span>
             <span className={styles.tipLabel}>随心意</span>
-            <span className={styles.tipNote}>自己填金额</span>
           </button>
         </div>
 
@@ -195,24 +251,6 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
           </div>
         )}
 
-        {/* ── 支付方式 ── */}
-        <div className={styles.payTabs}>
-          {METHODS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`${styles.payTab} ${m.id === method ? styles.payTabActive : ''}`}
-              onClick={() => {
-                setMethod(m.id);
-                setQrFailed(false);
-              }}
-              aria-pressed={m.id === method}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
         {/* ── 收据 ── */}
         <div className={styles.receipt}>
           <div className={styles.receiptRow}>
@@ -225,9 +263,7 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
           </div>
           <div className={styles.receiptRow}>
             <span>方式</span>
-            <span className={styles.receiptMono}>
-              {METHODS.find((m) => m.id === method)?.label}
-            </span>
+            <span className={styles.receiptMono}>支付宝</span>
           </div>
           {isCustom && customNote.trim() && (
             <div className={styles.receiptRow}>
@@ -236,25 +272,37 @@ export function DonateSheet({ open, onClose }: DonateSheetProps) {
             </div>
           )}
           <div className={styles.receiptPerf} />
-          <div className={styles.receiptQr}>
-            {qrFailed ? (
-              <div className={styles.qrPlaceholder}>
-                <HeartStraight size={22} weight="regular" />
-                <span>收款码待补充</span>
-                <span className={styles.qrPlaceholderHint}>
-                  把图片放到 public/donate/{method}-qr.png
-                </span>
+
+          {/* ── 跳转按钮 ── */}
+          {payUrl ? (
+            <>
+              <button type="button" className={styles.payLinkBtn} onClick={handleOpenPay}>
+                {blockedInWechat ? (
+                  <>
+                    <Copy size={15} weight="regular" />
+                    {copied ? '已复制，去浏览器打开' : '复制链接'}
+                  </>
+                ) : (
+                  <>
+                    <ArrowSquareOut size={15} weight="regular" />
+                    打开支付宝
+                  </>
+                )}
+              </button>
+              <div className={styles.payLinkHint}>
+                {blockedInWechat
+                  ? '微信里打不开支付宝，复制到浏览器打开'
+                  : '个人收款码无法预置金额，请在 App 内手动输入该金额'}
               </div>
-            ) : (
-              <img
-                src={`/donate/${method}-qr.png`}
-                alt={`${method === 'wechat' ? '微信' : '支付宝'}收款码`}
-                className={styles.qrImage}
-                onError={() => setQrFailed(true)}
-              />
-            )}
-          </div>
-          <div className={styles.receiptFoot}>扫码 · 谢谢你的这一份</div>
+            </>
+          ) : (
+            <div className={styles.payLinkHint}>
+              <HeartStraight size={13} weight="regular" />
+              收款链接待配置
+            </div>
+          )}
+
+          <div className={styles.receiptFoot}>谢谢你的这一份</div>
         </div>
 
         <button type="button" className={styles.submitBtn} onClick={onClose}>

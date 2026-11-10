@@ -338,38 +338,38 @@
 /* 金额卡：小红花 / 咖啡 / 自定义 */
 .tipGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  /* 三个选项排一行：小红花 / 咖啡 / 自定义 */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
-/* 自定义卡横跨两列 —— 它是一个「入口」，不是同级金额 */
+/* 「自定义」跟另外两个同级，不再横跨两列 ——
+   三个选项是一组平级选择，横跨会把它拉成另一个层级的「入口」 */
 .tipCardWide {
-  grid-column: 1 / -1;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 3px;
+  padding: 14px 8px 12px;
 }
 
 .tipCardWide .tipIcon {
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
+/* 「自定义」是词不是金额 —— 用正文字体，别跟 ¥2 / ¥9.9 的
+   等宽数字抢视觉重量，否则三张卡看起来像三个金额 */
 .tipCardWide .tipAmount {
   font-family: var(--font-body);
   font-size: 15px;
   letter-spacing: 0;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 .tipCardWide .tipLabel {
   font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.tipCardWide .tipNote {
-  margin-left: auto;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .tipCard {
@@ -424,12 +424,6 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
-}
-
-.tipNote {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.02em;
 }
 
 /* ── 自定义打赏：金额 + 留言 ── */
@@ -536,35 +530,6 @@
   line-height: 1.5;
 }
 
-/* 支付方式切换 */
-.payTabs {
-  display: flex;
-  gap: 6px;
-  padding: 4px;
-  background: var(--paper-2);
-  border-radius: 12px;
-}
-
-.payTab {
-  flex: 1;
-  border: none;
-  background: transparent;
-  border-radius: 9px;
-  padding: 8px 0;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background 160ms, color 160ms;
-}
-
-.payTabActive {
-  background: var(--paper-4);
-  color: var(--ink);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
 /* 收据 */
 .receipt {
   position: relative;
@@ -601,44 +566,6 @@
   background-repeat: repeat-x;
 }
 
-.receiptQr {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 0 2px;
-}
-
-.qrImage {
-  width: 168px;
-  height: 168px;
-  object-fit: contain;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.qrPlaceholder {
-  width: 168px;
-  height: 168px;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 12px;
-}
-
-.qrPlaceholderHint {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  opacity: 0.75;
-  word-break: break-all;
-}
-
 .receiptFoot {
   text-align: center;
   font-family: var(--font-mono);
@@ -646,6 +573,54 @@
   letter-spacing: 0.14em;
   color: var(--muted);
   text-transform: uppercase;
+}
+
+/* ── v3.2 TASK-069：收款跳转按钮 ───────────────────── */
+
+/* 「打开支付宝」是收据里唯一的行动点，所以做成实心墨块 ——
+   收据纸感里的黑字白底，和 MINE 页总资产卡的墨黑正好呼应。
+   其余元素保持安静，这块实心是视线唯一落点。 */
+.payLinkBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 160ms, transform 160ms;
+}
+
+.payLinkBtn:hover {
+  opacity: 0.88;
+}
+
+.payLinkBtn:active {
+  transform: scale(0.985);
+}
+
+/* 按钮下的一行说明 —— 讲清楚「金额要手输」和「微信里打不开」 */
+.payLinkHint {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
 /* MINE 页的「打赏作者」入口行 */
