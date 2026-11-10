@@ -49,10 +49,23 @@ ARG NPM_REPLACE_REGISTRY_HOST=always
 
 # ca-certificates: HTTPS 拉包需要
 # curl: 显式下载 better-sqlite3 预编译二进制
+#
+# ⚠️ **不要**在这里装 build-essential / python3 / make / g++。
+#   没有编译工具链是**故意的**:万一预编译二进制拉不到,
+#   node-gyp 会立刻因为缺工具链而**快速失败**,
+#   而不是默默编译十几分钟把整个部署拖超时。
+#   那正是 2026-11-10 Deploy #25 失败的原因。
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
+# ── npm 依赖层(单独一层,充分利用 Docker 层缓存)──────────────
+#
+# 只 COPY package.json / package-lock.json,让这一层的缓存键
+# **只跟依赖清单有关**。源码改动不会让这一层失效,
+# 下次部署就能直接复用缓存的 node_modules。
+#
+# (如果把 src/ 也 COPY 进来,每改一行代码都要重装全部依赖。)
 COPY package.json package-lock.json .npmrc ./
 
 # ── --ignore-scripts: 跳过所有 install 脚本 ──────────────────

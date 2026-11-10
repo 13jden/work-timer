@@ -169,14 +169,34 @@ jobs:
             # 优先 npmmirror(国内 CDN,快),不通则退回官方 registry。
             # 两个都探测不到就直接失败 —— 那说明服务器根本没网,
             # 继续下去也只会浪费 30 分钟超时。
+            #
+            # ⚠️ 这里比的是**实际下载耗时**,不只是「能不能连上」。
+            # 国内服务器连 npmmirror 并不总是稳的(实测时通时断),
+            # 官方 registry.npmjs.org 反而经常更稳。
+            # 只判「通不通」会选中一个能连但极慢的源,
+            # 结果就是 npm ci 磨十几分钟 —— 那正是 Deploy #26 耗时 19 分钟的原因。
+            # 所以两个源都实际拉一次同一个包,谁快用谁。
+            # 版本号从 lock 文件里读,不写死(写死会随依赖升级悄悄失效)。
+            # 后面的预编译包检查也复用这个值。
+            BS3_VER=$(grep -A3 '"node_modules/better-sqlite3"' server/package-lock.json \
+                      | grep -m1 '"version"' \
+                      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+
             NPM_REGISTRY=""
+            NPM_BEST_MS=999999
             for candidate in "https://registry.npmmirror.com" "https://registry.npmjs.org"; do
-              if curl -sSfL --max-time 20 -o /dev/null "${candidate}/better-sqlite3"; then
-                NPM_REGISTRY="$candidate"
-                echo "OK npm 源可用: $candidate"
-                break
-              else
+              # 下载 better-sqlite3 的 tarball(约 1MB),测真实速度
+              MS=$(curl -sSfL --max-time 30 -o /dev/null -w '%{time_total}' \
+                    "${candidate}/better-sqlite3/-/better-sqlite3-${BS3_VER}.tgz" 2>/dev/null \
+                    | awk '{printf "%d", $1*1000}')
+              if [ -z "$MS" ] || [ "$MS" -ge 999999 ]; then
                 echo "   npm 源不可用: $candidate"
+              else
+                echo "   npm 源可用: $candidate (${MS}ms)"
+                if [ "$MS" -lt "$NPM_BEST_MS" ]; then
+                  NPM_BEST_MS=$MS
+                  NPM_REGISTRY="$candidate"
+                fi
               fi
             done
             if [ -z "$NPM_REGISTRY" ]; then
@@ -189,14 +209,14 @@ jobs:
             else
               echo "NPM_REGISTRY=${NPM_REGISTRY}" >> .env
             fi
-            echo "  选定源: $NPM_REGISTRY"
+            echo "  选定源: $NPM_REGISTRY (${NPM_BEST_MS}ms)"
 
             echo "=== better-sqlite3 预编译包预检 ==="
             #
             # 版本与 ABI 都从仓库文件里**用 grep/awk 解析**,
             # 不依赖服务器上装了 node(宿主机不一定有,node 只在容器里)。
             #
-            #   better-sqlite3 版本 ← server/package-lock.json
+            #   better-sqlite3 版本 ← server/package-lock.json(BS3_VER 上面已算出)
             #   Node ABI        ← server/Dockerfile 的 FROM node:XX
             #
             # 两者的对应关系是固定的(Node 的 ABI 号从 v18 起就没变过):
@@ -205,9 +225,6 @@ jobs:
             # Dockerfile 里实际用的是动态读取(process.versions.modules),
             # 这里只是**提前**验一遍 CDN 上有没有对应的包,
             # 免得真到了 docker build 才发现拉不到。
-            BS3_VER=$(grep -A3 '"node_modules/better-sqlite3"' server/package-lock.json \
-                      | grep -m1 '"version"' \
-                      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
             NODE_MAJOR=$(grep -oE '^FROM node:[0-9]+' server/Dockerfile | head -1 | grep -oE '[0-9]+')
             case "$NODE_MAJOR" in
               18) BS3_ABI=108 ;;
@@ -423,8 +440,13 @@ jobs:
           #
           # 正确做法:校验响应**内容**是不是管理后台页面。
           # server/public/admin/index.html 里有特征性的登录表单 id(#u / #p)。
-          ADMIN_HTML=$(curl -sS --max-time 10 "https://$DOMAIN/admin" || true)
-          ADMIN_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$DOMAIN/admin" || true)
+          #
+          # ⚠️ 必须用 -L 跟随重定向:
+          # Express 的 express.static 对目录请求会 301 到带斜杠的路径
+          # (/admin → /admin/),不跟随就只拿到 154 字节的跳转页,
+          # 会被误判成「不是管理页」。
+          ADMIN_HTML=$(curl -sSL --max-time 15 "https://$DOMAIN/admin" || true)
+          ADMIN_CODE=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 15 "https://$DOMAIN/admin" || true)
           echo "/admin HTTP $ADMIN_CODE,响应长度 ${#ADMIN_HTML}"
           if [ "$ADMIN_CODE" != "200" ]; then
             echo "VERIFY FAILED: /admin 不可达 (HTTP $ADMIN_CODE)"
@@ -441,7 +463,7 @@ jobs:
 
           echo "--- 后端接口不被 SPA 吞掉(回归检查)---"
           # 同理,/api/* 也必须返回 JSON 而不是首页 HTML
-          API_BODY=$(curl -sS --max-time 10 "https://$DOMAIN/api/config" || true)
+          API_BODY=$(curl -sSL --max-time 10 "https://$DOMAIN/api/config" || true)
           if echo "$API_BODY" | grep -q '<!DOCTYPE html>'; then
             echo "VERIFY FAILED: /api/config 返回了 HTML,说明 /api 路由没生效"
             exit 1
