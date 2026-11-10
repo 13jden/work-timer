@@ -183,6 +183,7 @@ export function MoreSheet({ open, onClose, onOpenDonate }: MoreSheetProps) {
           {view === 'menu' ? (
             <>
               <div className={styles.title}>更多</div>
+              <div className={styles.sub}>作者、指南与版本，都在这儿</div>
 
               <div className={styles.actions}>
                 {/* ── 打赏作者 ── */}
