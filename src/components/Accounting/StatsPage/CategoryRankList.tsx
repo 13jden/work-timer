@@ -7,7 +7,7 @@
 import type { Category } from '../../../lib/types';
 import { UNCATEGORIZED_ID, type CategoryAggregate } from '../../../lib/accounting/stats';
 import { formatAmount } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import styles from './StatsPage.module.css';
 
 interface CategoryRankListProps {
@@ -39,6 +39,8 @@ export function CategoryRankList({ ranks, categories, typeLabel, onSelect }: Cat
         const name = isUncat ? '未分类' : (category?.name ?? '未知分类');
         const icon = isUncat ? 'no' : (category?.icon ?? '❓');
         const color = isUncat ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+        // v3.2 TASK-070：自定义分类图片
+        const iconImageId = isUncat ? null : (category?.iconImageId ?? null);
         const barWidth = maxTotal > 0 ? Math.max((rank.total / maxTotal) * 100, 2) : 0;
         return (
           <button
@@ -48,7 +50,7 @@ export function CategoryRankList({ ranks, categories, typeLabel, onSelect }: Cat
             onClick={() => onSelect(rank.categoryId)}
           >
             <span className={styles.rankIcon} style={{ background: color }}>
-              <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
+              <CategoryIcon icon={icon} imageId={iconImageId} size={16} weight="regular" color="#fff" />
             </span>
             <span className={styles.rankMain}>
               <span className={styles.rankNameLine}>

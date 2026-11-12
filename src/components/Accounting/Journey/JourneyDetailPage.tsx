@@ -21,7 +21,7 @@ import { JourneyRecordPicker } from './JourneyRecordPicker';
 import { JourneyPhotoTile } from './JourneyPhotoTile';
 import { AddRecordModal } from '../AddRecordModal/AddRecordModal';
 import { ImagePreview } from '../ImagePreview';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { compressImage, genImageId } from '../../../lib/imageCompress';
 import { putImage } from '../../../lib/imageStore';
 import { useImage } from '../../../hooks/useImage';
@@ -316,6 +316,8 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
                         : (category?.name ?? '未知分类');
                     const catIcon = record.isUncategorized ? '❓' : (category?.icon ?? '❓');
                     const catColor = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+                    // v3.2 TASK-070：自定义分类图片
+                    const catImageId = record.isUncategorized ? null : (category?.iconImageId ?? null);
                     return (
                       <div
                         key={record.id}
@@ -339,7 +341,7 @@ export function JourneyDetailPage({ journeyId, onBack }: JourneyDetailPageProps)
                           />
                         ) : (
                           <span className={styles.entryGlyph} style={{ background: catColor }}>
-                            <IconByKey icon={catIcon} size={15} weight="regular" color="#fff" />
+                            <CategoryIcon icon={catIcon} imageId={catImageId} size={15} weight="regular" color="#fff" />
                           </span>
                         )}
 

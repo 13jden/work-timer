@@ -16,7 +16,7 @@ import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { AddRecordModal } from '../AddRecordModal';
 import styles from './AccountDetailPage.module.css';
 
@@ -115,6 +115,8 @@ export function AccountDetailPage({ accountId, onBack }: AccountDetailPageProps)
                   const name = record.isUncategorized
                     ? '未分类'
                     : (cat?.name ?? '未知分类');
+                  // v3.2 TASK-070：自定义分类图片
+                  const iconImageId = record.isUncategorized ? null : (cat?.iconImageId ?? null);
                   const isExpense = record.type === 'expense';
                   return (
                     <button
@@ -124,7 +126,7 @@ export function AccountDetailPage({ accountId, onBack }: AccountDetailPageProps)
                       onClick={() => setEditing(record)}
                     >
                       <span className={styles.rowIcon} style={{ background: color }}>
-                        <IconByKey icon={icon} size={14} weight="regular" color="#fff" />
+                        <CategoryIcon icon={icon} imageId={iconImageId} size={14} weight="regular" color="#fff" />
                       </span>
                       <span className={styles.rowInfo}>
                         <span className={styles.rowName}>

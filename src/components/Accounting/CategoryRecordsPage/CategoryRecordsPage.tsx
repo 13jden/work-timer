@@ -11,7 +11,7 @@ import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
 import { UNCATEGORIZED_ID } from '../../../lib/accounting/stats';
 import { formatAmount } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { AddRecordModal } from '../AddRecordModal';
 import styles from './CategoryRecordsPage.module.css';
 
@@ -38,6 +38,8 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
   const name = isUncat ? '未分类' : (category?.name ?? '未知分类');
   const icon = isUncat ? 'no' : (category?.icon ?? '❓');
   const color = isUncat ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+  // v3.2 TASK-070：自定义分类图片
+  const iconImageId = isUncat ? null : (category?.iconImageId ?? null);
 
   const allRecords = useMemo(() => {
     return records
@@ -86,7 +88,7 @@ export function CategoryRecordsPage({ categoryId, type, onBack }: CategoryRecord
 
       <div className={styles.summary}>
         <div className={styles.bigIcon} style={{ background: color }}>
-          <IconByKey icon={icon} size={26} weight="regular" color="#fff" />
+          <CategoryIcon icon={icon} imageId={iconImageId} size={26} weight="regular" color="#fff" />
         </div>
         <div className={styles.amount}>¥{formatAmount(total)}</div>
         <div className={styles.meta}>

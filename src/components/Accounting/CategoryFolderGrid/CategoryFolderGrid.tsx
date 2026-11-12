@@ -23,7 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { visibleRecords } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import styles from './CategoryFolderGrid.module.css';
 
 export const FOLDER_DRAG_PREFIX = 'folder:';
@@ -211,7 +211,15 @@ export function CategoryFolderGrid({
 }
 
 interface FolderItemProps {
-  folder: { id: string; categoryId: string; name: string; icon: string; color: string };
+  folder: {
+    id: string;
+    categoryId: string;
+    name: string;
+    icon: string;
+    /** v3.2 TASK-070：自定义分类图片 */
+    iconImageId?: string;
+    color: string;
+  };
   stat?: { total: number; todayCount: number };
   isRecordDragging: boolean;
   /** v2.5-patch11：true → SortableFolder（可拖动排序）；false → PlainFolder（点击进入详情） */
@@ -320,13 +328,19 @@ function FolderInner({
   folder,
   stat,
 }: {
-  folder: { name: string; icon: string; color: string };
+  folder: { name: string; icon: string; iconImageId?: string; color: string };
   stat?: { total: number; todayCount: number };
 }) {
   return (
     <>
       <span className={styles.icon}>
-        <IconByKey icon={folder.icon} size={18} weight="regular" color="var(--folder-color, #9CA3AF)" />
+        <CategoryIcon
+          icon={folder.icon}
+          imageId={folder.iconImageId}
+          size={18}
+          weight="regular"
+          color="var(--folder-color, #9CA3AF)"
+        />
       </span>
       <span className={styles.name}>{folder.name}</span>
       <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>

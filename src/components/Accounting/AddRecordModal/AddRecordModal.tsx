@@ -18,7 +18,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord, RecordType } from '../../../lib/types';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { AddCategoryModal } from '../AddCategoryModal';
 import { JourneySelector } from '../Journey/JourneySelector';
 import { compressImage, genImageId, ImageCompressError } from '../../../lib/imageCompress';
@@ -521,7 +521,13 @@ export function AddRecordModal({
                 }}
               >
                 <span className={styles.catIcon}>
-                  <IconByKey icon={cat.icon} size={18} weight="regular" color={categoryId === cat.id ? '#fff' : cat.color} />
+                  <CategoryIcon
+                    icon={cat.icon}
+                    imageId={cat.iconImageId}
+                    size={18}
+                    weight="regular"
+                    color={categoryId === cat.id ? '#fff' : cat.color}
+                  />
                 </span>
                 <span className={styles.catName}>{cat.name}</span>
               </button>

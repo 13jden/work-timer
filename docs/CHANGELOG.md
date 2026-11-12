@@ -4,6 +4,7 @@
 
 | 版本 | 日期 | 主题 | 文档 |
 |---|---|---|---|
+| v3.2 | 2026-11-12 | 打赏弹层极简化 + 分类自定义图片 (TASK-070) | [`docs/CHANGELOG-v3.2.md`](./CHANGELOG-v3.2.md) |
 | v3.1 | 2026-11-04 | 一程命名重写 + 列表/详情 UI 重设计 (TASK-063) | [`docs/CHANGELOG-v3.1.md`](./CHANGELOG-v3.1.md) |
 | v3.1 | 2026-11-04 | 统计页汇总带重设计 (TASK-065) | [`docs/CHANGELOG-v3.1.md`](./CHANGELOG-v3.1.md) |
 | v3.0 | 2026-10-22 | 支持 0 元记录 · 别人请客也能记 (TASK-062) | [`docs/CHANGELOG-v3.0.md`](./CHANGELOG-v3.0.md) |

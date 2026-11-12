@@ -506,7 +506,15 @@ export interface AccountRecord {
 export interface Category {
   id: string;
   name: string;
-  icon: string;           // emoji
+  /** Phosphor icon key（新）或旧 emoji 字符 */
+  icon: string;
+  /**
+   * 自定义分类图片（IndexedDB imageId）。
+   *
+   * 有值时渲染层优先显示这张图片，`icon` 让位。
+   * 可选字段 → 老数据没有就是 undefined，零迁移成本。
+   */
+  iconImageId?: string;
   color: string;
   type: RecordType;
   parentId?: string;
@@ -521,6 +529,13 @@ export interface Folder {
   categoryId: string;
   name: string;
   icon: string;
+  /**
+   * 自定义分类图片（IndexedDB imageId）。
+   *
+   * ⚠️ 必须与对应 Category 的 iconImageId 保持一致 ——
+   * 首页的 CategoryFolderGrid 渲染的是 folder 而不是 category。
+   */
+  iconImageId?: string;
   color: string;
   order: number;
 }

@@ -486,6 +486,10 @@ export const useAccountStore = create<AccountStore>()(
             categoryId: newCategory.id,
             name: newCategory.name,
             icon: newCategory.icon,
+            // v3.2 TASK-070：自定义分类图片也要复制到 folder ——
+            // 首页的 CategoryFolderGrid 渲染的是 folder.icon / folder.iconImageId，
+            // 不复制的话首页网格看不到用户上传的图。
+            iconImageId: newCategory.iconImageId,
             color: newCategory.color,
             order: s.folders.length,
           };

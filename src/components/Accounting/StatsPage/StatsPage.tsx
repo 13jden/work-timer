@@ -42,7 +42,7 @@ import {
   listableRecords,
 } from '../../../lib/accounting/stats';
 import { formatAmount, getTodayKey, getCurrentMonthKey, visibleRecords } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { StatsBarChart, type BarChartItem } from './StatsBarChart';
 import { CategoryRankList } from './CategoryRankList';
 import { MonthGroupedList, YearGroupedList } from './GroupedRecordList';
@@ -595,11 +595,13 @@ function DragRecordCard({ record }: { record: AccountRecord }) {
   const name = record.isUncategorized ? '未分类' : (category?.name ?? '未知分类');
   const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
   const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+  // v3.2 TASK-070：自定义分类图片
+  const iconImageId = record.isUncategorized ? null : (category?.iconImageId ?? null);
   const isExpense = record.type === 'expense';
   return (
     <div className={styles.dragCard}>
       <span className={styles.dragCardIcon} style={{ background: color }}>
-        <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
+        <CategoryIcon icon={icon} imageId={iconImageId} size={16} weight="regular" color="#fff" />
       </span>
       <span className={styles.dragCardName}>{name}</span>
       <span className={`${styles.dragCardAmt} ${isExpense ? styles.amtExpense : styles.amtIncome}`}>

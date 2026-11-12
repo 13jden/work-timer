@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount, sumExpense, sumIncome, visibleRecords } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { RecordThumb } from '../RecordThumb';
 import { ImagePreview } from '../ImagePreview';
 import styles from './TodayRecordsList.module.css';
@@ -91,6 +91,7 @@ export function TodayRecordsList({
               key={record.id}
               record={record}
               categoryIcon={cat?.icon ?? '❓'}
+              categoryImageId={cat?.iconImageId}
               categoryName={cat?.name ?? '未知'}
               onPick={onPickRecord}
               onLongPress={onLongPressRecord}
@@ -108,13 +109,15 @@ export function TodayRecordsList({
 interface RecordRowProps {
   record: AccountRecord;
   categoryIcon: string;
+  /** v3.2 TASK-070：自定义分类图片 */
+  categoryImageId?: string;
   categoryName: string;
   onPick?: (id: string) => void;
   onLongPress?: (id: string) => void;
   onPreviewImage?: (id: string) => void;
 }
 
-function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress, onPreviewImage }: RecordRowProps) {
+function RecordRow({ record, categoryIcon, categoryImageId, categoryName, onPick, onLongPress, onPreviewImage }: RecordRowProps) {
   const handleTouchStart = () => {
     const id = setTimeout(() => onLongPress?.(record.id), 500);
     (window as { __longPressTimer?: ReturnType<typeof setTimeout> }).__longPressTimer = id;
@@ -132,7 +135,7 @@ function RecordRow({ record, categoryIcon, categoryName, onPick, onLongPress, on
       onTouchEnd={handleTouchEnd}
     >
       <span className={styles.icon}>
-        <IconByKey icon={categoryIcon} size={17} weight="regular" />
+        <CategoryIcon icon={categoryIcon} imageId={categoryImageId} size={17} weight="regular" />
       </span>
       <div className={styles.info}>
         <span className={styles.name}>

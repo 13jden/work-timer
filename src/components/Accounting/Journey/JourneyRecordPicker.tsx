@@ -13,6 +13,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { formatAmount } from '../../../lib/accounting';
 import { X, Check } from '@phosphor-icons/react';
+import { CategoryIcon } from '../../IconByKey';
 import styles from './JourneyRecordPicker.module.css';
 
 interface JourneyRecordPickerProps {
@@ -260,7 +261,7 @@ function Section({ label, count, tag, children }: SectionProps) {
 
 interface RecordRowProps {
   record: ReturnType<typeof useAccountStore.getState>['records'][number];
-  category?: { id: string; name: string; color: string; icon: string };
+  category?: { id: string; name: string; color: string; icon: string; iconImageId?: string };
   selected: boolean;
   onToggle: () => void;
   tag: { label: string; tone: 'active' | 'muted' | 'plain' };
@@ -282,7 +283,17 @@ function RecordRow({ record, category, selected, onToggle, tag, tagExtra }: Reco
             <span className={styles.rowDate}>{record.dateKey.slice(5)}</span>
             {category && (
               <span className={styles.rowCat} style={{ color: category.color }}>
-                {category.icon} {category.name}
+                {/* v3.2 TASK-070：原来直接输出 category.icon 文本，
+                    Phosphor key（如 'food'）会显示成字面字符串 —— 改走 CategoryIcon 统一渲染 */}
+                <CategoryIcon
+                  icon={category.icon}
+                  imageId={category.iconImageId}
+                  size={13}
+                  weight="regular"
+                  color={category.color}
+                  className={styles.rowCatIcon}
+                />{' '}
+                {category.name}
               </span>
             )}
             <span className={`${styles.rowTag} ${styles[`tone_${tag.tone}`]}`}>{tag.label}</span>

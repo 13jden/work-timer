@@ -9,7 +9,7 @@ import { useAccountStore } from '../../../store/accountStore';
 import { useConfigStore } from '../../../store/configStore';
 import type { AccountRecord } from '../../../lib/types';
 import { formatAmount } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { RecordThumb } from '../RecordThumb';
 import { AirplaneTilt } from '@phosphor-icons/react';
 import styles from './RecordRow.module.css';
@@ -59,6 +59,8 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
 
   const icon = record.isUncategorized ? 'no' : (category?.icon ?? '❓');
   const color = record.isUncategorized ? 'var(--muted)' : (category?.color ?? 'var(--muted)');
+  // v3.2 TASK-070：自定义分类图片
+  const iconImageId = record.isUncategorized ? null : (category?.iconImageId ?? null);
   const isExpense = record.type === 'expense';
 
   // 池相关状态
@@ -74,7 +76,7 @@ export function RecordRow({ record, onOpen, onPreviewImage }: RecordRowProps) {
   return (
     <div className={styles.row} onClick={onOpen}>
       <span className={styles.icon} style={{ background: color }}>
-        <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
+        <CategoryIcon icon={icon} imageId={iconImageId} size={16} weight="regular" color="#fff" />
       </span>
       <span className={styles.info}>
         <span className={styles.name}>

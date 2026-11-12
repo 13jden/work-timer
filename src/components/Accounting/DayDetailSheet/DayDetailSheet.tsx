@@ -11,7 +11,7 @@ import { useAccountStore } from '../../../store/accountStore';
 import type { AccountRecord } from '../../../lib/types';
 import { sumRecords } from '../../../lib/accounting/stats';
 import { formatAmount } from '../../../lib/accounting';
-import { IconByKey } from '../../IconByKey';
+import { CategoryIcon } from '../../IconByKey';
 import { AddRecordModal } from '../AddRecordModal';
 import { RecordActionSheet } from '../RecordActionSheet';
 import { RecordThumb } from '../RecordThumb';
@@ -68,6 +68,8 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
               const color = record.isUncategorized
                 ? 'var(--muted)'
                 : (category?.color ?? 'var(--muted)');
+              // v3.2 TASK-070：自定义分类图片
+              const iconImageId = record.isUncategorized ? null : (category?.iconImageId ?? null);
               const isExpense = record.type === 'expense';
               return (
                 <button
@@ -77,7 +79,7 @@ export function DayDetailSheet({ dateKey, onClose }: DayDetailSheetProps) {
                   onClick={() => setActionRecord(record)}
                 >
                   <span className={styles.rowIcon} style={{ background: color }}>
-                    <IconByKey icon={icon} size={16} weight="regular" color="#fff" />
+                    <CategoryIcon icon={icon} imageId={iconImageId} size={16} weight="regular" color="#fff" />
                   </span>
                   <span className={styles.rowInfo}>
                     <span className={styles.rowName}>{name}</span>

@@ -395,19 +395,20 @@
   transform: scale(0.985);
 }
 
-.tipCardActive {
-  border-color: var(--ink);
-  background: color-mix(in srgb, var(--accent) 12%, var(--paper-3));
+/* 后台没配收款链接时不可点 —— 明确给出「不可用」的视觉 */
+.tipCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tipCard:disabled:hover {
+  border-color: var(--line);
 }
 
 .tipIcon {
   display: flex;
   color: var(--ink-muted);
   margin-bottom: 2px;
-}
-
-.tipCardActive .tipIcon {
-  color: var(--ink);
 }
 
 .tipAmount {
@@ -426,201 +427,25 @@
   color: var(--ink);
 }
 
-/* ── 自定义打赏：金额 + 留言 ── */
-.donateCustom {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 13px;
-  border: 1px dashed var(--line);
-  border-radius: 13px;
-  background: var(--paper-3);
-}
+/* ── v3.2 TASK-070：打赏提示 ─────────────────────────
+   这一屏刻意做轻：三个档位是唯一主体，
+   下面只跟一行说明，把「金额要在 App 里自己填」讲清楚。 */
 
-.donateField {
+.donateNote {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 5px;
-}
-
-.donateFieldLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--paper-3);
+  text-align: center;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-muted);
-  letter-spacing: 0.02em;
-}
-
-.donateOptional {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 400;
-  color: var(--muted);
-  border: 1px solid var(--line-soft);
-  border-radius: 4px;
-  padding: 1px 4px;
-}
-
-/* 金额输入：¥ 前缀 + 等宽数字，像收据上的金额栏 */
-.donateAmountRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper-4);
-  padding: 0 11px;
-  transition: border-color 150ms;
-}
-
-.donateAmountRow:focus-within {
-  border-color: var(--ink);
-}
-
-.donateAmountPrefix {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  color: var(--muted);
-}
-
-.donateAmountInput {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  outline: none;
-  padding: 10px 0;
-  font-family: var(--font-mono);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.donateAmountInput::placeholder {
-  color: var(--faint);
-  font-weight: 400;
-}
-
-.donateNoteInput {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper-4);
-  outline: none;
-  padding: 9px 11px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--ink);
-  transition: border-color 150ms;
-}
-
-.donateNoteInput::placeholder {
-  color: var(--faint);
-}
-
-.donateNoteInput:focus {
-  border-color: var(--ink);
-}
-
-.donateError {
-  font-size: 11.5px;
-  color: var(--danger);
-  line-height: 1.5;
-}
-
-/* 收据 */
-.receipt {
-  position: relative;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--paper-4);
-  padding: 14px 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.receiptRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 12px;
-  color: var(--ink-muted);
-}
-
-.receiptMono {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 打孔撕线 */
-.receiptPerf {
-  height: 1px;
-  margin: 3px 0;
-  background-image: linear-gradient(to right, var(--line) 0 6px, transparent 6px 12px);
-  background-size: 12px 1px;
-  background-repeat: repeat-x;
-}
-
-.receiptFoot {
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-/* ── v3.2 TASK-069：收款跳转按钮 ───────────────────── */
-
-/* 「打开支付宝」是收据里唯一的行动点，所以做成实心墨块 ——
-   收据纸感里的黑字白底，和 MINE 页总资产卡的墨黑正好呼应。
-   其余元素保持安静，这块实心是视线唯一落点。 */
-.payLinkBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--ink);
-  border-radius: 10px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: opacity 160ms, transform 160ms;
-}
-
-.payLinkBtn:hover {
-  opacity: 0.88;
-}
-
-.payLinkBtn:active {
-  transform: scale(0.985);
-}
-
-/* 按钮下的一行说明 —— 讲清楚「金额要手输」和「微信里打不开」 */
-.payLinkHint {
-  margin-top: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
   line-height: 1.5;
   color: var(--muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* MINE 页的「打赏作者」入口行 */

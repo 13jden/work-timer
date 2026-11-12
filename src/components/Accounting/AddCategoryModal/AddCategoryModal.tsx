@@ -4,7 +4,8 @@
  * 用于「分类文件夹」区域右上角「添加」按钮。
  * 支持：
  * - 名称输入
- * - emoji 选取（内置候选）
+ * - 图标选取（Phosphor 线稿分组 picker）
+ * - **自定义图片**（v3.2 TASK-070：上传一张图当分类图标，自动压缩到 256px）
  * - 颜色选取（内置色板）
  * - 类型选择（支出 / 收入）
  *
@@ -13,8 +14,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
 import { ACCOUNTING_ICON_GROUPS, IconByKey } from '../../IconByKey';
+import { compressImage, genImageId, ImageCompressError } from '../../../lib/imageCompress';
+import { putImage, isImageDBSupported } from '../../../lib/imageStore';
 import type { RecordType } from '../../../lib/types';
 import styles from './AddCategoryModal.module.css';
+
+/** 分类图标的压缩参数 —— 比记账图片（1280px）小得多，256px 足够清晰 */
+const CATEGORY_ICON_MAX_EDGE = 256;
+const CATEGORY_ICON_QUALITY = 0.8;
 
 interface AddCategoryModalProps {
   open: boolean;
@@ -57,6 +64,18 @@ export function AddCategoryModal({
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  // ── v3.2 TASK-070：自定义图片 ────────────────────────────
+  // pendingBlob: 用户新选的、待保存时入库的 Blob
+  // pendingId:   与 pendingBlob 配对的 imageId
+  // previewUrl:  pendingBlob 的 ObjectURL（弹层内缩略图）
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageStatus, setImageStatus] = useState<'idle' | 'compressing' | 'ready'>('idle');
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
   // 打开时重置 + 默认聚焦
   useEffect(() => {
     if (!open) return;
@@ -65,13 +84,82 @@ export function AddCategoryModal({
     setIconKey('box');
     setColor(COLOR_PALETTE[8]!);
     setError(null);
+    setPendingBlob(null);
+    setPendingId(null);
+    setImageStatus('idle');
+    setImageError(null);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
     const id = setTimeout(() => nameRef.current?.focus(), 250);
     return () => clearTimeout(id);
   }, [open, defaultType]);
 
+  // 关闭 / 卸载时回收 ObjectURL
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
   if (!open) return null;
 
-  const handleSave = () => {
+  /** 选了自定义图片 → 线稿 picker 的选中态清空（图片优先） */
+  const handlePickLineIcon = (key: string) => {
+    setIconKey(key);
+    // 有自定义图片时，线稿图标的选中态不该还亮着
+    if (pendingBlob) {
+      setPendingBlob(null);
+      setPendingId(null);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+      setPreviewUrl(null);
+      setImageStatus('idle');
+    }
+  };
+
+  /** 选图 → 压缩 → 预览 */
+  const handlePickFile = async (file: File) => {
+    if (!isImageDBSupported()) {
+      setImageError('当前环境不支持图片存储');
+      return;
+    }
+    setImageStatus('compressing');
+    setImageError(null);
+    try {
+      const { blob } = await compressImage(file, CATEGORY_ICON_MAX_EDGE, CATEGORY_ICON_QUALITY);
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
+      setPendingBlob(blob);
+      setPendingId(genImageId());
+      setImageStatus('ready');
+    } catch (err) {
+      setImageStatus('idle');
+      setImageError(
+        err instanceof ImageCompressError && err.code === 'UNSUPPORTED_FORMAT'
+          ? '这个格式不支持，换张 JPG / PNG 试试'
+          : '图片处理失败，换一张试试',
+      );
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // 重置 value，否则同一张图连选两次不会触发 change
+    e.target.value = '';
+    if (file) void handlePickFile(file);
+  };
+
+  const handleSave = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
       setError('请输入分类名称');
@@ -94,11 +182,24 @@ export function AddCategoryModal({
       .filter((c) => c.type === type)
       .reduce((m, c) => Math.max(m, c.order), -1);
 
+    // v3.2 TASK-070：先把图片写进 IndexedDB，写成功才建分类 ——
+    // 反过来的话会出现「分类建好了但图没存进去」的孤儿分类。
+    let iconImageId: string | undefined;
+    if (pendingBlob && pendingId) {
+      const ok = await putImage(pendingId, pendingBlob);
+      if (!ok) {
+        setError('图片保存失败，请重试');
+        return;
+      }
+      iconImageId = pendingId;
+    }
+
     // v2.5 TASK-046 T-504：addCategory 内部已同步创建 Folder，
     // 不能再调 addFolder —— 否则会重复建出两个 folder。
     const newCategory = addCategory({
       name: trimmed,
       icon: iconKey,
+      ...(iconImageId ? { iconImageId } : {}),
       color,
       type,
       order: maxOrder + 1,
@@ -107,6 +208,9 @@ export function AddCategoryModal({
     onCreated?.(newCategory.id);
     onClose();
   };
+
+  /** 预览卡里的图标：有自定义图就显示图，否则显示线稿 */
+  const hasCustomImage = !!previewUrl;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -123,7 +227,11 @@ export function AddCategoryModal({
         <div className={styles.preview}>
           <div className={styles.previewFolder} style={{ background: color }}>
             <span className={styles.previewIcon}>
-              <IconByKey icon={iconKey} size={20} weight="regular" color="#fff" />
+              {hasCustomImage && previewUrl ? (
+                <img src={previewUrl} alt="" className={styles.customIconPreview} />
+              ) : (
+                <IconByKey icon={iconKey} size={20} weight="regular" color="#fff" />
+              )}
             </span>
             <span className={styles.previewName}>{name.trim() || '新分类'}</span>
           </div>
@@ -170,8 +278,8 @@ export function AddCategoryModal({
                   {group.icons.map((key) => (
                     <button
                       key={key}
-                      className={`${styles.emojiChip} ${iconKey === key ? styles.emojiChipActive : ''}`}
-                      onClick={() => setIconKey(key)}
+                      className={`${styles.emojiChip} ${iconKey === key && !hasCustomImage ? styles.emojiChipActive : ''}`}
+                      onClick={() => handlePickLineIcon(key)}
                       aria-label={`选择图标 ${key}`}
                     >
                       <IconByKey icon={key} size={18} weight="regular" />
@@ -181,6 +289,61 @@ export function AddCategoryModal({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ── v3.2 TASK-070：自定义图片 ───────────────────── */}
+        <div className={styles.field}>
+          <label className={styles.fieldLabel}>自定义图片</label>
+          <div className={styles.customImageRow}>
+            {hasCustomImage && previewUrl ? (
+              <div className={styles.customImageThumb}>
+                <img src={previewUrl} alt="自定义分类图标" />
+                <button
+                  type="button"
+                  className={styles.customImageRemove}
+                  onClick={() => {
+                    setPendingBlob(null);
+                    setPendingId(null);
+                    if (previewUrlRef.current) {
+                      URL.revokeObjectURL(previewUrlRef.current);
+                      previewUrlRef.current = null;
+                    }
+                    setPreviewUrl(null);
+                    setImageStatus('idle');
+                    setImageError(null);
+                  }}
+                  aria-label="移除自定义图片"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={styles.customImagePick}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imageStatus === 'compressing'}
+              >
+                {imageStatus === 'compressing' ? '处理中…' : '＋ 选一张图'}
+              </button>
+            )}
+            <span className={styles.customImageHint}>
+              {imageError
+                ? imageError
+                : hasCustomImage
+                  ? '已选好，会自动压缩到 256px'
+                  : '从相册选一张图当分类图标'}
+            </span>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            className={styles.fileInputHidden}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
         </div>
 
         {/* 颜色选取 */}
@@ -202,7 +365,7 @@ export function AddCategoryModal({
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.actions}>
-          <button className={styles.submitBtn} onClick={handleSave}>
+          <button className={styles.submitBtn} onClick={handleSave} disabled={imageStatus === 'compressing'}>
             新建
           </button>
         </div>

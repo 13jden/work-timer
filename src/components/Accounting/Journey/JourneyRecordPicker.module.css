@@ -207,6 +207,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* v3.2 TASK-070：分类图标与后面的文字基线对齐 */
+.rowCatIcon {
+  vertical-align: -2px;
+  margin-right: 1px;
+}
 .rowTag {
   font-size: 9px;
   font-weight: 700;
