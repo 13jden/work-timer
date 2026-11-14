@@ -378,6 +378,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .rankMain {
@@ -479,6 +481,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .dragCardName {

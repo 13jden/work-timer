@@ -470,6 +470,8 @@
   align-items: center;
   justify-content: center;
   justify-self: center;
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .entryBody {

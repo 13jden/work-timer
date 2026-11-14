@@ -95,6 +95,8 @@
   font-size: 19px;
   background: color-mix(in srgb, var(--folder-color) 14%, var(--paper));
   border-radius: 7px;
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .name {

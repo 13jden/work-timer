@@ -29,6 +29,7 @@ v3.1 把「一程」和 MINE 页做完，功能面收口了。这次补的是**�
 | TASK-067 | 后端服务 + 日活统计 + 管理后台 | 🧩 实现中，待验收 | [`TASK-067-v3.2-backend.md`](./TASK-067-v3.2-backend.md) |
 | TASK-068 | MINE 页打赏入口 + 打赏弹层 | 🧩 实现中，待验收 | [`TASK-068-v3.2-donate.md`](./TASK-068-v3.2-donate.md) |
 | TASK-070 | 打赏弹层极简化 + 分类自定义图片 | 🧩 实现中，待验收 | [`TASK-070-v3.2-donate-simple-and-category-image.md`](./TASK-070-v3.2-donate-simple-and-category-image.md) |
+| TASK-071 | 分类自定义图片交互优化 | 🧩 实现中，待验收 | [`TASK-071-v3.2-category-image-interaction.md`](./TASK-071-v3.2-category-image-interaction.md) |
 
 ---
 

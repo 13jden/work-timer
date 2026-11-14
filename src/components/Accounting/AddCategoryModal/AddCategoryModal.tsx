@@ -5,11 +5,18 @@
  * 支持：
  * - 名称输入
  * - 图标选取（Phosphor 线稿分组 picker）
- * - **自定义图片**（v3.2 TASK-070：上传一张图当分类图标，自动压缩到 256px）
+ * - **自定义图片**（v3.2 TASK-070：点「图标」右侧的「自定义」按钮上传一张图）
  * - 颜色选取（内置色板）
  * - 类型选择（支出 / 收入）
  *
  * v2.1：仅保留最简表单，避免一次性引入过多字段。
+ *
+ * v3.2 TASK-071 的取舍：
+ * - 「自定义」按钮**贴在「图标」标签右侧**，不再另起一个字段块 ——
+ *   它和线稿图标是同一个选择动作的两种来源，拆成两块会让用户以为是两件事。
+ * - **不向用户解释压缩过程**。压缩是实现细节，用户要的是「选一张图当图标」。
+ * - 选了自定义图片后**不再需要背景色**（图片会铺满分类框），
+ *   这时颜色选择整块隐藏；移除图片后颜色选择回来。
  */
 import { useState, useRef, useEffect } from 'react';
 import { useAccountStore } from '../../../store/accountStore';
@@ -17,6 +24,7 @@ import { ACCOUNTING_ICON_GROUPS, IconByKey } from '../../IconByKey';
 import { compressImage, genImageId, ImageCompressError } from '../../../lib/imageCompress';
 import { putImage, isImageDBSupported } from '../../../lib/imageStore';
 import type { RecordType } from '../../../lib/types';
+import { ImageSquare } from '@phosphor-icons/react';
 import styles from './AddCategoryModal.module.css';
 
 /** 分类图标的压缩参数 —— 比记账图片（1280px）小得多，256px 足够清晰 */
@@ -72,7 +80,6 @@ export function AddCategoryModal({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageStatus, setImageStatus] = useState<'idle' | 'compressing' | 'ready'>('idle');
-  const [imageError, setImageError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
 
@@ -87,7 +94,6 @@ export function AddCategoryModal({
     setPendingBlob(null);
     setPendingId(null);
     setImageStatus('idle');
-    setImageError(null);
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
@@ -109,30 +115,36 @@ export function AddCategoryModal({
 
   if (!open) return null;
 
+  /** 预览卡里的图标：有自定义图就显示图，否则显示线稿 */
+  const hasCustomImage = !!previewUrl;
+
+  /** 丢弃当前选的自定义图，回到线稿图标 */
+  const clearCustomImage = () => {
+    setPendingBlob(null);
+    setPendingId(null);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
+    setImageStatus('idle');
+  };
+
   /** 选了自定义图片 → 线稿 picker 的选中态清空（图片优先） */
   const handlePickLineIcon = (key: string) => {
     setIconKey(key);
     // 有自定义图片时，线稿图标的选中态不该还亮着
-    if (pendingBlob) {
-      setPendingBlob(null);
-      setPendingId(null);
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = null;
-      }
-      setPreviewUrl(null);
-      setImageStatus('idle');
-    }
+    if (pendingBlob) clearCustomImage();
   };
 
   /** 选图 → 压缩 → 预览 */
   const handlePickFile = async (file: File) => {
     if (!isImageDBSupported()) {
-      setImageError('当前环境不支持图片存储');
+      setError('当前环境不支持图片存储');
       return;
     }
     setImageStatus('compressing');
-    setImageError(null);
+    setError(null);
     try {
       const { blob } = await compressImage(file, CATEGORY_ICON_MAX_EDGE, CATEGORY_ICON_QUALITY);
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -144,7 +156,7 @@ export function AddCategoryModal({
       setImageStatus('ready');
     } catch (err) {
       setImageStatus('idle');
-      setImageError(
+      setError(
         err instanceof ImageCompressError && err.code === 'UNSUPPORTED_FORMAT'
           ? '这个格式不支持，换张 JPG / PNG 试试'
           : '图片处理失败，换一张试试',
@@ -209,9 +221,6 @@ export function AddCategoryModal({
     onClose();
   };
 
-  /** 预览卡里的图标：有自定义图就显示图，否则显示线稿 */
-  const hasCustomImage = !!previewUrl;
-
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -225,16 +234,17 @@ export function AddCategoryModal({
 
         {/* 预览 */}
         <div className={styles.preview}>
-          <div className={styles.previewFolder} style={{ background: color }}>
-            <span className={styles.previewIcon}>
-              {hasCustomImage && previewUrl ? (
-                <img src={previewUrl} alt="" className={styles.customIconPreview} />
-              ) : (
-                <IconByKey icon={iconKey} size={20} weight="regular" color="#fff" />
-              )}
-            </span>
-            <span className={styles.previewName}>{name.trim() || '新分类'}</span>
+          <div
+            className={styles.previewFolder}
+            style={hasCustomImage ? undefined : { background: color }}
+          >
+            {hasCustomImage && previewUrl ? (
+              <img src={previewUrl} alt="" className={styles.previewImg} />
+            ) : (
+              <IconByKey icon={iconKey} size={26} weight="regular" color="#fff" />
+            )}
           </div>
+          <div className={styles.previewName}>{name.trim() || '新分类'}</div>
         </div>
 
         {/* 类型切换 */}
@@ -267,9 +277,31 @@ export function AddCategoryModal({
           />
         </div>
 
-        {/* 图标选取（v2.1:Phosphor 线稿分组 picker） */}
+        {/* 图标选取 —— 「自定义」按钮贴在标签右侧 */}
         <div className={styles.field}>
-          <label className={styles.fieldLabel}>图标</label>
+          <div className={styles.fieldLabelRow}>
+            <label className={styles.fieldLabel}>图标</label>
+            <button
+              type="button"
+              className={`${styles.customPickBtn} ${hasCustomImage ? styles.customPickBtnActive : ''}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageStatus === 'compressing'}
+            >
+              <ImageSquare size={13} weight="regular" />
+              自定义
+            </button>
+          </div>
+
+          {/* 已选自定义图 → 显示缩略图 + 移除 */}
+          {hasCustomImage && previewUrl && (
+            <div className={styles.customPreviewRow}>
+              <img src={previewUrl} alt="自定义分类图标" className={styles.customPreviewThumb} />
+              <button type="button" className={styles.customRemoveBtn} onClick={clearCustomImage}>
+                移除
+              </button>
+            </div>
+          )}
+
           <div className={styles.iconPicker}>
             {ACCOUNTING_ICON_GROUPS.map((group) => (
               <div key={group.label} className={styles.iconGroup}>
@@ -289,52 +321,7 @@ export function AddCategoryModal({
               </div>
             ))}
           </div>
-        </div>
 
-        {/* ── v3.2 TASK-070：自定义图片 ───────────────────── */}
-        <div className={styles.field}>
-          <label className={styles.fieldLabel}>自定义图片</label>
-          <div className={styles.customImageRow}>
-            {hasCustomImage && previewUrl ? (
-              <div className={styles.customImageThumb}>
-                <img src={previewUrl} alt="自定义分类图标" />
-                <button
-                  type="button"
-                  className={styles.customImageRemove}
-                  onClick={() => {
-                    setPendingBlob(null);
-                    setPendingId(null);
-                    if (previewUrlRef.current) {
-                      URL.revokeObjectURL(previewUrlRef.current);
-                      previewUrlRef.current = null;
-                    }
-                    setPreviewUrl(null);
-                    setImageStatus('idle');
-                    setImageError(null);
-                  }}
-                  aria-label="移除自定义图片"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className={styles.customImagePick}
-                onClick={() => fileInputRef.current?.click()}
-                disabled={imageStatus === 'compressing'}
-              >
-                {imageStatus === 'compressing' ? '处理中…' : '＋ 选一张图'}
-              </button>
-            )}
-            <span className={styles.customImageHint}>
-              {imageError
-                ? imageError
-                : hasCustomImage
-                  ? '已选好，会自动压缩到 256px'
-                  : '从相册选一张图当分类图标'}
-            </span>
-          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -346,26 +333,28 @@ export function AddCategoryModal({
           />
         </div>
 
-        {/* 颜色选取 */}
-        <div className={styles.field}>
-          <label className={styles.fieldLabel}>颜色</label>
-          <div className={styles.colorGrid}>
-            {COLOR_PALETTE.map((c) => (
-              <button
-                key={c}
-                className={`${styles.colorChip} ${color === c ? styles.colorChipActive : ''}`}
-                style={{ backgroundColor: c }}
-                onClick={() => setColor(c)}
-                aria-label={`选择颜色 ${c}`}
-              />
-            ))}
+        {/* 颜色选取 —— 选了自定义图片就不需要背景色了，整块隐藏 */}
+        {!hasCustomImage && (
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>颜色</label>
+            <div className={styles.colorGrid}>
+              {COLOR_PALETTE.map((c) => (
+                <button
+                  key={c}
+                  className={`${styles.colorChip} ${color === c ? styles.colorChipActive : ''}`}
+                  style={{ backgroundColor: c }}
+                  onClick={() => setColor(c)}
+                  aria-label={`选择颜色 ${c}`}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.actions}>
-          <button className={styles.submitBtn} onClick={handleSave} disabled={imageStatus === 'compressing'}>
+          <button type="button" className={styles.submitBtn} onClick={handleSave} disabled={imageStatus === 'compressing'}>
             新建
           </button>
         </div>

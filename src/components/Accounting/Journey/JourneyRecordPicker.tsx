@@ -290,6 +290,8 @@ function RecordRow({ record, category, selected, onToggle, tag, tagExtra }: Reco
                   imageId={category.iconImageId}
                   size={13}
                   weight="regular"
+                  fill={false}
+                  radius="4px"
                   color={category.color}
                   className={styles.rowCatIcon}
                 />{' '}

@@ -341,8 +341,7 @@ function FolderInner({
           weight="regular"
           color="var(--folder-color, #9CA3AF)"
         />
-      </span>
-      <span className={styles.name}>{folder.name}</span>
+      </span>      <span className={styles.name}>{folder.name}</span>
       <span className={styles.amount}>¥{(stat?.total ?? 0).toFixed(0)}</span>
       {stat && stat.todayCount > 0 && <span className={styles.count}>{stat.todayCount}</span>}
     </>

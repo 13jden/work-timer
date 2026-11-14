@@ -526,6 +526,8 @@ export function AddRecordModal({
                     imageId={cat.iconImageId}
                     size={18}
                     weight="regular"
+                    fill={false}
+                    radius="6px"
                     color={categoryId === cat.id ? '#fff' : cat.color}
                   />
                 </span>

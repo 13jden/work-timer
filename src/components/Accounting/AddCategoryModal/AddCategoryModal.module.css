@@ -77,136 +77,127 @@
 /* ── Preview ── */
 .preview {
   display: flex;
-  justify-content: center;
-  padding: 4px 0 6px;
-}
-
-.previewFolder {
-  display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+
+/* 分类框本体 —— 自定义图片时图片铺满这个框，颜色块被完全盖住 */
+.previewFolder {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 96px;
-  height: 96px;
-  border-radius: 14px;
+  width: 84px;
+  height: 84px;
+  border-radius: 16px;
+  overflow: hidden;
   color: #fff;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   transition: background 200ms;
 }
 
-.previewIcon {
-  font-size: 28px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ── v3.2 TASK-070：自定义分类图片 ───────────────────── */
-
-/* 预览卡里的自定义图 —— 圆形裁切，跟线稿图标同样的视觉重量 */
-.customIconPreview {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
-}
-
-/* 选图区：缩略图 + 说明一行 */
-.customImageRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px dashed var(--line);
-  border-radius: 12px;
-  background: var(--paper-3);
-}
-
-/* 未选图时的按钮 */
-.customImagePick {
-  flex-shrink: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--paper-4);
-  color: var(--ink-muted);
-  font-family: inherit;
-  font-size: 12px;
-  padding: 7px 12px;
-  cursor: pointer;
-  transition: border-color 150ms, color 150ms;
-}
-
-.customImagePick:hover:not(:disabled) {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.customImagePick:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* 已选图时的缩略图 + 移除按钮 */
-.customImageThumb {
-  position: relative;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-}
-
-.customImageThumb img {
+/* 自定义图片铺满分类框 */
+.previewImg {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-
-.customImageRemove {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--paper-4);
-  color: var(--ink-muted);
-  font-size: 9px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.customImageRemove:hover {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.customImageHint {
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
-.fileInputHidden {
-  display: none;
 }
 
 .previewName {
   font-size: 12px;
   font-weight: 600;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 84px;
+  max-width: 120px;
+}
+
+/* ── v3.2 TASK-071：「自定义」按钮贴在「图标」标签右侧 ── */
+
+/* 标签行：左边标题，右边自定义按钮 */
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.customPickBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-3);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+.customPickBtn:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.customPickBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 已选自定义图：按钮进入选中态 */
+.customPickBtnActive {
+  border-color: var(--ink);
+  background: var(--paper-4);
+  color: var(--ink);
+}
+
+/* 已选图的缩略图 + 移除 */
+.customPreviewRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--paper-3);
+}
+
+.customPreviewThumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
+.customRemoveBtn {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-4);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+
+.customRemoveBtn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.fileInputHidden {
+  display: none;
 }
 
 /* ── Type Toggle ── */

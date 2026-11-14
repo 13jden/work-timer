@@ -91,6 +91,8 @@
   justify-content: center;
   font-size: 30px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .amount {
@@ -237,6 +239,8 @@
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  /* v3.2 TASK-071：自定义图片铺满这个方块，需要裁切 */
+  overflow: hidden;
 }
 
 .cardInfo {
